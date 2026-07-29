@@ -183,8 +183,8 @@ async def upload_and_create_job(
     glossary_name: Optional[str] = Form(None),
     system_prompt: Optional[str] = Form(None),
     chunk_size: int = Form(1000),
-    temperature: float = Form(1.50),
-    concurrency: int = Form(1),
+    temperature: float = Form(default_factory=lambda: settings.TEMPERATURE),
+    concurrency: int = Form(default_factory=lambda: settings.CONCURRENCY),
     max_segments: Optional[int] = Form(None)
 ):
     filename = file.filename or "book.epub"

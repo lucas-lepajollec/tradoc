@@ -146,8 +146,8 @@ class TranslationEngine:
         segments = await self.db.get_segments(job_id)
         pending_segments = [s for s in segments if s.status in ("PENDING", "FAILED")]
 
-        active_concurrency = job.concurrency if (job.concurrency and job.concurrency > 0) else (concurrency or settings.CONCURRENCY or 1)
-        active_temperature = job.temperature if (job.temperature is not None) else (temperature if temperature is not None else settings.TEMPERATURE)
+        active_concurrency = concurrency if (concurrency and concurrency > 0) else (job.concurrency if (job.concurrency and job.concurrency > 0) else (settings.CONCURRENCY or 1))
+        active_temperature = temperature if (temperature is not None) else (job.temperature if (job.temperature is not None) else settings.TEMPERATURE)
 
         print(f"\n[TraDoc Engine] 🚀 Démarrage de la traduction du job {job_id} ({job.file_name})")
         print(f"[TraDoc Engine] 🔗 Target Endpoint: {llm_client.endpoint} | Modèle actif: {job.model}")
