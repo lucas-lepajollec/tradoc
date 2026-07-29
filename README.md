@@ -68,28 +68,52 @@ tradoc/
 
 ---
 
-## 🚀 Installation & Déploiement Docker
+## 🚀 Déploiement Docker (NAS, Portainer & Linux)
 
-### Option 1 : Déploiement Docker Compose (Recommandé pour NAS / Linux)
+Le moyen le plus simple et rapide de déployer **TraDoc** sur votre NAS (Synology, QNAP, Unraid, OpenMediaVault) ou serveur Linux est d'utiliser Docker Compose avec l'image officielle.
 
-1. **Cloner le projet** sur votre serveur ou NAS :
-   ```bash
-   git clone https://github.com/votre-user/tradoc.git
-   cd tradoc
-   ```
+### 1. Créez votre fichier `docker-compose.yml` :
 
-2. **Configurer l'environnement** :
-   ```bash
-   cp .env.example .env
-   ```
-   Éditez `.env` pour faire pointer `LLM_ENDPOINT` vers votre serveur GPU (ex: `http://192.168.0.201:1234/v1`).
+Copiez-collez le bloc suivant directement dans votre gestionnaire de stack (Portainer) ou dans un fichier `docker-compose.yml` sur votre serveur :
 
-3. **Lancer le conteneur Docker** :
-   ```bash
-   docker compose up -d --build
-   ```
+```yaml
+version: '3.8'
 
-4. **Accéder à l'application** : Ouvrez **`http://<IP_NAS>:2507`** dans votre navigateur.
+services:
+  tradoc:
+    image: ghcr.io/lucas-lepajollec/tradoc:latest
+    container_name: tradoc-server
+    restart: unless-stopped
+    ports:
+      - "2507:8000"
+    environment:
+      - ENV=production
+      - DATA_DIR=/app/data
+      - LLM_ENDPOINT=http://192.168.0.201:1234/v1  # IP de votre serveur GPU local
+      - LLM_API_KEY=lm-studio
+      - LLM_MODEL=qwen3.5-9b
+      - API_TYPE=openai
+      - CONCURRENCY=1
+      - CHUNK_TOKEN_SIZE=1000
+      - TEMPERATURE=1.50
+    volumes:
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+```
+
+### 2. Lancez la stack :
+
+```bash
+docker compose up -d
+```
+
+### 3. Accédez à l'application :
+
+Ouvrez votre navigateur sur : **`http://<IP_DE_VOTRE_NAS>:2507`** (ex: `http://192.168.0.201:2507`).
 
 ---
 
