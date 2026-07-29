@@ -82,7 +82,7 @@ export default function Sidebar({ activeTab, setActiveTab, endpointStatus, endpo
             <div className={`w-2 h-2 rounded-full ${endpointStatus ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
           </div>
           <p className="text-[11px] font-mono text-zinc-400 truncate">
-            {endpointUrl || '192.168.0.201:1234'}
+            {endpointUrl || 'localhost:1234'}
           </p>
         </div>
       </div>

@@ -147,7 +147,7 @@ export default function Settings({ settings, onSaveSettings, availableModels = [
                 type="text"
                 value={endpoint}
                 onChange={(e) => setEndpoint(e.target.value)}
-                placeholder="http://192.168.0.201:1234/v1"
+                placeholder="http://192.168.x.x:1234/v1"
                 className="w-full input-chill px-4 py-2.5 text-xs font-mono"
               />
             </div>

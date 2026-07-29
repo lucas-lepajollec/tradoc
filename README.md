@@ -91,7 +91,7 @@ services:
     environment:
       - ENV=production
       - DATA_DIR=/app/data
-      - LLM_ENDPOINT=http://192.168.0.201:1234/v1  # IP de votre serveur GPU local
+      - LLM_ENDPOINT=http://192.168.x.x:1234/v1  # IP de votre serveur GPU local
       - LLM_API_KEY=lm-studio
       - LLM_MODEL=qwen3.5-9b
       - API_TYPE=openai
@@ -115,7 +115,7 @@ docker compose up -d
 
 ### 3. Accédez à l'application :
 
-Ouvrez votre navigateur sur : **`http://<IP_DE_VOTRE_NAS>:2507`** (ex: `http://192.168.0.201:2507`).
+Ouvrez votre navigateur sur : **`http://<IP_DE_VOTRE_NAS>:2507`**.
 
 ---
 
@@ -146,9 +146,9 @@ Ouvrez votre navigateur sur : **`http://<IP_DE_VOTRE_NAS>:2507`** (ex: `http://1
 TraDoc écoute sur `0.0.0.0:2499` en mode développement Vite et sur le port `2507` en mode Docker production.
 
 * **Depuis votre smartphone / tablette en Wi-Fi :**
-  Accédez directement à **`http://192.168.0.201:2499/`** *(ou l'IP locale de votre ordinateur)*.
-* **Via Tailscale (4G / 5G / Réseau distant) :**
-  Accédez à **`http://100.65.22.51:2499/`**.
+  Accédez directement à **`http://<IP_DE_VOTRE_PC>:2499/`** *(ex: 192.168.x.x)*.
+* **Via VPN / Tailscale (4G / 5G / Réseau distant) :**
+  Accédez à **`http://<IP_TAILSCALE_OU_VPN>:2499/`**.
 
 ---
 
@@ -158,7 +158,7 @@ TraDoc écoute sur `0.0.0.0:2499` en mode développement Vite et sur le port `25
 | :--- | :--- | :--- |
 | `ENV` | Environnement d'exécution (`development` / `production`) | `production` |
 | `DATA_DIR` | Répertoire de stockage SQLite et des fichiers importés | `./data` |
-| `LLM_ENDPOINT` | URL de l'API OpenAI / LM Studio / Ollama distant | `http://192.168.0.201:1234/v1` |
+| `LLM_ENDPOINT` | URL de l'API OpenAI / LM Studio / Ollama distant | `http://192.168.x.x:1234/v1` |
 | `LLM_MODEL` | Modèle LLM par défaut | `qwen3.5-9b` |
 | `CONCURRENCY` | Nombre de requêtes d'inférence parallèles | `1` |
 | `CHUNK_TOKEN_SIZE` | Taille de la fenêtre sémantique (tokens) | `1000` |

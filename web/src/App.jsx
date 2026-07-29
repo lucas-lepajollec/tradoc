@@ -23,7 +23,7 @@ export default function App() {
       }
     }
     return {
-      endpoint: 'http://192.168.0.201:1234/v1',
+      endpoint: 'http://localhost:1234/v1',
       apiKey: 'lm-studio',
       apiType: 'openai',
       model: 'qwen3.5-9b',
@@ -53,7 +53,7 @@ export default function App() {
     } catch (e) {}
 
     // 2. Only auto-detect other local servers if the currently stored settings are default or empty
-    const isDefaultEndpoint = settings.endpoint === 'http://192.168.0.201:1234/v1';
+    const isDefaultEndpoint = settings.endpoint === 'http://localhost:1234/v1';
     if (isDefaultEndpoint) {
       try {
         const resLocal = await testConnection('http://127.0.0.1:1234/v1', 'lm-studio', 'openai');

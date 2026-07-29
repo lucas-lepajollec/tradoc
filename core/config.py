@@ -35,7 +35,7 @@ class Settings(BaseSettings):
         return p
 
     # Remote LLM Server Defaults
-    LLM_ENDPOINT: str = Field(default="http://192.168.0.201:1234/v1")
+    LLM_ENDPOINT: str = Field(default="http://localhost:1234/v1")
     LLM_API_KEY: str = Field(default="lm-studio")
     LLM_MODEL: str = Field(default="qwen3.5-instruct")
     API_TYPE: str = Field(default="openai")  # "openai" or "ollama"
