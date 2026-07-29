@@ -231,20 +231,29 @@ async def start_job(
     background_tasks: BackgroundTasks,
     endpoint: str = Form(default_factory=lambda: settings.LLM_ENDPOINT),
     api_key: str = Form(default_factory=lambda: settings.LLM_API_KEY),
-    concurrency: int = Form(default=1),
-    temperature: float = Form(default_factory=lambda: settings.TEMPERATURE)
+    concurrency: Optional[int] = Form(None),
+    temperature: Optional[float] = Form(None)
 ):
     job = await db.get_job(job_id)
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
 
-    await db.update_job_config(job_id, temperature=temperature, concurrency=concurrency)
+    update_kwargs = {}
+    if temperature is not None:
+        update_kwargs["temperature"] = temperature
+    if concurrency is not None:
+        update_kwargs["concurrency"] = concurrency
+    
+    if update_kwargs:
+        await db.update_job_config(job_id, **update_kwargs)
+        job = await db.get_job(job_id)
+
     client = LLMClient(endpoint=endpoint, api_key=api_key)
     
     async def run_wrapper():
         try:
             print(f"[TraDoc API] 🚀 Lancement tâche de fond pour le job {job_id} sur {endpoint}...")
-            await engine.run_job(job_id, client, concurrency=concurrency, temperature=temperature)
+            await engine.run_job(job_id, client, concurrency=job.concurrency, temperature=job.temperature)
         except Exception as exc:
             print(f"[TraDoc API ERROR] ❌ Échec critique lors du traitement du job {job_id}: {exc}")
         finally:

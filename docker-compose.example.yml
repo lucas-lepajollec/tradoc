@@ -16,7 +16,6 @@ services:
       - LLM_API_KEY=lm-studio
       - LLM_MODEL=qwen3.5-9b
       - API_TYPE=openai
-      - CONCURRENCY=1
       - CHUNK_TOKEN_SIZE=1000
       - TEMPERATURE=1.50
     volumes:

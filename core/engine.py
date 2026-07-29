@@ -132,8 +132,8 @@ class TranslationEngine:
         self,
         job_id: str,
         llm_client: LLMClient,
-        concurrency: int = 1,
-        temperature: float = 0.3
+        concurrency: Optional[int] = None,
+        temperature: Optional[float] = None
     ):
         """Executes translation job using worker tasks with asyncio.Semaphore concurrency limit."""
         job = await self.db.get_job(job_id)
@@ -146,11 +146,14 @@ class TranslationEngine:
         segments = await self.db.get_segments(job_id)
         pending_segments = [s for s in segments if s.status in ("PENDING", "FAILED")]
 
+        active_concurrency = job.concurrency if (job.concurrency and job.concurrency > 0) else (concurrency or settings.CONCURRENCY or 1)
+        active_temperature = job.temperature if (job.temperature is not None) else (temperature if temperature is not None else settings.TEMPERATURE)
+
         print(f"\n[TraDoc Engine] 🚀 Démarrage de la traduction du job {job_id} ({job.file_name})")
         print(f"[TraDoc Engine] 🔗 Target Endpoint: {llm_client.endpoint} | Modèle actif: {job.model}")
-        print(f"[TraDoc Engine] ⚡ Concurrence: {concurrency} requêtes parallèles | Segments restants: {len(pending_segments)}/{len(segments)}")
+        print(f"[TraDoc Engine] ⚡ Concurrence: {active_concurrency} requêtes parallèles | Température: {active_temperature} | Segments restants: {len(pending_segments)}/{len(segments)}")
 
-        semaphore = asyncio.Semaphore(concurrency)
+        semaphore = asyncio.Semaphore(active_concurrency)
 
         async def worker(segment: SegmentRecord):
             async with semaphore:
