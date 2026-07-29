@@ -1,6 +1,8 @@
-# 📚 TraDoc — Traducteur Littéraire IA Haute Performance
-
 <div align="center">
+
+<img src="web/public/logo.svg" width="128" height="128" alt="TraDoc Logo" />
+
+# 📚 TraDoc — Traducteur Littéraire IA Haute Performance
 
 ![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
 ![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
@@ -11,7 +13,7 @@
 
 **TraDoc** est une suite logicielle complète et autonome de traduction littéraire de livres (**EPUB & PDF**). Designed for local NAS deployment with remote GPU LLM inference (LM Studio, Ollama, vLLM, OpenAI spec).
 
-[Fonctionnalités](#-fonctionnalités-clés) • [Architecture](#-architecture-du-système) • [Installation & Docker](#-installation--déploiement-docker) • [Guide Mobile](#-accès-mobile--réseau-local) • [Glossaire](#-injection-de-glossaires)
+[Fonctionnalités](#-fonctionnalités-clés) • [Architecture](#-architecture-du-système) • [Installation & Docker](#-déploiement-docker-nas-portainer--linux) • [Guide Mobile](#-accès-mobile--réseau-local)
 
 </div>
 

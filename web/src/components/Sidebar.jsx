@@ -23,9 +23,7 @@ export default function Sidebar({ activeTab, setActiveTab, endpointStatus, endpo
         {/* Brand Logo */}
         <div className="flex items-center justify-between px-2 pt-2">
           <div className="flex items-center space-x-3 cursor-pointer" onClick={() => handleNavClick('dashboard')}>
-            <div className="w-9 h-9 rounded-xl bg-orange-500/10 border border-orange-500/30 text-orange-400 flex items-center justify-center font-bold text-sm shadow-md shadow-orange-500/10">
-              <Sparkles className="w-5 h-5" />
-            </div>
+            <img src="/logo.svg" alt="TraDoc Logo" className="w-9 h-9 rounded-xl shadow-md shadow-orange-500/10" />
             <div>
               <div className="flex items-center space-x-2">
                 <span className="font-heading font-extrabold text-lg text-white tracking-tight">TraDoc</span>
