@@ -1,0 +1,23 @@
+.git
+.gitignore
+.env
+.venv
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache
+.coverage
+htmlcov/
+
+# Node & Frontend
+web/node_modules
+web/dist
+web/.vite
+
+# Data & Output
+data/
+data/*
+*.epub
+*.pdf
+*.db

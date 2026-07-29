@@ -1,0 +1,29 @@
+# Configuration Docker Compose pour TraDoc (Exemple NAS / Production)
+# Ce fichier permet de déployer l'image pré-construite de TraDoc depuis GitHub Container Registry (ghcr.io).
+
+services:
+  tradoc:
+    image: ghcr.io/lucas-lepajollec/tradoc:latest
+    container_name: tradoc-server
+    restart: unless-stopped
+    ports:
+      # Port exposé sur la machine hôte : port interne de l'application
+      - "2507:8000"
+    environment:
+      - ENV=production
+      - DATA_DIR=/app/data
+      - LLM_ENDPOINT=http://192.168.0.201:1234/v1
+      - LLM_API_KEY=lm-studio
+      - LLM_MODEL=qwen3.5-9b
+      - API_TYPE=openai
+      - CONCURRENCY=1
+      - CHUNK_TOKEN_SIZE=1000
+      - TEMPERATURE=1.50
+    volumes:
+      # Stockage persistant de la base SQLite et des fichiers traduits
+      - ./data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/models"]
+      interval: 30s
+      timeout: 10s
+      retries: 3

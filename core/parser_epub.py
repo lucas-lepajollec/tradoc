@@ -1,0 +1,93 @@
+import copy
+from pathlib import Path
+from typing import List, Tuple, Dict, Any
+import ebooklib
+from ebooklib import epub
+from bs4 import BeautifulSoup, Tag, NavigableString
+
+class EpubParser:
+    def __init__(self, epub_path: Path):
+        self.epub_path = epub_path
+        self.book = epub.read_epub(str(epub_path))
+
+    def extract_nodes(self) -> Tuple[List[Dict[str, Any]], List[str]]:
+        """
+        Parses all HTML items in the EPUB.
+        Returns:
+        - node_meta: list of metadata dicts tracking item_id, bs4 tag reference identifier, original node html
+        - node_texts: list of raw HTML/text strings to be chunked and translated
+        """
+        node_meta: List[Dict[str, Any]] = []
+        node_texts: List[str] = []
+
+        # Target block-level tags containing translatable text
+        block_tags = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "li", "caption", "figcaption"]
+
+        for item in self.book.get_items():
+            if item.get_type() == ebooklib.ITEM_DOCUMENT:
+                content = item.get_content().decode("utf-8", errors="replace")
+                soup = BeautifulSoup(content, "html.parser")
+
+                # Find candidate tags
+                tags = soup.find_all(block_tags)
+                for tag_idx, tag in enumerate(tags):
+                    text_content = tag.get_text().strip()
+                    if not text_content:
+                        continue
+                    
+                    # Convert tag to string representation preserving inline HTML (<em>, <i>, <b>)
+                    raw_tag_str = str(tag)
+
+                    node_meta.append({
+                        "item_id": item.get_id(),
+                        "tag_idx": tag_idx,
+                        "tag_name": tag.name,
+                        "original_html": raw_tag_str
+                    })
+                    node_texts.append(raw_tag_str)
+
+        return node_meta, node_texts
+
+    def reconstruct_epub(self, node_meta: List[Dict[str, Any]], translated_nodes: List[str], output_path: Path):
+        """
+        Re-injects translated HTML nodes into a copy of the EPUB and writes the output file.
+        """
+        out_book = copy.deepcopy(self.book)
+
+        # Group translated nodes by item_id
+        item_updates: Dict[str, List[Tuple[int, str]]] = {}
+        for meta, translated_html in zip(node_meta, translated_nodes):
+            item_id = meta["item_id"]
+            tag_idx = meta["tag_idx"]
+            if item_id not in item_updates:
+                item_updates[item_id] = []
+            item_updates[item_id].append((tag_idx, translated_html))
+
+        # Target block-level tags
+        block_tags = ["p", "h1", "h2", "h3", "h4", "h5", "h6", "blockquote", "li", "caption", "figcaption"]
+
+        for item in out_book.get_items():
+            if item.get_type() == ebooklib.ITEM_DOCUMENT and item.get_id() in item_updates:
+                content = item.get_content().decode("utf-8", errors="replace")
+                soup = BeautifulSoup(content, "html.parser")
+                tags = soup.find_all(block_tags)
+
+                for tag_idx, new_html in item_updates[item.get_id()]:
+                    if tag_idx < len(tags):
+                        old_tag = tags[tag_idx]
+                        try:
+                            new_soup = BeautifulSoup(new_html, "html.parser")
+                            new_element = new_soup.find(old_tag.name) or new_soup
+                            if hasattr(new_element, "attrs") and hasattr(old_tag, "attrs"):
+                                attrs = copy.deepcopy(old_tag.attrs)
+                                if hasattr(new_element, "attrs") and new_element.attrs:
+                                    attrs.update(new_element.attrs)
+                                new_element.attrs = attrs
+                            old_tag.replace_with(new_element)
+                        except Exception:
+                            plain_text = BeautifulSoup(new_html, "html.parser").get_text()
+                            old_tag.string = plain_text
+
+                item.set_content(str(soup).encode("utf-8"))
+
+        epub.write_epub(str(output_path), out_book, {})

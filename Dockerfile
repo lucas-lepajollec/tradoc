@@ -1,0 +1,42 @@
+# Stage 1: Build React UI Frontend
+FROM node:22-alpine AS ui-builder
+WORKDIR /app/web
+COPY web/package.json web/package-lock.json* ./
+RUN npm install
+COPY web/ ./
+RUN npm run build
+
+# Stage 2: Python Backend & Runtime Service
+FROM python:3.11-slim
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    DATA_DIR=/app/data
+
+WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential \
+    curl \
+    libxml2-dev \
+    libxslt-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Python requirements
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy source code
+COPY . .
+
+# Copy UI build from Stage 1
+COPY --from=ui-builder /app/web/dist /app/web/dist
+
+# Create persistent data directories
+RUN mkdir -p /app/data/input /app/data/output /app/data/glossaries
+
+EXPOSE 8000
+
+CMD ["python", "main.py", "serve", "--host", "0.0.0.0", "--port", "8000"]
