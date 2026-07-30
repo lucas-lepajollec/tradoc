@@ -14,7 +14,7 @@ from core.cleaner import simplify_html_for_prompt
 from core.parser_epub import EpubParser
 from core.parser_pdf import PdfParser
 from core.glossary import GlossaryManager
-from core.llm_client import LLMClient
+from core.llm_client import LLMClient, ProviderDownError
 
 logger = logging.getLogger("tradoc.engine")
 
@@ -191,6 +191,16 @@ class TranslationEngine:
                         "completed_chunks": done_cnt,
                         "total_chunks": job.total_chunks
                     })
+                except ProviderDownError as pde:
+                    error_msg = str(pde)
+                    print(f"\n[TraDoc Engine WARNING] ⚠️ Serveur LLM injoignable ({error_msg}). Auto-pause du job {job_id} pour préserver les segments...")
+                    await self.db.update_job_status(job_id, "PAUSED")
+                    self._broadcast_event("job_auto_paused", {
+                        "job_id": job_id,
+                        "chunk_index": segment.chunk_index,
+                        "reason": "Le serveur LLM distant n'est plus accessible (PC en veille ou interruption réseau). Le projet a été mis en pause automatiquement."
+                    })
+                    return
                 except Exception as e:
                     error_msg = str(e)
                     print(f"[TraDoc Engine ERROR] ❌ Chunk #{segment.chunk_index + 1} échoué: {error_msg}")

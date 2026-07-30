@@ -104,18 +104,20 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
   const handleStartResumeJob = async (e, jobId) => {
     e.stopPropagation();
-    await startJob(jobId, {
+    setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status: 'PROCESSING' } : j));
+    startJob(jobId, {
       endpoint: settings.endpoint,
       apiKey: settings.apiKey,
       concurrency: settings.concurrency,
       temperature: settings.temperature
-    });
+    }).catch(console.error);
     await loadJobs();
   };
 
   const handlePauseJob = async (e, jobId) => {
     e.stopPropagation();
-    await pauseJob(jobId);
+    setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status: 'PAUSED' } : j));
+    pauseJob(jobId).catch(console.error);
     await loadJobs();
   };
 

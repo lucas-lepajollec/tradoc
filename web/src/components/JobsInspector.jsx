@@ -157,18 +157,20 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings }) 
 
   const handleStartResume = async () => {
     if (!job) return;
-    await startJob(job.id, {
+    setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
+    startJob(job.id, {
       endpoint: settings.endpoint,
       apiKey: settings.apiKey,
       concurrency: settings.concurrency,
       temperature: settings.temperature
-    });
+    }).catch(console.error);
     await refreshActiveJob();
   };
 
   const handlePause = async () => {
     if (!job) return;
-    await pauseJob(job.id);
+    setJob((prev) => prev ? { ...prev, status: 'PAUSED' } : null);
+    pauseJob(job.id).catch(console.error);
     await refreshActiveJob();
   };
 

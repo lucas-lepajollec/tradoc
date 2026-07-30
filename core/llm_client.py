@@ -5,6 +5,10 @@ import httpx
 from typing import List, Dict, Any, Optional, Tuple
 from core.cleaner import clean_llm_response
 
+class ProviderDownError(RuntimeError):
+    """Raised when the remote LLM server is unreachable, connection refused, or timed out."""
+    pass
+
 class LLMClient:
     def __init__(self, endpoint: str, api_key: str = "lm-studio", api_type: str = "openai", timeout: float = 180.0):
         self.endpoint = endpoint.rstrip("/")
@@ -82,10 +86,14 @@ class LLMClient:
                 if cleaned:
                     return cleaned
                 raise ValueError("Réponse LLM vide après nettoyage.")
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError, httpx.RemoteProtocolError) as e:
+                raise ProviderDownError(f"Le serveur LLM n'est plus accessible ({self.endpoint}): {str(e)}")
             except Exception as e:
                 last_exception = e
                 err_str = str(e)
-                # Don't retry if it's an unrecoverable memory overflow error
+                if "502" in err_str or "503" in err_str or "504" in err_str or "Connection refused" in err_str:
+                    raise ProviderDownError(f"Le serveur LLM distant s'est déconnecté: {err_str}")
+
                 if "insufficient system resources" in err_str:
                     raise RuntimeError(err_str)
 
