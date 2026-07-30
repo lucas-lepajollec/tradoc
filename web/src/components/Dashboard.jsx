@@ -17,10 +17,25 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
     loadJobs();
     loadGlossariesList();
 
+    const eventSource = new EventSource('/api/events');
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === 'job_started' || data.type === 'job_paused' || data.type === 'job_auto_paused' || data.type === 'job_completed' || data.type === 'job_created') {
+          loadJobs();
+        }
+      } catch (e) {
+        console.error(e);
+      }
+    };
+
     const timer = setInterval(() => {
       loadJobs();
-    }, 2500);
-    return () => clearInterval(timer);
+    }, 3500);
+    return () => {
+      eventSource.close();
+      clearInterval(timer);
+    };
   }, []);
 
   useEffect(() => {
@@ -123,21 +138,23 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
   const handleRetryJob = async (e, jobId) => {
     e.stopPropagation();
-    await retryJob(jobId);
-    await startJob(jobId, {
-      endpoint: settings.endpoint,
-      apiKey: settings.apiKey,
-      concurrency: settings.concurrency,
-      temperature: settings.temperature
-    });
+    setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status: 'PROCESSING' } : j));
+    retryJob(jobId)
+      .then(() => startJob(jobId, {
+        endpoint: settings.endpoint,
+        apiKey: settings.apiKey,
+        concurrency: settings.concurrency,
+        temperature: settings.temperature
+      }))
+      .catch(console.error);
     await loadJobs();
   };
 
   const handleDeleteJob = async (e, jobId, fileName) => {
     e.stopPropagation();
     if (!window.confirm(`Supprimer définitivement le projet "${fileName}" ?`)) return;
-    await deleteJob(jobId);
-    await loadJobs();
+    setJobs((prev) => prev.filter((j) => j.id !== jobId));
+    deleteJob(jobId).catch(console.error);
   };
 
   return (

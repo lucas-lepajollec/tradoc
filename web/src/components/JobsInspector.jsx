@@ -87,10 +87,19 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings }) 
     eventSource.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        if (data.type === 'segment_completed' || data.type === 'segment_failed' || data.type === 'job_completed') {
-          setLogs((prev) => [data, ...prev.slice(0, 50)]);
+        if (data.type === 'job_paused' || data.type === 'job_auto_paused') {
+          setJob((prev) => prev ? { ...prev, status: 'PAUSED' } : null);
+          setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PAUSED' } : j));
+        } else if (data.type === 'job_started') {
+          setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
+          setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PROCESSING' } : j));
+        } else if (data.type === 'job_completed') {
+          setJob((prev) => prev ? { ...prev, status: 'COMPLETED' } : null);
           refreshActiveJob();
           loadJobsList();
+        } else if (data.type === 'segment_completed' || data.type === 'segment_failed') {
+          setLogs((prev) => [data, ...prev.slice(0, 49)]);
+          refreshActiveJob();
         }
       } catch (e) {
         console.error(e);
@@ -104,16 +113,15 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings }) 
     const timer = setInterval(() => {
       if (job?.id && job.status === 'PROCESSING') {
         refreshActiveJob();
-        loadJobsList();
       }
-    }, 2000);
+    }, 2500);
     return () => clearInterval(timer);
   }, [job?.id, job?.status]);
 
   useEffect(() => {
     if (selectedJobId) {
       loadJobDetails(selectedJobId);
-    } else if (jobs.length > 0) {
+    } else if (jobs.length > 0 && !job) {
       loadJobDetails(jobs[0].id);
     }
   }, [selectedJobId]);
@@ -176,22 +184,28 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings }) 
 
   const handleRetryAndStart = async () => {
     if (!job) return;
-    await retryJob(job.id);
-    await startJob(job.id, {
-      endpoint: settings.endpoint,
-      apiKey: settings.apiKey,
-      concurrency: settings.concurrency,
-      temperature: settings.temperature
-    });
+    setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
+    setSegments((prev) => prev.map((s) => s.status === 'FAILED' ? { ...s, status: 'PENDING', error: null } : s));
+    retryJob(job.id)
+      .then(() => startJob(job.id, {
+        endpoint: settings.endpoint,
+        apiKey: settings.apiKey,
+        concurrency: settings.concurrency,
+        temperature: settings.temperature
+      }))
+      .catch(console.error);
     await refreshActiveJob();
   };
 
   const handleDeleteJob = async (e, jobId, fileName) => {
     if (e) e.stopPropagation();
     if (!window.confirm(`Supprimer définitivement le projet "${fileName}" ?`)) return;
-    await deleteJob(jobId);
-    setJob(null);
-    setSegments([]);
+    setJobs((prev) => prev.filter((j) => j.id !== jobId));
+    if (job?.id === jobId) {
+      setJob(null);
+      setSegments([]);
+    }
+    deleteJob(jobId).catch(console.error);
     await loadJobsList();
   };
 
