@@ -210,13 +210,14 @@ async def upload_and_create_job(
     max_segments: Optional[int] = Form(None),
     job_type: str = Form("translation")
 ):
-    safe_filename = Path(file.filename or "book.epub").name
-    dest_path = settings.INPUT_DIR / safe_filename
-    
-    with open(dest_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
-
     try:
+        safe_filename = Path(file.filename or "book.epub").name
+        dest_path = settings.INPUT_DIR / safe_filename
+        dest_path.parent.mkdir(parents=True, exist_ok=True)
+
+        with open(dest_path, "wb") as buffer:
+            shutil.copyfileobj(file.file, buffer)
+
         job = await engine.prepare_job(
             input_file=dest_path,
             source_lang=source_lang,
@@ -231,6 +232,12 @@ async def upload_and_create_job(
             job_type=job_type
         )
         return job
+    except PermissionError:
+        raise HTTPException(
+            status_code=400,
+            detail="Permission refusée lors de l'écriture dans le dossier 'data/input'. "
+                   "Sur votre serveur Docker, exécutez la commande : chmod -R 777 ./data (ou chown -R 1000:1000 ./data)."
+        )
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
 

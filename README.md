@@ -134,6 +134,7 @@ docker compose up -d
 > [!WARNING]
 > **Réseau & Exposition Portainer** : Ne jamais exposer directement le port de votre serveur d'inférence GPU ni l'instance TraDoc au web public sans authentification préalable ou reverse proxy sécurisé (Nginx, Traefik, Caddy avec SSL/TLS).
 
+- **Permissions du volume Docker** : Si vous rencontrez une erreur `PermissionDenied` lors de l'envoi d'un livre, attribuez les droits d'écriture au volume sur votre serveur hôte : `sudo chmod -R 777 ./data` ou `sudo chown -R 1000:1000 ./data`.
 - **Persistance des Données** : Assurez-vous d'inclure le volume `./data` dans vos sauvegardes régulières (contient la base SQLite `tradoc.db` et vos livres traduits).
 - **Inférence Parallèle LM Studio** : Pour activer la vraie concurrence parallèle avec 4 requêtes simultanées, assurez-vous d'augmenter le réglage `Max Concurrent Requests` dans l'onglet **Local Server** de LM Studio.
 
