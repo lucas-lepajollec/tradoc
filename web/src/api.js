@@ -119,12 +119,20 @@ export async function deleteJob(jobId) {
 }
 
 export async function testConnection(endpoint, apiKey, apiType) {
-  const res = await fetch(`${API_BASE}/settings/test-connection`, {
-    method: 'POST',
-    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-    body: JSON.stringify({ endpoint, api_key: apiKey, api_type: apiType }),
-  });
-  return res.json();
+  try {
+    const res = await fetch(`${API_BASE}/settings/test-connection`, {
+      method: 'POST',
+      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ endpoint, api_key: apiKey, api_type: apiType }),
+    });
+    if (!res.ok) {
+      const text = await res.text();
+      return { success: false, message: text || `Erreur HTTP ${res.status}`, models: [] };
+    }
+    return await res.json();
+  } catch (e) {
+    return { success: false, message: e.message, models: [] };
+  }
 }
 
 export async function testTranslation(payload) {
@@ -141,9 +149,15 @@ export async function testTranslation(payload) {
 }
 
 export async function fetchRemoteModels(endpoint, apiKey) {
-  const url = `${API_BASE}/models?endpoint=${encodeURIComponent(endpoint)}&api_key=${encodeURIComponent(apiKey || '')}`;
-  const res = await fetch(url, { headers: getAuthHeaders() });
-  return res.json();
+  try {
+    const url = `${API_BASE}/models?endpoint=${encodeURIComponent(endpoint)}&api_key=${encodeURIComponent(apiKey || '')}`;
+    const res = await fetch(url, { headers: getAuthHeaders() });
+    if (!res.ok) return [];
+    return await res.json();
+  } catch (e) {
+    console.error('fetchRemoteModels error:', e);
+    return [];
+  }
 }
 
 export async function fetchGlossaries() {
