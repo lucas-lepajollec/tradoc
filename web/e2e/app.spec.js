@@ -36,8 +36,8 @@ test.describe('TraDoc Comprehensive End-to-End Test Suite', () => {
   });
 
   test('3. Dashboard Elements & Dual Import Buttons', async ({ page }) => {
-    await expect(page.locator('text=Importer un livre')).toBeVisible();
-    await expect(page.locator('text=EPUB / PDF').first()).toBeVisible();
+    await expect(page.locator('text=Importer un document')).toBeVisible();
+    await expect(page.locator('text=EPUB / PDF / DOCX / MD / TXT').first()).toBeVisible();
     await expect(page.locator('text=Démarrer la Traduction')).toBeVisible();
     await expect(page.locator('text=Préparer & Inspecter')).toBeVisible();
   });
