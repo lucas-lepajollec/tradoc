@@ -16,18 +16,22 @@
 
 ---
 
-**TraDoc** est une suite logicielle complète et autonome de traduction littéraire de livres (**EPUB & PDF**). Conçue spécifiquement pour un déploiement local (NAS, Docker, Portainer) relié à un serveur d'inférence LLM GPU distant (LM Studio, Ollama, vLLM, OpenAI API spec).
+**TraDoc** est une suite logicielle complète, moderne et autonome de traduction littéraire de livres et documents (**EPUB, PDF, DOCX, Markdown, TXT**). Conçue pour un déploiement local ou serveur (NAS Synology/QNAP, Docker, Portainer) relié à un serveur d'inférence LLM local ou distant (LM Studio, Ollama, vLLM, DeepSeek, OpenAI, Claude, Gemini, etc.).
 
 ---
 
-## ✨ Features
+## ✨ Features Principalement Supportées
 
-- 📖 **Préservation Integrale de la Mise en Page (HTML/CSS)** : Extraction et reconstruction DOM préservant l'ensemble de la typographie, des styles CSS et des images du livre d'origine.
-- ⚡ **Orchestration Asynchrone Parallèle & Auto-Pause** : Traitement par fenêtres de tokens sémantiques avec sémaphore de concurrence paramétrable. Détection automatique des interruptions réseau/GPU et mise en pause sécurisée sans perte de segment.
-- 🏷️ **Gestionnaire de Glossaires Littéraires** : Support de glossaires personnalisés (noms propres, lieux, terminologie spécifique, suffixes `-san`/`-kun`) injectés dynamiquement dans le prompt système.
-- 🧹 **Nettoyage Générique des Balises Réflexives (`<think>`)** : Élimination automatique des blocs de réflexion internes des modèles récents (Qwen 3.5, DeepSeek R1, Gemma 4).
-- 📱 **Interface Web Glassmorphic & Tiroir Burger Mobile** : UI moderne réactive avec mise à jour d'état optimiste (0 ms), visualiseur de segments côte à côte et suivi SSE en direct.
-- 💾 **Résilience SQLite Checkpoint** : Reprise instantanée au segment près en cas de coupure de courant ou de mise en veille.
+- 📚 **Moteur Universel Multi-Formats (.epub, .pdf, .docx, .md, .txt)** : Support natif de l'extraction et de la reconstruction préservant la mise en page HTML/CSS, la typographie, les titres et les images.
+- 📱 **Export EPUB Réajustable pour PDF** : Conversion intelligente des documents PDF à mise en page fixe vers un format livre numérique EPUB fluide et lisible sur n'importe quelle liseuse ou tablette.
+- ⚙️ **Gestionnaire de Providers avec Mémoire Indépendante** : Mémorisation séparée des clés d'API, des endpoints et des modèles pour chaque provider (OpenAI, DeepSeek, Claude, Gemini, LM Studio, Ollama, Minimax, Kimi, GLM).
+- 🔒 **Isolation des Modèles par Projet & Traduction Parallèle** : Chaque livre conserve son propre modèle dédié (`job.model`) en base de données. Possibilité de traduire plusieurs livres simultanément avec des modèles différents sans aucune interférence.
+- 🛠️ **Inspecteur & Édition Inline de Config** : Ajustement à la volée des paramètres d'un projet en pause avec un bouton d'action rapide `⚡ Appliquer la config active du Dashboard`.
+- ⚡ **Orchestration Asynchrone Parallèle & Auto-Pause** : Découpage sémantique par fenêtres de tokens avec concurrence paramétrable. Mise en pause automatique sans perte de données en cas de déconnexion réseau ou GPU.
+- 🏷️ **Gestionnaire de Glossaires Littéraires** : Glossaires personnalisés (noms propres, lieux, univers, suffixes `-san`/`-kun`) injectés dynamiquement dans les prompts.
+- 🧹 **Nettoyage Générique des Balises Réflexives (`<think>`)** : Élimination automatique des blocs de raisonnement interne des modèles récents (Qwen 3.5, DeepSeek R1, Gemma 4).
+- 🛡️ **Calcul Dynamique de Context Tokens** : Gestion automatique et proportionnelle des tokens de sortie pour éviter l'erreur `Context size has been exceeded` (LM Studio HTTP 400).
+- 📱 **Interface Web Glassmorphic & Tiroir Burger Mobile** : UI moderne avec état optimiste (0 ms), visualiseur de segments côte à côte, système de presets dynamique et suivi SSE en direct.
 
 ---
 
