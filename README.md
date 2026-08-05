@@ -1,82 +1,91 @@
 <div align="center">
-
-<img src="web/public/logo.svg" width="128" height="128" alt="TraDoc Logo" />
-
-# 📚 TraDoc — Traducteur Littéraire IA Haute Performance
-
-![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
-![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
-![React](https://img.shields.io/badge/react-18.2-61dafb.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110-009688.svg)
-![Docker](https://img.shields.io/badge/docker-ready-0db7ed.svg)
-![License](https://img.shields.io/badge/license-MIT-green.svg)
-
-**TraDoc** est une suite logicielle complète et autonome de traduction littéraire de livres (**EPUB & PDF**). Designed for local NAS deployment with remote GPU LLM inference (LM Studio, Ollama, vLLM, OpenAI spec).
-
-[Fonctionnalités](#-fonctionnalités-clés) • [Architecture](#-architecture-du-système) • [Installation & Docker](#-déploiement-docker-nas-portainer--linux) • [Guide Mobile](#-accès-mobile--réseau-local)
-
+  <img src="web/public/logo.svg" alt="TraDoc Logo" width="110" />
+  
+  <h1>📚 TraDoc</h1>
+  <p><strong>High-Performance, Self-Hosted AI Literary eBook (EPUB & PDF) Translation Suite</strong></p>
+  
+  <p>
+    <a href="https://github.com/lucas-lepajollec/tradoc"><img src="https://img.shields.io/badge/Version-1.0.0-orange.svg?style=for-the-badge" alt="Version" /></a>
+    <a href="https://python.org/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" /></a>
+    <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" /></a>
+    <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.110-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+    <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2CA5E0?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" /></a>
+  </p>
 </div>
 
 ---
 
-## 🌟 Fonctionnalités Clés
-
-- 📖 **Préservation Intégrale de la Structure & CSS (EPUB & PDF)** :
-  - **EPUB** : Conservation stricte de l'arborescence HTML/XML, des feuilles de style CSS, des balises d'images, des notes de bas de page et de la table des matières (NCX/NAV).
-  - **PDF** : Extraction sémantique intelligente et recomposition propre sous forme d'EPUB ré-assemblé.
-- 🧩 **Découpage Sémantique par Fenêtres de Tokens (Chunking)** : Regroupement dynamique par blocs de 1 000 tokens pour préserver le ton littéraire, la continuité narrative et la cohérence des pronoms.
-- ⚡ **Moteur Concourant `asyncio` + `Semaphore`** : Requêtage GPU parallèle haut débit avec concurrence ajustable à chaud (ex: 1 à 8 requêtes parallèles) sans saturation de mémoire VRAM.
-- 💾 **Reprise Automatique & Resynchronisation SQLite** : Sauvegarde d'état segment par segment. En cas d'arrêt ou de redémarrage du serveur, le traitement reprend à l'index exact.
-- 🧹 **Nettoyage Générique des Balises Réflexives (`<think>`)** : Détection et élimination automatique des blocs de réflexion des modèles récents (Qwen 3.5/3.6, Gemma 4, DeepSeek R1).
-- 🏷️ **Gestionnaire de Glossaires Littéraires** : Support de glossaires personnalisés (noms propres, lieux, terminologie spécifique, suffixes `-san`/`-kun`) injectés dynamiquement dans le prompt système.
-- 📱 **Interface Web 100% Responsive & Tiroir Mobile Burger** :
-  - Mode Desktop avec volet fixe à gauche.
-  - Mode Mobile avec tiroit de navigation animé (*Slide-over Drawer*), visualiseur côte à côte, saut de segment direct `< N / Total >` et bouton de resynchronisation du suivi live.
-- 🎛️ **Mise à Jour des Paramètres à Chaud** : Modification en cours de traduction de la température, du modèle LLM et du niveau de concurrence sans interrompre la tâche.
+**TraDoc** est une suite logicielle complète et autonome de traduction littéraire de livres (**EPUB & PDF**). Conçue spécifiquement pour un déploiement local (NAS, Docker, Portainer) relié à un serveur d'inférence LLM GPU distant (LM Studio, Ollama, vLLM, OpenAI API spec).
 
 ---
 
-## 🏗️ Architecture du Système
+## ✨ Features
 
-```text
-tradoc/
-├── core/
-│   ├── config.py             # Configuration Pydantic & variables d'environnement
-│   ├── parser_epub.py        # Extracteur/Reconstructeur EPUB conservant HTML/CSS
-│   ├── parser_pdf.py         # Parseur PDF & convertisseur EPUB
-│   ├── chunker.py            # Chunker sémantique par fenêtre de tokens
-│   ├── cleaner.py            # Nettoyeur générique de balises <think>
-│   ├── checkpoint.py         # Moteur SQLite de suivi d'état des jobs & segments
-│   ├── llm_client.py         # Client HTTP async (httpx) avec support OpenAI/Ollama
-│   ├── glossary.py           # Gestionnaire de glossaires & injection de termes
-│   └── engine.py             # Orchestrator parallèle avec Semaphore & live tuning
-├── api/
-│   ├── app.py                # Serveur FastAPI & routage SPA React static
-│   └── routes.py             # Endpoints REST (jobs, settings, SSE, models, config)
-├── web/                      # Interface Web React + Vite (Design Glassmorphic Dark)
-│   ├── src/
-│   │   ├── components/       # Dashboard, JobsInspector, Settings, GlossaryManager
-│   │   ├── App.jsx           # App shell avec tiroir mobile burger responsive
-│   │   └── api.js            # Client API REST & SSE
-│   ├── index.html
-│   └── vite.config.js        # Config Vite (Host 0.0.0.0, Port 2499)
-├── cli.py                    # Interface ligne de commande (Rich & Typer)
-├── main.py                   # Serveur Web & CLI Entrypoint
-├── Dockerfile                # Dockerfile multi-stage (Node 20 + Python 3.11)
-├── docker-compose.yml        # Orchestration Docker pour NAS
-├── .env.example              # Modèle de variables d'environnement
-└── requirements.txt          # Dépendances Python
+- 📖 **Préservation Integrale de la Mise en Page (HTML/CSS)** : Extraction et reconstruction DOM préservant l'ensemble de la typographie, des styles CSS et des images du livre d'origine.
+- ⚡ **Orchestration Asynchrone Parallèle & Auto-Pause** : Traitement par fenêtres de tokens sémantiques avec sémaphore de concurrence paramétrable. Détection automatique des interruptions réseau/GPU et mise en pause sécurisée sans perte de segment.
+- 🏷️ **Gestionnaire de Glossaires Littéraires** : Support de glossaires personnalisés (noms propres, lieux, terminologie spécifique, suffixes `-san`/`-kun`) injectés dynamiquement dans le prompt système.
+- 🧹 **Nettoyage Générique des Balises Réflexives (`<think>`)** : Élimination automatique des blocs de réflexion internes des modèles récents (Qwen 3.5, DeepSeek R1, Gemma 4).
+- 📱 **Interface Web Glassmorphic & Tiroir Burger Mobile** : UI moderne réactive avec mise à jour d'état optimiste (0 ms), visualiseur de segments côte à côte et suivi SSE en direct.
+- 💾 **Résilience SQLite Checkpoint** : Reprise instantanée au segment près en cas de coupure de courant ou de mise en veille.
+
+---
+
+## 🛠️ Tech Stack
+
+| Catégorie | Technologies Utilisées |
+| :--- | :--- |
+| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons |
+| **Backend** | FastAPI, Uvicorn, Python 3.11+ |
+| **Inférence LLM** | HTTP Async Client (httpx) compatible OpenAI API / Ollama / LM Studio |
+| **Base de Données** | SQLite3 (Mode WAL multi-lecteurs/écrivains) |
+| **Parsers** | EbookLib, PyMuPDF, BeautifulSoup4, Lxml |
+| **Conteneurisation** | Docker Multi-Stage (Alpine Node + Slim Python) |
+
+---
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- [Python 3.11+](https://www.python.org/) & [Node.js 18+](https://nodejs.org/) (pour l'exécution en local)
+- [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/install/) (pour le déploiement NAS/Serveur)
+- Un serveur d'inférence LLM local ou distant ([LM Studio](https://lmstudio.ai/), [Ollama](https://ollama.com/), vLLM, etc.)
+
+---
+
+### 💻 Mode Développement Local (Windows / Mac / Linux)
+
+#### 1. Cloner le dépôt et configurer l'environnement :
+```bash
+git clone https://github.com/lucas-lepajollec/tradoc.git
+cd tradoc
+cp .env.example .env
 ```
 
+#### 2. Lancer le Backend FastAPI (Terminal 1) :
+```powershell
+# Windows PowerShell (utilisation directe du venv recommandé) :
+.\.venv\Scripts\python main.py serve --host 0.0.0.0 --port 8000 --reload
+```
+
+#### 3. Lancer le Frontend React (Terminal 2) :
+```bash
+cd web
+npm install
+npm run dev
+```
+*L'interface web est immédiatement accessible sur `http://localhost:2499/`.*
+
 ---
 
-## 🚀 Déploiement Docker (NAS, Portainer & Linux)
+## 🐳 Déploiement Docker (NAS Synology, QNAP, Portainer & Linux)
 
-Le moyen le plus simple et rapide de déployer **TraDoc** sur votre NAS (Synology, QNAP, Unraid, OpenMediaVault) ou serveur Linux est d'utiliser Docker Compose avec l'image officielle.
+Vous pouvez déployer TraDoc facilement sur votre NAS ou serveur en utilisant l'image officielle hébergée sur GitHub Container Registry (`ghcr.io`).
 
-### 1. Créez votre fichier `docker-compose.yml` :
+### Option A : Déploiement via Image Officielle (Recommandé)
 
-Copiez-collez le bloc suivant directement dans votre gestionnaire de stack (Portainer) ou dans un fichier `docker-compose.yml` sur votre serveur :
+Créez un fichier `docker-compose.yml` (ou collez ce bloc dans Portainer) :
 
 ```yaml
 version: '3.8'
@@ -91,13 +100,14 @@ services:
     environment:
       - ENV=production
       - DATA_DIR=/app/data
+      - APP_SECRET=  # Optionnel: définissez un jeton d'accès pour sécuriser l'API
+      - ALLOWED_ORIGINS=*  # Domaines autorisés pour CORS (ex: http://localhost:2507,http://192.168.1.50:2507)
       - LLM_ENDPOINT=http://192.168.x.x:1234/v1  # IP de votre serveur GPU local
       - LLM_API_KEY=lm-studio
-      - LLM_MODEL=qwen3.5-9b
+      - LLM_MODEL=qwen3.5-instruct
       - API_TYPE=openai
-      - CONCURRENCY=1
       - CHUNK_TOKEN_SIZE=1000
-      - TEMPERATURE=1.50
+      - TEMPERATURE=0.15
     volumes:
       - ./data:/app/data
     healthcheck:
@@ -107,65 +117,63 @@ services:
       retries: 3
 ```
 
-### 2. Lancez la stack :
-
+Lancez la stack :
 ```bash
 docker compose up -d
 ```
-
-### 3. Accédez à l'application :
-
-Ouvrez votre navigateur sur : **`http://<IP_DE_VOTRE_NAS>:2507`**.
+*L'application est accessible sur : `http://<IP_DE_VOTRE_NAS>:2507`.*
 
 ---
 
-### Option 2 : Mode Développement Local (Windows / Mac / Linux)
+## 🔒 Sécurité & Bonnes Pratiques
 
-1. **Installer les dépendances Python** :
-   ```bash
-   pip install -r requirements.txt
-   ```
+> [!WARNING]
+> **Réseau & Exposition Portainer** : Ne jamais exposer directement le port de votre serveur d'inférence GPU ni l'instance TraDoc au web public sans authentification préalable ou reverse proxy sécurisé (Nginx, Traefik, Caddy avec SSL/TLS).
 
-2. **Démarrer le backend FastAPI (Terminal 1)** :
-   ```bash
-   python main.py serve --host 0.0.0.0 --port 8000 --reload
-   ```
-
-3. **Démarrer le frontend React (Terminal 2)** :
-   ```bash
-   cd web
-   npm install
-   npm run dev
-   ```
-   L'interface web est immédiatement accessible sur **`http://localhost:2499/`**.
+- **Persistance des Données** : Assurez-vous d'inclure le volume `./data` dans vos sauvegardes régulières (contient la base SQLite `tradoc.db` et vos livres traduits).
+- **Inférence Parallèle LM Studio** : Pour activer la vraie concurrence parallèle avec 4 requêtes simultanées, assurez-vous d'augmenter le réglage `Max Concurrent Requests` dans l'onglet **Local Server** de LM Studio.
 
 ---
 
-## 📱 Accès Mobile & Réseau Local
+## 📂 Project Structure
 
-TraDoc écoute sur `0.0.0.0:2499` en mode développement Vite et sur le port `2507` en mode Docker production.
-
-* **Depuis votre smartphone / tablette en Wi-Fi :**
-  Accédez directement à **`http://<IP_DE_VOTRE_PC>:2499/`** *(ex: 192.168.x.x)*.
-* **Via VPN / Tailscale (4G / 5G / Réseau distant) :**
-  Accédez à **`http://<IP_TAILSCALE_OU_VPN>:2499/`**.
+```text
+tradoc/
+├── .github/                  # Templates d'issues, PR & GitHub Actions CI/CD
+│   ├── ISSUE_TEMPLATE/       # Templates bug_report.md & feature_request.md
+│   └── workflows/            # Workflow d'intégration continue Docker ghcr.io
+├── core/                     # Moteur backend de traduction & parsers
+│   ├── config.py             # Configuration Pydantic & variables d'environnement
+│   ├── parser_epub.py        # Extracteur/Reconstructeur EPUB conservant HTML/CSS
+│   ├── parser_pdf.py         # Parseur PDF & convertisseur EPUB
+│   ├── chunker.py            # Chunker sémantique par fenêtre de tokens
+│   ├── cleaner.py            # Nettoyeur générique de balises <think>
+│   ├── checkpoint.py         # Moteur SQLite WAL de suivi d'état des jobs
+│   ├── llm_client.py         # Client HTTP async avec gestion ProviderDownError
+│   ├── glossary.py           # Gestionnaire de glossaires & injection de termes
+│   └── engine.py             # Orchestrateur parallèle asynchrone avec Sémaphore
+├── api/                      # Serveur Web FastAPI & API REST
+│   ├── app.py                # Serveur FastAPI & routage SPA React static
+│   └── routes.py             # Endpoints REST (jobs, settings, SSE, models, config)
+├── web/                      # Interface Web React + Vite (Design Glassmorphic Dark)
+│   ├── src/                  # Composants React (Dashboard, Inspector, Settings, Glossary)
+│   └── public/               # Logos vectoriels & favicon SVG
+├── cli.py                    # Interface ligne de commande (Rich & Typer)
+├── main.py                   # Entrypoint CLI & Serveur Web
+├── Dockerfile                # Dockerfile multi-stage (Node 22 + Python 3.11)
+├── docker-compose.yml        # Orchestration Docker de production
+├── .env.example              # Modèle de variables d'environnement
+└── requirements.txt          # Dépendances Python
+```
 
 ---
 
-## ⚙️ Variables d'Environnement
+## 🤝 Contributing
 
-| Variable | Description | Valeur par défaut |
-| :--- | :--- | :--- |
-| `ENV` | Environnement d'exécution (`development` / `production`) | `production` |
-| `DATA_DIR` | Répertoire de stockage SQLite et des fichiers importés | `./data` |
-| `LLM_ENDPOINT` | URL de l'API OpenAI / LM Studio / Ollama distant | `http://192.168.x.x:1234/v1` |
-| `LLM_MODEL` | Modèle LLM par défaut | `qwen3.5-9b` |
-| `CONCURRENCY` | Nombre de requêtes d'inférence parallèles | `1` |
-| `CHUNK_TOKEN_SIZE` | Taille de la fenêtre sémantique (tokens) | `1000` |
-| `TEMPERATURE` | Température d'échantillonnage LLM | `1.50` |
+Les contributions sont les bienvenues ! Consultez notre [Guide de Contribution](CONTRIBUTING.md) pour en savoir plus sur les règles de dev et le format des commits, ainsi que notre [Code de Conduite](CODE_OF_CONDUCT.md).
 
 ---
 
-## 📄 Licence & Contribution
-
-Projet distribué sous licence **MIT**. Voir le fichier [LICENSE](LICENSE) pour plus de détails. Les contributions sont les bienvenues via les guidelines présentées dans [CONTRIBUTING.md](CONTRIBUTING.md).
+<div align="center">
+  Développé avec ❤️ par <a href="https://github.com/lucas-lepajollec">Lucas Lepajollec</a>
+</div>

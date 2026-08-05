@@ -3,6 +3,12 @@ import uvicorn
 import typer
 from cli import cli_app
 
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 app = typer.Typer(help="TraDoc - Service de Traduction Littéraire Haute Performance")
 
 @app.command("serve")
@@ -12,7 +18,7 @@ def serve(
     reload: bool = typer.Option(False, "--reload", help="Activer le hot-reload en développement")
 ):
     """Démarre le serveur Web API et le Dashboard TraDoc."""
-    print(f"🚀 Démarrage du serveur TraDoc sur http://{host}:{port}")
+    print(f"[TraDoc] Démarrage du serveur sur http://{host}:{port}")
     uvicorn.run("api.app:app", host=host, port=port, reload=reload)
 
 # Add CLI commands from cli.py

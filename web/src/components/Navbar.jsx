@@ -50,9 +50,9 @@ export default function Navbar({ activeTab, setActiveTab, endpointStatus }) {
         {/* Server Endpoint Status Indicator */}
         <div className="flex items-center space-x-2">
           <div className="flex items-center space-x-2 bg-[#111116] px-3 py-1.5 rounded-full border border-white/5">
-            <div className={`w-2 h-2 rounded-full ${endpointStatus ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+            <div className={`w-2 h-2 rounded-full ${endpointStatus ? 'bg-emerald-500 animate-pulse' : 'bg-rose-500'}`} />
             <span className="text-[11px] font-medium text-zinc-400 uppercase tracking-wider whitespace-nowrap">
-              {endpointStatus ? 'GPU Online' : 'GPU Standby'}
+              {endpointStatus ? 'GPU Online' : 'GPU Injoignable'}
             </span>
           </div>
         </div>

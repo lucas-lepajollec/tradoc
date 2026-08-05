@@ -1,39 +1,68 @@
-# 🤝 Contribution à TraDoc
+# 🤝 Guide de Contribution — TraDoc
 
-Merci pour votre intérêt envers **TraDoc** ! Ce projet a pour objectif d'offrir la solution de traduction littéraire IA autonome la plus puissante, élégante et rapide.
-
----
-
-## 🚀 Comment contribuer
-
-1. **Forker le dépôt** sur votre compte GitHub.
-2. **Créer une branche de fonctionnalité** (`git checkout -b feature/ma-super-feature`).
-3. **Appliquer vos modifications** et s'assurer de respecter les règles de style :
-   - Python : Suivre PEP 8 avec `black` / `flake8`.
-   - Frontend React : Tailwind CSS, composants légers et modulaires.
-4. **Tester les modifications** localement :
-   - Backend FastAPI : `python main.py serve --reload`
-   - Frontend Vite : `cd web && npm run dev`
-5. **Commiter avec un message clair** (`git commit -m 'feat: ajout du support du format FB2'`).
-6. **Pousser la branche** (`git push origin feature/ma-super-feature`).
-7. **Ouvrir une Pull Request** détaillée vers la branche `main`.
+Merci de votre intérêt pour la contribution à **TraDoc** ! Ce document décrit les consignes et bonnes pratiques pour soumettre du code, signaler des bugs ou proposer des améliorations.
 
 ---
 
-## 🏗️ Architecture du Code
+## ⚡ 1. Configuration de l'Environnement Local
 
-- **`core/parser_epub.py`** : Découpage et ré-injection HTML/XML sans altérer la structure ni les styles CSS.
-- **`core/chunker.py`** : Regroupement par fenêtres sémantiques de tokens.
-- **`core/cleaner.py`** : Post-traitement générique (nettoyage des balises `<think>` des modèles raisonnants).
-- **`core/checkpoint.py`** : Persistance SQLite pour les reprises automatiques et la résilience.
-- **`core/engine.py`** : Orchestration asynchrone multithreadée / concourante par sémaphore.
-- **`web/src/`** : Interface utilisateur React 18 + Vite responsive (Mobile & Desktop).
+### Prérequis
+* **Python 3.11+**
+* **Node.js 18+** & npm
+* **Docker & Docker Compose** *(optionnel, pour les tests en conteneur)*
+
+### Étapes d'installation
+```bash
+# 1. Cloner le projet
+git clone https://github.com/lucas-lepajollec/tradoc.git
+cd tradoc
+
+# 2. Créer l'environnement virtuel Python
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1   # Sur Windows
+# source .venv/bin/activate    # Sur Linux/macOS
+
+# 3. Installer les dépendances Python
+pip install -r requirements.txt
+
+# 4. Installer les dépendances Frontend React
+cd web
+npm install
+cd ..
+```
 
 ---
 
-## 🐞 Rapporter un Bug ou Suggérer une Fonctionnalité
+## ✍️ 2. Conventions de Commit (Conventional Commits)
 
-Merci de créer une **Issue** GitHub en précisant :
-- Votre environnement (Linux, Docker, Windows, version de Python).
-- Le modèle LLM utilisé (ex: `Qwen 3.5 9B`, `TranslateGemma`).
-- Les logs complets ou la capture d'écran du problème.
+Nous appliquons la norme **Conventional Commits** pour maintenir un historique Git clair et lisible.
+
+### Format
+`type: description courte en anglais (minuscules, impératif, pas de point final)`
+
+### Dictionnaire des Types
+
+| Type | Utilisation | Exemple |
+| :--- | :--- | :--- |
+| `feat:` | Nouvelle fonctionnalité | `feat: add PDF chapter auto-detection` |
+| `fix:` | Correction de bug | `fix: resolve SQLite lock on parallel worker runs` |
+| `docs:` | Documentation (README, guides) | `docs: update deployment architecture diagram` |
+| `chore:` | Configuration / Dépendances | `chore: update react to v18.3` |
+| `refactor:` | Réécriture / Optimisation sans changement de comportement | `refactor: extract EPUB parsing logic to helper` |
+| `perf:` | Amélioration des performances | `perf: cache glossary lookup queries` |
+| `test:` | Tests unitaires / d'intégration | `test: add unit test for html cleaner` |
+
+---
+
+## 🚀 3. Processus de Pull Request (PR)
+
+1. **Forker** le dépôt et créer une branche thématique (`git checkout -b feat/ma-fonctionnalite`).
+2. Vérifier qu'aucun secret, jeton d'API ou adresse IP privée (`192.168.x.x`) n'est présent dans le code.
+3. S'assurer que le frontend compile sans erreurs (`cd web && npm run build`).
+4. Commiter vos modifications en suivant les règles **Conventional Commits**.
+5. Soumettre une **Pull Request** vers la branche `main`.
+
+---
+
+## 📄 Code de Conduite
+En participant à ce projet, vous acceptez de respecter notre [Code de Conduite](CODE_OF_CONDUCT.md).

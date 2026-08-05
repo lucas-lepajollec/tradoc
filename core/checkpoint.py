@@ -21,6 +21,7 @@ class JobRecord(BaseModel):
     temperature: float = 1.50
     concurrency: int = 1
     chunk_size: int = 1000
+    job_type: str = "translation"  # "translation" or "proofreading"
     created_at: str
     completed_at: Optional[str] = None
 
@@ -45,6 +46,11 @@ class CheckpointDatabase:
     def _get_conn(self):
         conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
         conn.row_factory = sqlite3.Row
+        try:
+            conn.execute("PRAGMA journal_mode=WAL;")
+            conn.execute("PRAGMA busy_timeout=5000;")
+        except Exception:
+            pass
         return conn
 
     def _init_db(self):
@@ -67,11 +73,12 @@ class CheckpointDatabase:
                 temperature REAL DEFAULT 1.5,
                 concurrency INTEGER DEFAULT 1,
                 chunk_size INTEGER DEFAULT 1000,
+                job_type TEXT DEFAULT 'translation',
                 created_at TEXT NOT NULL,
                 completed_at TEXT
             )
             """)
-            for col, col_def in [("temperature", "REAL DEFAULT 1.5"), ("concurrency", "INTEGER DEFAULT 1"), ("chunk_size", "INTEGER DEFAULT 1000")]:
+            for col, col_def in [("temperature", "REAL DEFAULT 1.5"), ("concurrency", "INTEGER DEFAULT 1"), ("chunk_size", "INTEGER DEFAULT 1000"), ("job_type", "TEXT DEFAULT 'translation'")]:
                 try:
                     cursor.execute(f"ALTER TABLE jobs ADD COLUMN {col} {col_def}")
                 except sqlite3.OperationalError:
@@ -100,12 +107,12 @@ class CheckpointDatabase:
             with self._get_conn() as conn:
                 cursor = conn.cursor()
                 cursor.execute("""
-                INSERT INTO jobs (id, file_name, file_type, source_lang, target_lang, model, status, total_chunks, completed_chunks, glossary_name, system_prompt, temperature, concurrency, chunk_size, created_at)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                INSERT INTO jobs (id, file_name, file_type, source_lang, target_lang, model, status, total_chunks, completed_chunks, glossary_name, system_prompt, temperature, concurrency, chunk_size, job_type, created_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (
                     job.id, job.file_name, job.file_type, job.source_lang, job.target_lang,
                     job.model, job.status, job.total_chunks, job.completed_chunks,
-                    job.glossary_name, job.system_prompt, job.temperature, job.concurrency, job.chunk_size, job.created_at
+                    job.glossary_name, job.system_prompt, job.temperature, job.concurrency, job.chunk_size, getattr(job, 'job_type', 'translation'), job.created_at
                 ))
                 for seg in segments:
                     cursor.execute("""

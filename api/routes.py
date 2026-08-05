@@ -3,7 +3,7 @@ import json
 import shutil
 from pathlib import Path
 from typing import List, Optional
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Query
+from fastapi import APIRouter, UploadFile, File, Form, HTTPException, BackgroundTasks, Query, Header, Depends
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -13,8 +13,17 @@ from core.checkpoint import CheckpointDatabase, JobRecord, SegmentRecord
 from core.glossary import GlossaryManager, Glossary, GlossaryItem
 from core.llm_client import LLMClient
 from core.engine import TranslationEngine
+from core.parser_epub import EpubParser
+from core.parser_pdf import PdfParser
+from core.parser_docx import DocxParser
+from core.parser_text import TextParser
 
-router = APIRouter()
+async def verify_app_secret(x_app_secret: Optional[str] = Header(None, alias="X-App-Secret")):
+    if settings.APP_SECRET and settings.APP_SECRET.strip():
+        if not x_app_secret or x_app_secret.strip() != settings.APP_SECRET.strip():
+            raise HTTPException(status_code=401, detail="Accès refusé : Token d'application (X-App-Secret) invalide ou manquant.")
+
+router = APIRouter(dependencies=[Depends(verify_app_secret)])
 
 # Global instances initialized in app startup
 db = CheckpointDatabase(settings.DB_PATH)
@@ -105,8 +114,21 @@ async def sandbox_extract(
         shutil.copyfileobj(file.file, buffer)
         
     try:
-        parser = EpubParser(temp_path)
-        _, node_texts = parser.extract_nodes()
+        ext = temp_path.suffix.lower()
+        if ext == ".epub":
+            parser = EpubParser(temp_path)
+            _, node_texts = parser.extract_nodes()
+        elif ext == ".pdf":
+            parser = PdfParser(temp_path)
+            _, node_texts = parser.extract_nodes()
+        elif ext == ".docx":
+            parser = DocxParser(temp_path)
+            _, node_texts = parser.extract_nodes()
+        elif ext in [".md", ".txt"]:
+            parser = TextParser(temp_path)
+            _, node_texts = parser.extract_nodes()
+        else:
+            raise ValueError(f"Format non supporté: {ext}")
         
         selected_nodes = []
         current_tokens = 0
@@ -185,10 +207,11 @@ async def upload_and_create_job(
     chunk_size: int = Form(1000),
     temperature: float = Form(default_factory=lambda: settings.TEMPERATURE),
     concurrency: int = Form(default_factory=lambda: settings.CONCURRENCY),
-    max_segments: Optional[int] = Form(None)
+    max_segments: Optional[int] = Form(None),
+    job_type: str = Form("translation")
 ):
-    filename = file.filename or "book.epub"
-    dest_path = settings.INPUT_DIR / filename
+    safe_filename = Path(file.filename or "book.epub").name
+    dest_path = settings.INPUT_DIR / safe_filename
     
     with open(dest_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -204,11 +227,39 @@ async def upload_and_create_job(
             chunk_token_size=chunk_size,
             temperature=temperature,
             concurrency=concurrency,
-            max_segments=max_segments
+            max_segments=max_segments,
+            job_type=job_type
         )
         return job
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/jobs/{job_id}/clone-for-proofread")
+async def clone_job_for_proofreading(
+    job_id: str,
+    model: Optional[str] = Form(None)
+):
+    original_job = await db.get_job(job_id)
+    if not original_job:
+        raise HTTPException(status_code=404, detail="Job original non trouvé")
+
+    input_file = settings.INPUT_DIR / original_job.file_name
+    if not input_file.exists():
+        raise HTTPException(status_code=404, detail=f"Fichier d'origine non trouvé: {original_job.file_name}")
+
+    proofread_job = await engine.prepare_job(
+        input_file=input_file,
+        source_lang=original_job.source_lang,
+        target_lang=original_job.target_lang,
+        model=model or original_job.model,
+        glossary_name=original_job.glossary_name,
+        system_prompt=DEFAULT_PROOFREADING_SYSTEM_PROMPT,
+        chunk_token_size=original_job.chunk_size,
+        temperature=0.15,
+        concurrency=original_job.concurrency,
+        job_type="proofreading"
+    )
+    return proofread_job
 
 @router.get("/jobs", response_model=List[JobRecord])
 async def list_jobs():
@@ -231,8 +282,11 @@ async def start_job(
     background_tasks: BackgroundTasks,
     endpoint: str = Form(default_factory=lambda: settings.LLM_ENDPOINT),
     api_key: str = Form(default_factory=lambda: settings.LLM_API_KEY),
+    api_type: Optional[str] = Form("openai"),
+    model: Optional[str] = Form(None),
     concurrency: Optional[int] = Form(None),
-    temperature: Optional[float] = Form(None)
+    temperature: Optional[float] = Form(None),
+    enable_proofreading: bool = Form(False)
 ):
     job = await db.get_job(job_id)
     if not job:
@@ -243,17 +297,21 @@ async def start_job(
         update_kwargs["temperature"] = temperature
     if concurrency is not None:
         update_kwargs["concurrency"] = concurrency
+    if model is not None:
+        update_kwargs["model"] = model
     
     if update_kwargs:
         await db.update_job_config(job_id, **update_kwargs)
         job = await db.get_job(job_id)
 
-    client = LLMClient(endpoint=endpoint, api_key=api_key)
+    await db.update_job_status(job_id, "PROCESSING")
+
+    client = LLMClient(endpoint=endpoint, api_key=api_key, api_type=api_type or "openai")
     
     async def run_wrapper():
         try:
-            print(f"[TraDoc API] 🚀 Lancement tâche de fond pour le job {job_id} sur {endpoint}...")
-            await engine.run_job(job_id, client, concurrency=job.concurrency, temperature=job.temperature)
+            print(f"[TraDoc API] 🚀 Lancement tâche de fond pour le job {job_id} sur {endpoint} (Modèle={job.model}, Type={api_type})...")
+            await engine.run_job(job_id, client, concurrency=job.concurrency, temperature=job.temperature, enable_proofreading=enable_proofreading)
         except Exception as exc:
             print(f"[TraDoc API ERROR] ❌ Échec critique lors du traitement du job {job_id}: {exc}")
         finally:
@@ -272,6 +330,41 @@ async def update_job_config(
 ):
     await db.update_job_config(job_id, temperature=temperature, concurrency=concurrency, model=model)
     return {"message": "Configuration du job mise à jour", "job_id": job_id}
+
+@router.post("/jobs/{job_id}/proofread")
+async def run_offline_proofreading(
+    job_id: str,
+    endpoint: str = Form(default_factory=lambda: settings.LLM_ENDPOINT),
+    api_key: str = Form(default_factory=lambda: settings.LLM_API_KEY),
+    api_type: Optional[str] = Form("openai"),
+    model: Optional[str] = Form(None),
+    concurrency: int = Form(1)
+):
+    job = await db.get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job non trouvé")
+
+    update_kwargs = {}
+    if model is not None:
+        update_kwargs["model"] = model
+    if update_kwargs:
+        await db.update_job_config(job_id, **update_kwargs)
+        job = await db.get_job(job_id)
+
+    client = LLMClient(endpoint=endpoint, api_key=api_key, api_type=api_type or "openai")
+
+    async def proofread_wrapper():
+        try:
+            print(f"[TraDoc API] ✒️ Lancement relecture hors-ligne pour job {job_id} sur {endpoint} (Modèle={job.model})...")
+            await engine.run_proofreading_job(job_id, client, concurrency=concurrency)
+        except Exception as exc:
+            print(f"[TraDoc API ERROR] ❌ Échec relecture job {job_id}: {exc}")
+        finally:
+            active_tasks.pop(f"proofread_{job_id}", None)
+
+    task = asyncio.create_task(proofread_wrapper())
+    active_tasks[f"proofread_{job_id}"] = task
+    return {"message": "Relecture lancée avec succès", "job_id": job_id}
 
 @router.post("/jobs/{job_id}/pause")
 async def pause_job(job_id: str):
@@ -298,13 +391,23 @@ async def download_translated_book(job_id: str):
     if not out_file.exists():
         raise HTTPException(status_code=400, detail="Fichier non prêt. Impossible de générer le document de sortie.")
 
-    media_type = "application/epub+zip" if job.file_type == "epub" else "application/pdf"
+    ext = out_file.suffix.lower()
+    media_types = {
+        ".epub": "application/epub+zip",
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".md": "text/markdown",
+        ".txt": "text/plain",
+    }
+    media_type = media_types.get(ext, "application/octet-stream")
+    filename = out_file.name
+
     headers = {
         "Cache-Control": "no-cache, no-store, must-revalidate",
         "Pragma": "no-cache",
         "Expires": "0"
     }
-    return FileResponse(path=out_file, filename=f"traduit_{job.file_name}", media_type=media_type, headers=headers)
+    return FileResponse(path=out_file, filename=filename, media_type=media_type, headers=headers)
 
 @router.delete("/jobs/{job_id}")
 async def delete_job(job_id: str):

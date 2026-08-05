@@ -34,8 +34,13 @@ COPY . .
 # Copy UI build from Stage 1
 COPY --from=ui-builder /app/web/dist /app/web/dist
 
-# Create persistent data directories
-RUN mkdir -p /app/data/input /app/data/output /app/data/glossaries
+# Create non-root user and persistent data directories
+RUN groupadd -g 1000 tradocgroup && \
+    useradd -u 1000 -g tradocgroup -s /bin/bash -m tradocuser && \
+    mkdir -p /app/data/input /app/data/output /app/data/glossaries && \
+    chown -R tradocuser:tradocgroup /app
+
+USER tradocuser
 
 EXPOSE 8000
 

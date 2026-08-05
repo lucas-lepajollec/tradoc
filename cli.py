@@ -1,3 +1,4 @@
+import sys
 import asyncio
 from pathlib import Path
 from typing import Optional
@@ -6,6 +7,12 @@ from rich.console import Console
 from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
 from rich.table import Table
 
+if hasattr(sys.stdout, 'reconfigure'):
+    try:
+        sys.stdout.reconfigure(encoding='utf-8')
+    except Exception:
+        pass
+
 from core.config import settings
 from core.checkpoint import CheckpointDatabase
 from core.glossary import GlossaryManager
@@ -13,7 +20,7 @@ from core.llm_client import LLMClient
 from core.engine import TranslationEngine
 
 cli_app = typer.Typer(help="TraDoc CLI - Traducteur Littéraire Haute Performance pour EPUB & PDF")
-console = Console()
+console = Console(legacy_windows=False)
 
 db = CheckpointDatabase(settings.DB_PATH)
 glossary_mgr = GlossaryManager(settings.GLOSSARY_DIR)

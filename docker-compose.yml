@@ -12,12 +12,14 @@ services:
     environment:
       - ENV=production
       - DATA_DIR=/app/data
-      - LLM_ENDPOINT=http://192.168.x.x:1234/v1
+      - APP_SECRET=  # Optionnel: définissez un mot de passe pour sécuriser l'accès à l'API
+      - ALLOWED_ORIGINS=*  # Ex: http://localhost:2507,http://192.168.1.50:2507
+      - LLM_ENDPOINT=http://localhost:1234/v1
       - LLM_API_KEY=lm-studio
-      - LLM_MODEL=qwen3.5-9b
+      - LLM_MODEL=qwen3.5-instruct
       - API_TYPE=openai
       - CHUNK_TOKEN_SIZE=1000
-      - TEMPERATURE=1.50
+      - TEMPERATURE=0.15
     volumes:
       - ./data:/app/data
     healthcheck:

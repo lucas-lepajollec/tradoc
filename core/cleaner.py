@@ -59,12 +59,75 @@ def clean_llm_response(raw_text: str) -> str:
 
     return text.strip()
 
+def deduplicate_sentences_in_text(text: str) -> str:
+    """
+    Removes consecutive duplicate sentences or phrases within text blocks (eliminates LLM stuttering).
+    Also aggressively clears out repeating stub words or stutter loops (e.g., CHAP CHAP CHAP).
+    """
+    if not text:
+        return text
+
+    # Phase 1: Clean out tight repeating single word loops (e.g., "CHAP CHAP CHAP" or "CHAP\nCHAP\nCHAP")
+    # This matches any word/stub repeating 3 or more times consecutively with optional spaces/newlines
+    for stub_match in re.finditer(r'\b([a-zA-Z]{3,15})\b(?:\s+|\n+)\1\b(?:\s+|\n+)\1\b', text, re.IGNORECASE):
+        stub = stub_match.group(1)
+        # Replace the entire sequence of repeats with just a single occurrence of the stub
+        pattern = r'\b' + re.escape(stub) + r'\b(?:\s+|\n+|\b' + re.escape(stub) + r'\b)*'
+        text = re.sub(pattern, stub + "\n", text, flags=re.IGNORECASE)
+
+    # Phase 2: Standard sentence level deduplication
+    sentences = re.split(r'((?<=[.!?])\s+|\n+)', text)
+    cleaned_sentences = []
+    last_pure_sentence = ""
+
+    for item in sentences:
+        pure = re.sub(r'<[^>]*>', '', item).strip().lower()
+        pure_norm = re.sub(r'\s+', ' ', pure)
+        
+        # Avoid duplicate sentences (length > 6 to protect very short items like "Oui." or "Non.")
+        if pure_norm and len(pure_norm) > 6 and pure_norm == last_pure_sentence:
+            continue
+        
+        cleaned_sentences.append(item)
+        if pure_norm and len(pure_norm) > 6:
+            last_pure_sentence = pure_norm
+
+    return "".join(cleaned_sentences)
+
 def deduplicate_consecutive_paragraphs(html_text: str) -> str:
-    if "</p>" not in html_text:
+    """
+    Collapses consecutive duplicated paragraphs, headings, and sentences.
+    """
+    if not html_text:
         return html_text
-    parts = html_text.split("</p>")
+
+    text_sentences_cleared = deduplicate_sentences_in_text(html_text)
+
+    # Clean consecutive duplicate lines/paragraphs before parsing tags
+    lines = text_sentences_cleared.split("\n")
+    cleaned_lines = []
+    last_line_norm = ""
+    for line in lines:
+        clean_line = line.strip()
+        pure_line = re.sub(r'<[^>]*>', '', clean_line).strip()
+        line_norm = re.sub(r'\s+', ' ', pure_line.lower())
+        
+        # Filter repeats of significant lines (length > 6)
+        if line_norm and len(line_norm) > 6 and line_norm == last_line_norm:
+            continue
+        cleaned_lines.append(line)
+        if line_norm and len(line_norm) > 6:
+            last_line_norm = line_norm
+            
+    text_sentences_cleared = "\n".join(cleaned_lines)
+
+    if "</p>" not in text_sentences_cleared:
+        return text_sentences_cleared
+
+    parts = text_sentences_cleared.split("</p>")
     new_parts = []
     last_clean = None
+
     for part in parts:
         clean_part = part.strip()
         if not clean_part:
@@ -72,14 +135,16 @@ def deduplicate_consecutive_paragraphs(html_text: str) -> str:
                 new_parts.append(part)
             continue
         
-        # Remove tags to compare pure content
         pure_text = re.sub(r'<[^>]*>', '', clean_part).strip()
-        if pure_text and pure_text == last_clean:
+        pure_norm = re.sub(r'\s+', ' ', pure_text.lower())
+
+        # Filter paragraph repeats
+        if pure_norm and len(pure_norm) > 6 and pure_norm == last_clean:
             continue
         
         new_parts.append(part)
-        if pure_text:
-            last_clean = pure_text
+        if pure_norm and len(pure_norm) > 6:
+            last_clean = pure_norm
             
     return "</p>".join(new_parts)
 

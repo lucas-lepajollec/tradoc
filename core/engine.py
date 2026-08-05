@@ -7,12 +7,14 @@ from pathlib import Path
 from typing import List, Optional, Callable, Dict, Any
 from datetime import datetime
 
-from core.config import settings, DEFAULT_LITERARY_SYSTEM_PROMPT
+from core.config import settings, DEFAULT_LITERARY_SYSTEM_PROMPT, DEFAULT_PROOFREADING_SYSTEM_PROMPT, get_literary_system_prompt
 from core.checkpoint import CheckpointDatabase, JobRecord, SegmentRecord
 from core.chunker import SemanticChunker, estimate_tokens
-from core.cleaner import simplify_html_for_prompt
+from core.cleaner import simplify_html_for_prompt, verify_and_repair_html
 from core.parser_epub import EpubParser
 from core.parser_pdf import PdfParser
+from core.parser_docx import DocxParser
+from core.parser_text import TextParser
 from core.glossary import GlossaryManager
 from core.llm_client import LLMClient, ProviderDownError
 
@@ -46,25 +48,35 @@ class TranslationEngine:
         chunk_token_size: int = 1000,
         temperature: float = 1.50,
         concurrency: int = 1,
-        max_segments: Optional[int] = None
+        max_segments: Optional[int] = None,
+        job_type: str = "translation"
     ) -> JobRecord:
         """Parses document, chunks text, creates DB records, and returns job object."""
         file_ext = input_file.suffix.lower()
-        if file_ext not in [".epub", ".pdf"]:
-            raise ValueError(f"Format non supporté: {file_ext}. Formats supportés: .epub, .pdf")
+        supported_exts = [".epub", ".pdf", ".docx", ".md", ".txt"]
+        if file_ext not in supported_exts:
+            raise ValueError(f"Format non supporté: {file_ext}. Formats supportés: {', '.join(supported_exts)}")
 
-        file_type = "epub" if file_ext == ".epub" else "pdf"
+        file_type = file_ext.lstrip(".")
 
-        print(f"\n[TraDoc Engine] 📚 Analyse du fichier: {input_file.name} ({file_type.upper()})...")
+        print(f"\n[TraDoc Engine] 📚 Analyse du fichier: {input_file.name} ({file_type.upper()}) | Mode: {job_type.upper()}...")
 
-        # Run CPU-heavy EPUB/PDF parsing in thread pool to avoid blocking FastAPI event loop
+        # Run CPU-heavy parsing in thread pool to avoid blocking FastAPI event loop
         def _parse():
             if file_type == "epub":
                 parser = EpubParser(input_file)
                 return parser.extract_nodes()
-            else:
+            elif file_type == "pdf":
                 parser = PdfParser(input_file)
                 return parser.extract_nodes()
+            elif file_type == "docx":
+                parser = DocxParser(input_file)
+                return parser.extract_nodes()
+            elif file_type in ["md", "txt"]:
+                parser = TextParser(input_file)
+                return parser.extract_nodes()
+            else:
+                raise ValueError(f"Parser non trouvé pour {file_type}")
 
         node_meta, node_texts = await asyncio.to_thread(_parse)
         print(f"[TraDoc Engine] ✂️ {len(node_texts)} blocs de texte extraits. Découpage sémantique en cours...")
@@ -83,7 +95,12 @@ class TranslationEngine:
         job_id = str(uuid.uuid4())[:8]
         now = datetime.now().isoformat()
 
-        prompt = system_prompt or DEFAULT_LITERARY_SYSTEM_PROMPT
+        if system_prompt:
+            prompt = system_prompt
+        elif job_type == "proofreading":
+            prompt = DEFAULT_PROOFREADING_SYSTEM_PROMPT
+        else:
+            prompt = get_literary_system_prompt(source_lang, target_lang)
 
         # Attach glossary if specified
         if glossary_name:
@@ -106,6 +123,7 @@ class TranslationEngine:
             temperature=temperature,
             concurrency=concurrency,
             chunk_size=chunk_token_size,
+            job_type=job_type,
             created_at=now
         )
 
@@ -133,7 +151,8 @@ class TranslationEngine:
         job_id: str,
         llm_client: LLMClient,
         concurrency: Optional[int] = None,
-        temperature: Optional[float] = None
+        temperature: Optional[float] = None,
+        enable_proofreading: bool = False
     ):
         """Executes translation job using worker tasks with asyncio.Semaphore concurrency limit."""
         job = await self.db.get_job(job_id)
@@ -151,7 +170,7 @@ class TranslationEngine:
 
         print(f"\n[TraDoc Engine] 🚀 Démarrage de la traduction du job {job_id} ({job.file_name})")
         print(f"[TraDoc Engine] 🔗 Target Endpoint: {llm_client.endpoint} | Modèle actif: {job.model}")
-        print(f"[TraDoc Engine] ⚡ Concurrence: {active_concurrency} requêtes parallèles | Température: {active_temperature} | Segments restants: {len(pending_segments)}/{len(segments)}")
+        print(f"[TraDoc Engine] ⚡ Concurrence: {active_concurrency} requêtes parallèles | Température: {active_temperature} | Relecture passe 2: {'ACTIVÉE' if enable_proofreading else 'DESACTIVÉE'}")
 
         semaphore = asyncio.Semaphore(active_concurrency)
 
@@ -171,19 +190,49 @@ class TranslationEngine:
                     active_model = current_job.model if (current_job and current_job.model) else job.model
                     active_prompt = current_job.system_prompt if (current_job and current_job.system_prompt) else job.system_prompt
 
+                    async def check_cancelled():
+                        job_status = await self.db.get_job(job_id)
+                        if job_status and job_status.status in ("PAUSED", "CANCELLED"):
+                            raise asyncio.CancelledError("Job paused or cancelled by user.")
+
+                    # Pass 1: Raw Literary Translation
                     prompt_text = simplify_html_for_prompt(segment.original_text)
-                    translated = await llm_client.translate_chunk(
+                    translated_raw = await llm_client.translate_chunk(
                         system_prompt=active_prompt,
                         text_chunk=prompt_text,
                         model=active_model,
-                        temperature=active_temp
+                        temperature=active_temp,
+                        check_cancelled=check_cancelled
                     )
+
+                    # Check if the job was paused or cancelled while waiting for the LLM response
+                    current_job = await self.db.get_job(job_id)
+                    if current_job and current_job.status in ("PAUSED", "CANCELLED"):
+                        return
+
+                    translated_pass1 = verify_and_repair_html(segment.original_text, translated_raw)
+                    final_translation = translated_pass1
+
+                    # Pass 2: Optional Editorial Proofreading & Style Polish
+                    if enable_proofreading:
+                        try:
+                            proofread_raw = await llm_client.translate_chunk(
+                                system_prompt=DEFAULT_PROOFREADING_SYSTEM_PROMPT,
+                                text_chunk=translated_pass1,
+                                model=active_model,
+                                temperature=0.15,
+                                check_cancelled=check_cancelled
+                            )
+                            if proofread_raw:
+                                final_translation = verify_and_repair_html(segment.original_text, proofread_raw)
+                        except Exception as pe:
+                            print(f"[TraDoc Engine WARNING] ⚠️ Relecture passe 2 ignorée pour le chunk #{segment.chunk_index + 1}: {pe}")
                     
-                    await self.db.update_segment_done(job_id, segment.chunk_index, translated)
+                    await self.db.update_segment_done(job_id, segment.chunk_index, final_translation)
                     
                     updated_job = await self.db.get_job(job_id)
                     done_cnt = updated_job.completed_chunks if updated_job else 0
-                    print(f"[TraDoc Engine] Chunk #{segment.chunk_index + 1}/{job.total_chunks} traduit avec succès. ({done_cnt}/{job.total_chunks})")
+                    print(f"[TraDoc Engine] Chunk #{segment.chunk_index + 1}/{job.total_chunks} traduit avec succès. ({done_cnt}/{job.total_chunks})", flush=True)
 
                     self._broadcast_event("segment_completed", {
                         "job_id": job_id,
@@ -234,6 +283,52 @@ class TranslationEngine:
                     print(f"[TraDoc Engine WARNING] ⚠️ Traduction terminée avec {failed_count} segments en échec.")
                     self._broadcast_event("job_failed", {"job_id": job_id, "failed_segments": failed_count})
 
+    async def run_proofreading_job(
+        self,
+        job_id: str,
+        llm_client: LLMClient,
+        concurrency: int = 1
+    ):
+        """Runs an offline 2nd pass proofreading & correction process on an existing job."""
+        job = await self.db.get_job(job_id)
+        if not job:
+            raise ValueError(f"Job non trouvé: {job_id}")
+
+        self._broadcast_event("proofread_started", {"job_id": job_id})
+        segments = await self.db.get_segments(job_id)
+        target_segments = [s for s in segments if s.translated_text]
+
+        print(f"\n[TraDoc Engine] ✒️ Démarrage de la Relecture & Correction Dédiée du job {job_id} ({len(target_segments)} segments)")
+
+        semaphore = asyncio.Semaphore(max(1, concurrency))
+
+        async def proofread_worker(segment: SegmentRecord):
+            async with semaphore:
+                try:
+                    proofread_raw = await llm_client.translate_chunk(
+                        system_prompt=DEFAULT_PROOFREADING_SYSTEM_PROMPT,
+                        text_chunk=segment.translated_text,
+                        model=job.model,
+                        temperature=0.15
+                    )
+                    if proofread_raw:
+                        proofread_result = verify_and_repair_html(segment.original_text, proofread_raw)
+                        await self.db.update_segment_done(job_id, segment.chunk_index, proofread_result)
+                        print(f"[TraDoc Engine] Segment #{segment.chunk_index + 1} relu et corrigé.")
+                        self._broadcast_event("proofread_segment_completed", {
+                            "job_id": job_id,
+                            "chunk_index": segment.chunk_index
+                        })
+                except Exception as pe:
+                    print(f"[TraDoc Engine WARNING] ⚠️ Relecture ignorée pour segment #{segment.chunk_index + 1}: {pe}")
+
+        tasks = [asyncio.create_task(proofread_worker(s)) for s in target_segments]
+        if tasks:
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+        await self.rebuild_output_file(job_id)
+        self._broadcast_event("proofread_job_completed", {"job_id": job_id})
+
     async def rebuild_output_file(self, job_id: str) -> Path:
         """Re-assembles original document with translated segments into data/output/."""
         job = await self.db.get_job(job_id)
@@ -266,10 +361,24 @@ class TranslationEngine:
                 parser = EpubParser(input_path)
                 node_meta, _ = parser.extract_nodes()
                 parser.reconstruct_epub(node_meta, translated_nodes, output_path)
-            else:
+                return output_path
+            elif job.file_type == "pdf":
                 parser = PdfParser(input_path)
-                parser.export_translated_epub(f"Traduction - {job.file_name}", translated_nodes, output_path)
-            return output_path
+                pdf_output_epub = settings.OUTPUT_DIR / f"traduit_{Path(job.file_name).stem}.epub"
+                parser.export_translated_epub(f"Traduction - {job.file_name}", translated_nodes, pdf_output_epub)
+                return pdf_output_epub
+            elif job.file_type == "docx":
+                parser = DocxParser(input_path)
+                node_meta, _ = parser.extract_nodes()
+                parser.reconstruct_docx(node_meta, translated_nodes, output_path)
+                return output_path
+            elif job.file_type in ["md", "txt"]:
+                parser = TextParser(input_path)
+                node_meta, _ = parser.extract_nodes()
+                parser.reconstruct_text(node_meta, translated_nodes, output_path)
+                return output_path
+            else:
+                raise ValueError(f"Reconstruction non supportée pour le type {job.file_type}")
 
         out_path = await asyncio.to_thread(_rebuild)
         print(f"[TraDoc Engine] 📖 Fichier reconstruit avec succès: {out_path}")
