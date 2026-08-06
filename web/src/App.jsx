@@ -13,7 +13,15 @@ import { t } from './i18n/translations';
 const DEFAULT_PRESETS = [];
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const [activeTab, setActiveTab] = useState(() => {
+    return localStorage.getItem('tradoc_active_tab') || 'dashboard';
+  });
+
+  const handleSetActiveTab = (tab) => {
+    setActiveTab(tab);
+    localStorage.setItem('tradoc_active_tab', tab);
+  };
+
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -199,7 +207,7 @@ export default function App() {
       {/* Fixed Sidebar Navigation */}
       <Sidebar
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={handleSetActiveTab}
         endpointStatus={endpointStatus}
         endpointUrl={settings.endpoint}
         isOpen={mobileMenuOpen}
@@ -247,7 +255,7 @@ export default function App() {
               settings={settings}
               endpointStatus={endpointStatus}
               availableModels={availableModels}
-              setActiveTab={setActiveTab}
+              setActiveTab={handleSetActiveTab}
               lang={lang}
               onSelectModel={handleSelectModel}
             />

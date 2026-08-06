@@ -421,6 +421,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleFileDrop}
+                onClick={() => document.getElementById('file-upload')?.click()}
                 className={`border border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer relative overflow-hidden group ${
                   file
                     ? 'border-[#2563eb]/50 bg-[#2563eb]/5'

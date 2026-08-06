@@ -154,11 +154,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   }, [job?.id, job?.status]);
 
   useEffect(() => {
-    if (selectedJobId && selectedJobId !== job?.id) {
-      const match = jobs.find(j => j.id === selectedJobId);
-      if (match) setJob(match);
-      loadJobDetails(selectedJobId);
-    }
+    loadJobsList();
   }, [selectedJobId]);
 
   useEffect(() => {
@@ -171,13 +167,11 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
       setJobs(data);
       if (data.length > 0) {
         const targetId = selectedJobId && data.some(j => j.id === selectedJobId) ? selectedJobId : data[0].id;
+        const targetJob = data.find(j => j.id === targetId) || data[0];
+        setJob(targetJob);
+        loadJobDetails(targetJob.id);
         if (!selectedJobId && onSelectJob) {
           onSelectJob(targetId);
-        }
-        if (!job) {
-          const initialMatch = data.find(j => j.id === targetId) || data[0];
-          setJob(initialMatch);
-          loadJobDetails(initialMatch.id);
         }
       } else {
         setJob(null);
