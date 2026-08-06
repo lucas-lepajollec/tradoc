@@ -108,7 +108,7 @@ export default function Sidebar({
               onChange={(e) => onSelectPreset(e.target.value)}
               className="w-full input-chill text-[11px] text-zinc-200 py-1.5 px-2.5 font-medium cursor-pointer"
             >
-              <option value="">-- Aucun preset --</option>
+              <option value="">-- {lang === 'fr' ? 'Aucun preset' : 'No preset'} --</option>
               {presets.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}

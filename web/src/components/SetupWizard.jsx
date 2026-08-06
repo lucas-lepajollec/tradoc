@@ -86,7 +86,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
           <div className="card-chill p-6 lg:p-7 space-y-4 rounded-2xl">
             <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
               <Cpu className="w-4 h-4 text-[#60a5fa]" />
-              <span>1. Environnement d'Exécution</span>
+              <span>{t('wizard.executionEnv', lang)}</span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
@@ -106,17 +106,17 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                   </div>
                   {mode === 'local' && (
                     <span className="text-[9px] font-bold font-mono px-2.5 py-0.5 rounded bg-white/10 text-white border border-white/20 uppercase">
-                      Actif
+                      {t('wizard.activeBadge', lang)}
                     </span>
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xs font-semibold text-white">Serveur GPU Local</h3>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-normal">Ollama, LM Studio, Qwen 3.5</p>
+                  <h3 className="text-xs font-semibold text-white">{t('wizard.localServer', lang)}</h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-normal">{t('wizard.localDesc', lang)}</p>
                 </div>
                 <div className="pt-2.5 border-t border-white/[0.06] text-[11px] text-emerald-400 font-mono font-semibold flex items-center space-x-1">
                   <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>100% Gratuit & Privé</span>
+                  <span>{t('wizard.localBadge', lang)}</span>
                 </div>
               </div>
 
@@ -135,17 +135,17 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                   </div>
                   {mode === 'cloud' && (
                     <span className="text-[9px] font-bold font-mono px-2.5 py-0.5 rounded bg-white/10 text-white border border-white/20 uppercase">
-                      Actif
+                      {t('wizard.activeBadge', lang)}
                     </span>
                   )}
                 </div>
                 <div>
-                  <h3 className="text-xs font-semibold text-white">API Cloud en Ligne</h3>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-normal">DeepSeek, OpenAI, Claude</p>
+                  <h3 className="text-xs font-semibold text-white">{t('wizard.cloudApi', lang)}</h3>
+                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-normal">{t('wizard.cloudDesc', lang)}</p>
                 </div>
                 <div className="pt-2.5 border-t border-white/[0.06] text-[11px] text-purple-300 font-mono font-semibold flex items-center space-x-1">
                   <Zap className="w-3.5 h-3.5" />
-                  <span>Haute Vitesse par Chapitres</span>
+                  <span>{t('wizard.cloudBadge', lang)}</span>
                 </div>
               </div>
 
@@ -157,7 +157,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
             <div className="flex items-center justify-between">
               <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
                 <BookOpen className="w-4 h-4 text-[#60a5fa]" />
-                <span>2. Taille du Livre</span>
+                <span>{t('wizard.bookSizeTitle', lang)}</span>
               </h2>
               <div className="flex items-center space-x-2">
                 <input
@@ -168,7 +168,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                   onChange={(e) => setPages(Math.max(20, Math.min(3000, parseInt(e.target.value, 10) || 20)))}
                   className="w-20 input-chill px-2.5 py-1 text-center text-xs font-mono text-white font-bold"
                 />
-                <span className="text-xs text-zinc-400 font-medium">pages</span>
+                <span className="text-xs text-zinc-400 font-medium">{t('wizard.pagesUnit', lang)}</span>
               </div>
             </div>
 
@@ -202,7 +202,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                 }`}
               >
                 <FileText className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Nouvelle (50 p.)</span>
+                <span>{t('wizard.novella', lang)}</span>
               </button>
 
               <button
@@ -215,7 +215,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                 }`}
               >
                 <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Roman (300 p.)</span>
+                <span>{t('wizard.novel', lang)}</span>
               </button>
 
               <button
@@ -228,7 +228,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                 }`}
               >
                 <Library className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Pavé (800 p.)</span>
+                <span>{t('wizard.thickBook', lang)}</span>
               </button>
 
               <button
@@ -241,7 +241,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                 }`}
               >
                 <Bookmark className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Intégrale (2500 p.)</span>
+                <span>{t('wizard.fullSeries', lang)}</span>
               </button>
             </div>
           </div>
@@ -250,14 +250,14 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
           <div className="card-chill p-6 lg:p-7 space-y-4 rounded-2xl">
             <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
               <Sliders className="w-4 h-4 text-zinc-400" />
-              <span>3. Réglages Fins & Tarifs API</span>
+              <span>{t('wizard.fineTuningTitle', lang)}</span>
             </h2>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               
               {/* Chunk Size */}
               <div className="space-y-1">
-                <label className="block text-[10px] text-zinc-400 uppercase font-semibold">Taille de Chunk (Tokens)</label>
+                <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.chunkSize', lang)}</label>
                 <input
                   type="number"
                   step="250"
@@ -269,7 +269,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
 
               {/* Concurrency */}
               <div className="space-y-1">
-                <label className="block text-[10px] text-zinc-400 uppercase font-semibold">Concurrence (Slots)</label>
+                <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.concurrencySlots', lang)}</label>
                 <input
                   type="number"
                   min="1"
@@ -284,7 +284,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
               {mode === 'cloud' && (
                 <>
                   <div className="space-y-1">
-                    <label className="block text-[10px] text-zinc-400 uppercase font-semibold">Prix Input ($/1M tks)</label>
+                    <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.inputPrice', lang)}</label>
                     <input
                       type="number"
                       step="0.05"
@@ -295,7 +295,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                   </div>
 
                   <div className="space-y-1">
-                    <label className="block text-[10px] text-zinc-400 uppercase font-semibold">Prix Output ($/1M tks)</label>
+                    <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.outputPrice', lang)}</label>
                     <input
                       type="number"
                       step="0.05"
@@ -313,7 +313,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                         onChange={(e) => setEnableCaching(e.target.checked)}
                         className="accent-[#2563eb] w-4 h-4"
                       />
-                      <span className="text-zinc-200 text-xs">Activer la réduction Prompt Caching (-90%)</span>
+                      <span className="text-zinc-200 text-xs">{t('wizard.enableCaching', lang)}</span>
                     </label>
                   </div>
                 </>
@@ -333,67 +333,57 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
               <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
                 <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
                   <Sparkles className="w-4 h-4 text-[#60a5fa]" />
-                  <span>Résultats & Projections</span>
+                  <span>{t('wizard.resultsTitle', lang)}</span>
                 </h2>
                 <span className="text-xs font-mono text-zinc-400 bg-white/[0.06] px-2.5 py-1 rounded-lg border border-white/[0.08]">
-                  {totalRequests} chunks
+                  {totalRequests} {t('wizard.chunksUnit', lang)}
                 </span>
               </div>
 
               {/* Volume Metrics */}
               <div className="space-y-2.5 text-xs">
                 <div className="flex justify-between py-2 border-b border-white/[0.06]">
-                  <span className="text-zinc-400">Volume estimé :</span>
-                  <span className="text-white font-mono font-bold">~{wordsCount.toLocaleString()} mots</span>
+                  <span className="text-zinc-400">{t('wizard.estimatedVolume', lang)}</span>
+                  <span className="text-white font-mono font-bold">~{wordsCount.toLocaleString()} {lang === 'fr' ? 'mots' : 'words'}</span>
                 </div>
                 <div className="flex justify-between py-2 border-b border-white/[0.06]">
-                  <span className="text-zinc-400">Total Tokens :</span>
+                  <span className="text-zinc-400">{t('wizard.totalTokens', lang)}</span>
                   <span className="text-white font-mono font-bold">~{totalTokens.toLocaleString()} tokens</span>
                 </div>
               </div>
 
               {/* Cost Highlight Hero Box */}
               <div className="p-6 rounded-2xl bg-black/50 border border-white/[0.1] text-center space-y-2">
-                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">Coût Estimé du Livre</span>
+                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">{t('wizard.estimatedCost', lang)}</span>
                 <span className="text-3xl font-extrabold text-emerald-400 font-mono block tracking-tight">
                   {mode === 'local' ? '0.00 €' : `$${totalCost}`}
                 </span>
                 <span className="text-xs text-zinc-400 block pt-0.5">
-                  {mode === 'local' ? '100% Gratuit sur votre GPU' : `Prix API officiel (${inputPrice}$ in / ${outputPrice}$ out)`}
+                  {mode === 'local' ? t('wizard.freeLocal', lang) : `Prix API (${inputPrice}$ in / ${outputPrice}$ out)`}
                 </span>
 
                 {mode === 'cloud' && enableCaching && parseFloat(cachingSavings) > 0 && (
                   <div className="pt-2">
                     <span className="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
                       <TrendingDown className="w-3.5 h-3.5" />
-                      <span>Économie Prompt Caching : -${cachingSavings}</span>
+                      <span>-{cachingSavings}$ Prompt Caching</span>
                     </span>
                   </div>
                 )}
-              </div>
-
-              {/* Architecture Tip */}
-              <div className="p-4 rounded-xl bg-blue-600/10 border border-blue-500/20 text-blue-300 text-xs flex items-start space-x-2.5 leading-relaxed">
-                <CheckCircle2 className="w-4 h-4 text-blue-400 mt-0.5 flex-shrink-0" />
-                <span className="text-xs">
-                  {mode === 'local'
-                    ? 'Réglage idéal pour préserver la mémoire GPU et maintenir une excellente fluidité littéraire.'
-                    : 'Grands blocs de texte avec Prompt Caching actif pour une traduction ultra-rapide par chapitres.'}
-                </span>
               </div>
             </div>
 
             {/* Disclaimer & Apply Action Button */}
             <div className="pt-4 border-t border-white/[0.08] space-y-2.5">
               <p className="text-[11px] text-zinc-500 italic text-center leading-normal">
-                * Note : Ces valeurs sont des estimations calculées sur des moyennes littéraires (~275 mots/page) et sont données à titre indicatif.
+                {t('wizard.disclaimer', lang)}
               </p>
               <button
                 type="button"
                 onClick={handleApplySettings}
                 className="w-full btn-orange py-3.5 text-xs font-semibold flex items-center justify-center space-x-2"
               >
-                <span>Appliquer ces réglages au projet</span>
+                <span>{t('wizard.applySettings', lang)}</span>
                 <ArrowRight className="w-4 h-4" />
               </button>
             </div>

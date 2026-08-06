@@ -12,7 +12,7 @@ const DEFAULT_UNIVERSAL_SAMPLE = `<p class="chapter-title">CHAPTER I</p>
 
 <p class="dialogue">"My dear Mr. Bennet," said his lady to him one day, "have you heard that Netherfield Park is let at last?"</p>`;
 
-export default function TestSandboxModal({ settings, availableModels, lang = 'en' }) {
+export default function TestSandboxModal({ settings, availableModels, lang = 'en', onSelectModel }) {
   const [sampleText, setSampleText] = useState(DEFAULT_UNIVERSAL_SAMPLE);
   const [selectedModel, setSelectedModel] = useState(settings.model || '');
   const [result, setResult] = useState(null);
@@ -22,6 +22,12 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
   const [error, setError] = useState(null);
 
   const fileInputRef = useRef(null);
+
+  React.useEffect(() => {
+    if (settings.model) {
+      setSelectedModel(settings.model);
+    }
+  }, [settings.model]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -89,8 +95,8 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
             <TestTube className="w-5 h-5" />
           </div>
           <div>
-            <h1 className="text-sm font-semibold text-white tracking-tight">Bac à Sable d'Aperçu en Direct</h1>
-            <p className="text-xs text-zinc-400 mt-0.5">Testez instantanément l'inférence de vos modèles sur un extrait littéraire.</p>
+            <h1 className="text-sm font-semibold text-white tracking-tight">{t('sandbox.title', lang)}</h1>
+            <p className="text-xs text-zinc-400 mt-0.5">{t('sandbox.desc', lang)}</p>
           </div>
         </div>
 
@@ -109,17 +115,17 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
             onClick={() => fileInputRef.current?.click()}
             disabled={extracting}
             className="btn-chill px-3.5 py-1.5 text-xs flex items-center space-x-2 rounded-xl transition-all"
-            title="Importer le premier extrait d'un fichier .epub"
+            title={lang === 'fr' ? "Importer le premier extrait d'un fichier .epub" : "Import first excerpt from an .epub file"}
           >
             {extracting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            <span>{extracting ? "Extraction..." : "Importer un EPUB"}</span>
+            <span>{extracting ? (lang === 'fr' ? "Extraction..." : "Extracting...") : (lang === 'fr' ? "Importer un EPUB" : "Import EPUB")}</span>
           </button>
 
           <button
             type="button"
             onClick={() => setSampleText(DEFAULT_UNIVERSAL_SAMPLE)}
             className="p-1.5 text-zinc-400 hover:text-white rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.08] transition-all"
-            title="Réinitialiser l'extrait littéraire classique universel"
+            title={t('sandbox.resetExcerpt', lang)}
           >
             <RotateCcw className="w-4 h-4" />
           </button>
@@ -142,10 +148,10 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
               <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
                 <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                <span>Extrait Source (HTML / Markdown)</span>
+                <span>{t('sandbox.sourceInputLabel', lang)}</span>
               </span>
               <span className="text-[10px] font-mono text-zinc-500">
-                ~{sampleText.length} caractères
+                ~{sampleText.length} {lang === 'fr' ? 'caractères' : 'chars'}
               </span>
             </div>
 
@@ -153,7 +159,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
               rows={12}
               value={sampleText}
               onChange={(e) => setSampleText(e.target.value)}
-              placeholder="Saisissez un extrait ou chargez un livre..."
+              placeholder={lang === 'fr' ? 'Saisissez un extrait ou chargez un livre...' : 'Enter an excerpt or import a book...'}
               className="w-full input-chill p-4 text-xs font-mono leading-relaxed bg-black/40 flex-1 min-h-[320px] resize-none"
             />
           </div>
@@ -162,12 +168,16 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
           <div className="pt-3.5 border-t border-white/[0.08] flex items-center justify-between gap-3 flex-wrap">
             <div className="flex items-center space-x-2">
               <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
+                value={selectedModel || settings.model || ''}
+                onChange={(e) => {
+                  const m = e.target.value;
+                  setSelectedModel(m);
+                  if (onSelectModel) onSelectModel(m);
+                }}
                 className="input-chill px-3 py-1.5 text-xs text-zinc-200 font-mono max-w-[200px] truncate"
               >
                 {!selectedModel && settings.model && (
-                  <option value="">Modèle : {settings.model}</option>
+                  <option value="">{t('dashboard.model', lang)}: {settings.model}</option>
                 )}
                 {availableModels.length > 0 ? (
                   availableModels.map((m) => <option key={m} value={m}>{m}</option>)
@@ -188,7 +198,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
               ) : (
                 <Play className="w-4 h-4 fill-white" />
               )}
-              <span>{loading ? 'Traduction en cours...' : 'Tester le Modèle'}</span>
+              <span>{loading ? (lang === 'fr' ? 'Traduction en cours...' : 'Processing inference...') : t('sandbox.runInference', lang)}</span>
             </button>
           </div>
         </div>
@@ -199,7 +209,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
             <div className="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
               <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center space-x-2">
                 <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span>Résultat Traduction (FR)</span>
+                <span>{t('sandbox.resultOutputLabel', lang)}</span>
               </span>
 
               {result && (
@@ -210,7 +220,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
                   <button
                     onClick={handleCopyResult}
                     className="p-1 text-zinc-400 hover:text-white transition-colors"
-                    title="Copier la traduction"
+                    title={t('sandbox.copyResult', lang)}
                   >
                     {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
                   </button>
@@ -228,7 +238,11 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
                     <TestTube className="w-6 h-6 stroke-1" />
                   </div>
                   <p className="text-xs text-zinc-400 max-w-xs leading-relaxed">
-                    Cliquez sur <strong className="text-white">« Tester le Modèle »</strong> pour générer l'aperçu en direct.
+                    {lang === 'fr' ? (
+                      <>Cliquez sur <strong className="text-white">« Tester le Modèle »</strong> pour générer l'aperçu en direct.</>
+                    ) : (
+                      <>Click <strong className="text-white">"Run Test Inference"</strong> to generate a live preview.</>
+                    )}
                   </p>
                 </div>
               )}
@@ -239,11 +253,11 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
           <div className="pt-3.5 border-t border-white/[0.08] text-[10px] text-zinc-500 font-mono flex items-center justify-between h-[38px]">
             {result ? (
               <>
-                <span>Modèle : <strong className="text-zinc-300">{result.model_used}</strong></span>
-                <span>Moteur : <strong className="text-zinc-300">{settings.apiType || 'OpenAI API'}</strong></span>
+                <span>{t('dashboard.model', lang)}: <strong className="text-zinc-300">{result.model_used}</strong></span>
+                <span>{t('dashboard.provider', lang)}: <strong className="text-zinc-300">{settings.apiType || 'OpenAI API'}</strong></span>
               </>
             ) : (
-              <span className="text-zinc-600 text-center w-full">En attente de génération...</span>
+              <span className="text-zinc-600 text-center w-full">{lang === 'fr' ? 'En attente de génération...' : 'Waiting for inference...'}</span>
             )}
           </div>
         </div>

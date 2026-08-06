@@ -216,17 +216,31 @@ export default function App() {
       {/* Main Right Content Area */}
       <div className="flex-1 min-w-0 min-h-screen flex flex-col z-10 lg:pl-60">
         
-        {/* Floating Mobile Menu Button */}
-        <button
-          onClick={() => setMobileMenuOpen(true)}
-          className="lg:hidden fixed top-4 right-4 z-50 p-2.5 bg-black/80 backdrop-blur-md text-white rounded-xl border border-white/10 shadow-lg"
-          aria-label="Toggle navigation menu"
-        >
-          <Menu className="w-5 h-5" />
-        </button>
+        {/* Mobile Header Bar (Sans démarcation) */}
+        <div className="lg:hidden flex items-center justify-between px-6 pt-5 pb-1">
+          <div className="flex items-center space-x-2.5">
+            <img src="/logo.svg" alt="TraDoc Logo" className="w-7 h-7 rounded-lg border border-white/[0.08]" />
+            <span className="font-semibold text-sm text-white tracking-tight">
+              {activeTab === 'dashboard' && t('nav.projects', lang)}
+              {activeTab === 'jobs' && t('nav.inspector', lang)}
+              {activeTab === 'wizard' && t('nav.vram', lang)}
+              {activeTab === 'sandbox' && t('nav.sandbox', lang)}
+              {activeTab === 'glossary' && t('nav.glossaries', lang)}
+              {activeTab === 'settings' && t('nav.settings', lang)}
+            </span>
+          </div>
+
+          <button
+            onClick={() => setMobileMenuOpen(true)}
+            className="p-2 bg-white/[0.04] hover:bg-white/[0.08] text-white rounded-xl border border-white/[0.08] transition-colors"
+            aria-label="Toggle navigation menu"
+          >
+            <Menu className="w-5 h-5" />
+          </button>
+        </div>
 
         {/* Main Body */}
-        <main className="w-full max-w-[1400px] mx-auto px-6 sm:px-8 lg:px-10 pt-12 pb-14 lg:pt-16 lg:pb-20">
+        <main className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-10 pt-4 sm:pt-6 lg:pt-16 pb-14 lg:pb-20">
           <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
             <Dashboard
               onSelectJob={setSelectedJobId}
@@ -251,7 +265,7 @@ export default function App() {
           </div>
 
           <div className={activeTab === 'sandbox' ? 'block' : 'hidden'}>
-            <TestSandboxModal settings={settings} availableModels={availableModels} lang={lang} />
+            <TestSandboxModal settings={settings} availableModels={availableModels} lang={lang} onSelectModel={handleSelectModel} />
           </div>
 
           <div className={activeTab === 'wizard' ? 'block' : 'hidden'}>

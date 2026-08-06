@@ -215,7 +215,7 @@ export default function GlossaryManager({ lang = 'en' }) {
           <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
             <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
               <BookMarked className="w-4 h-4 text-[#60a5fa]" />
-              <span>Mes Glossaires</span>
+              <span>{lang === 'fr' ? 'Mes Glossaires' : 'My Glossaries'}</span>
             </h2>
             <button
               type="button"
@@ -223,7 +223,7 @@ export default function GlossaryManager({ lang = 'en' }) {
               className="btn-chill px-3 py-1.5 text-xs flex items-center space-x-1.5 rounded-xl"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Nouveau</span>
+              <span>{lang === 'fr' ? 'Nouveau' : 'New'}</span>
             </button>
           </div>
 
@@ -243,7 +243,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                   type="button"
                   onClick={(e) => { e.stopPropagation(); handleDelete(gName); }}
                   className="text-zinc-600 hover:text-rose-400 p-1 transition-colors"
-                  title="Supprimer ce glossaire"
+                  title={lang === 'fr' ? 'Supprimer ce glossaire' : 'Delete glossary'}
                 >
                   <Trash2 className="w-3.5 h-3.5" />
                 </button>
@@ -265,10 +265,10 @@ export default function GlossaryManager({ lang = 'en' }) {
               <div>
                 <h1 className="text-sm font-semibold text-white tracking-tight flex items-center space-x-2">
                   <BookMarked className="w-4.5 h-4.5 text-[#60a5fa]" />
-                  <span>{selectedName ? `Édition : ${selectedName}` : 'Créer un Glossaire'}</span>
+                  <span>{selectedName ? (lang === 'fr' ? `Édition : ${selectedName}` : `Edit: ${selectedName}`) : (lang === 'fr' ? 'Créer un Glossaire' : 'Create a Glossary')}</span>
                 </h1>
                 <p className="text-xs text-zinc-400 mt-0.5">
-                  Définit les règles de traduction fixe des personnages, lieux et termes récurrents.
+                  {lang === 'fr' ? 'Définit les règles de traduction fixe des personnages, lieux et termes récurrents.' : 'Define strict translation rules for character names, places, and recurring terms.'}
                 </p>
               </div>
 
@@ -283,23 +283,23 @@ export default function GlossaryManager({ lang = 'en' }) {
             {/* Inputs: Name & Description */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Nom du Glossaire</label>
+                <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{lang === 'fr' ? 'Nom du Glossaire' : 'Glossary Name'}</label>
                 <input
                   type="text"
                   value={nameInput}
                   onChange={(e) => setNameInput(e.target.value)}
-                  placeholder="nom_du_glossaire"
+                  placeholder={lang === 'fr' ? 'nom_du_glossaire' : 'glossary_name'}
                   className="w-full input-chill px-3.5 py-2 text-xs font-mono"
                 />
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">Description</label>
+                <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{lang === 'fr' ? 'Description' : 'Description'}</label>
                 <input
                   type="text"
                   value={descInput}
                   onChange={(e) => setDescInput(e.target.value)}
-                  placeholder="Ex: Noms propres et règles spécifiques"
+                  placeholder={lang === 'fr' ? 'Ex: Noms propres et règles spécifiques' : 'E.g., Character names and specific rules'}
                   className="w-full input-chill px-3.5 py-2 text-xs"
                 />
               </div>
@@ -307,50 +307,50 @@ export default function GlossaryManager({ lang = 'en' }) {
 
             {/* Integrated Assistant Toolbar */}
             <div className="p-4 rounded-xl bg-black/40 border border-white/[0.08] space-y-3">
-              <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <span className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-[#60a5fa]" />
-                  <span>Assistants & Remplissage Rapide</span>
+                  <span>{lang === 'fr' ? 'Assistants & Remplissage Rapide' : 'Assistants & Quick Fill'}</span>
                 </span>
 
-                <div className="flex items-center space-x-2">
+                <div className="flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setActiveTool(activeTool === 'prompt' ? null : 'prompt')}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all flex items-center space-x-1.5 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center space-x-1.5 ${
                       activeTool === 'prompt'
                         ? 'bg-white/10 text-white border-white/20'
                         : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
                     }`}
                   >
                     <Sparkles className="w-3 h-3 text-[#60a5fa]" />
-                    <span>Prompt IA ChatGPT</span>
+                    <span>{lang === 'fr' ? 'Prompt IA' : 'AI Prompt'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTool(activeTool === 'import' ? null : 'import')}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all flex items-center space-x-1.5 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center space-x-1.5 ${
                       activeTool === 'import'
                         ? 'bg-white/10 text-white border-white/20'
                         : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
                     }`}
                   >
                     <FileCode className="w-3 h-3 text-emerald-400" />
-                    <span>Coller / Importer</span>
+                    <span>{lang === 'fr' ? 'Coller / Importer' : 'Paste / Import'}</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={() => setActiveTool(activeTool === 'guide' ? null : 'guide')}
-                    className={`px-3 py-1 rounded-lg text-xs font-medium border transition-all flex items-center space-x-1.5 ${
+                    className={`px-3 py-1.5 rounded-lg text-xs font-medium border transition-all flex items-center space-x-1.5 ${
                       activeTool === 'guide'
                         ? 'bg-white/10 text-white border-white/20'
                         : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
                     }`}
                   >
                     <HelpCircle className="w-3 h-3 text-amber-400" />
-                    <span>Guide</span>
+                    <span>{lang === 'fr' ? 'Guide' : 'Guide'}</span>
                   </button>
                 </div>
               </div>
@@ -358,9 +358,9 @@ export default function GlossaryManager({ lang = 'en' }) {
               {/* Tool 1: AI Prompt Master Panel */}
               {activeTool === 'prompt' && (
                 <div className="pt-3 border-t border-white/[0.08] space-y-3">
-                  <div className="flex items-center justify-between">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                     <p className="text-xs text-zinc-300">
-                      Copiez ce prompt dans ChatGPT / Claude avec votre texte. Il génèrera directement les lignes à insérer ci-dessous.
+                      {lang === 'fr' ? 'Copiez ce prompt dans votre LLM avec votre texte. Il génèrera directement les lignes à insérer ci-dessous.' : 'Copy this prompt into your LLM along with your book text to extract terms.'}
                     </p>
                     <button
                       type="button"
@@ -368,7 +368,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                       className="btn-orange px-3.5 py-1 text-xs flex items-center space-x-1.5 flex-shrink-0"
                     >
                       {copiedPrompt ? <Check className="w-3.5 h-3.5 text-white" /> : <Copy className="w-3.5 h-3.5" />}
-                      <span>{copiedPrompt ? "Copié !" : "Copier le Prompt IA"}</span>
+                      <span>{copiedPrompt ? (lang === 'fr' ? "Copié !" : "Copied!") : (lang === 'fr' ? "Copier le Prompt IA" : "Copy AI Prompt")}</span>
                     </button>
                   </div>
                   <pre className="p-3 rounded-lg bg-black/60 border border-white/[0.08] text-[11px] font-mono text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-48 overflow-y-auto">
@@ -382,7 +382,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                 <div className="pt-3 border-t border-white/[0.08] space-y-3">
                   <div className="flex items-center justify-between flex-wrap gap-2">
                     <p className="text-xs text-zinc-300">
-                      Collez les lignes générées par l'IA (format <code className="font-mono text-emerald-400">Original | Traduction | Note</code>) ou chargez un fichier.
+                      {lang === 'fr' ? 'Collez les lignes générées par l\'IA (format Original | Traduction | Note) ou chargez un fichier.' : 'Paste lines generated by AI (format: Original | Target | Note) or upload a file.'}
                     </p>
 
                     <div className="flex items-center space-x-2">
@@ -399,7 +399,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                         className="btn-chill px-3 py-1 text-xs flex items-center space-x-1 rounded-lg"
                       >
                         <Upload className="w-3.5 h-3.5 text-emerald-400" />
-                        <span>Fichier (.csv, .json)</span>
+                        <span>{lang === 'fr' ? 'Fichier (.csv, .json)' : 'File (.csv, .json)'}</span>
                       </button>
                     </div>
                   </div>
@@ -408,7 +408,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                     rows={4}
                     value={pasteText}
                     onChange={(e) => setPasteText(e.target.value)}
-                    placeholder="Collez ici les lignes au format :&#10;Arthur Pendragon | Arthur Pendragon | Ne pas traduire&#10;Camelot | Camelot | Nom du royaume"
+                    placeholder={lang === 'fr' ? "Collez ici les lignes au format :\nArthur Pendragon | Arthur Pendragon | Ne pas traduire\nCamelot | Camelot | Nom du royaume" : "Paste lines here formatted as:\nArthur Pendragon | Arthur Pendragon | Do not translate\nCamelot | Camelot | Realm name"}
                     className="w-full input-chill p-3 text-xs font-mono bg-black/60"
                   />
 
@@ -420,7 +420,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                       className="btn-orange px-4 py-1.5 text-xs flex items-center space-x-1.5 disabled:opacity-40"
                     >
                       <ArrowDown className="w-3.5 h-3.5" />
-                      <span>Insérer dans la liste ci-dessous</span>
+                      <span>{lang === 'fr' ? 'Insérer dans la liste ci-dessous' : 'Insert into list below'}</span>
                     </button>
                   </div>
                 </div>
@@ -431,16 +431,16 @@ export default function GlossaryManager({ lang = 'en' }) {
                 <div className="pt-3 border-t border-white/[0.08] space-y-2 text-xs text-zinc-300">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="p-3 rounded-lg bg-black/50 border border-white/[0.06] space-y-1">
-                      <span className="font-semibold text-white block">1. Noms & Titres</span>
-                      <p className="text-zinc-400 text-[11px]">Fixez la traduction précise des personnages (ex: <i>Arthur Pendragon &rarr; Arthur Pendragon</i>).</p>
+                      <span className="font-semibold text-white block">{lang === 'fr' ? '1. Noms & Titres' : '1. Names & Titles'}</span>
+                      <p className="text-zinc-400 text-[11px]">{lang === 'fr' ? 'Fixez la traduction précise des personnages (ex: Arthur Pendragon → Arthur Pendragon).' : 'Fix precise character translation (e.g., Arthur Pendragon → Arthur Pendragon).'}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-black/50 border border-white/[0.06] space-y-1">
-                      <span className="font-semibold text-white block">2. Lieux & Univers</span>
-                      <p className="text-zinc-400 text-[11px]">Empêchez la traduction non désirée de lieux fictifs (ex: <i>Camelot &rarr; Camelot</i>).</p>
+                      <span className="font-semibold text-white block">{lang === 'fr' ? '2. Lieux & Univers' : '2. Places & Universe'}</span>
+                      <p className="text-zinc-400 text-[11px]">{lang === 'fr' ? 'Empêchez la traduction non désirée de lieux fictifs (ex: Camelot → Camelot).' : 'Prevent unwanted translation of fictional places (e.g., Camelot → Camelot).'}</p>
                     </div>
                     <div className="p-3 rounded-lg bg-black/50 border border-white/[0.06] space-y-1">
-                      <span className="font-semibold text-white block">3. Notes & Conseils</span>
-                      <p className="text-zinc-400 text-[11px]">Le champ Note transmet une consigne exacte au modèle de traduction.</p>
+                      <span className="font-semibold text-white block">{lang === 'fr' ? '3. Notes & Conseils' : '3. Notes & Guidelines'}</span>
+                      <p className="text-zinc-400 text-[11px]">{lang === 'fr' ? 'Le champ Note transmet une consigne exacte au modèle de traduction.' : 'The Note field provides exact directives to the LLM model.'}</p>
                     </div>
                   </div>
                 </div>
@@ -451,7 +451,7 @@ export default function GlossaryManager({ lang = 'en' }) {
             <div className="space-y-3 pt-2">
               <div className="flex items-center justify-between flex-wrap gap-2 border-b border-white/[0.08] pb-2.5">
                 <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-                  Termes du Glossaire ({items.length})
+                  {lang === 'fr' ? `Termes du Glossaire (${items.length})` : `Glossary Terms (${items.length})`}
                 </h3>
                 <button
                   type="button"
@@ -459,17 +459,17 @@ export default function GlossaryManager({ lang = 'en' }) {
                   className="btn-chill px-3 py-1.5 text-xs flex items-center space-x-1.5 rounded-xl"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#60a5fa]" />
-                  <span>Ajouter une ligne</span>
+                  <span>{lang === 'fr' ? 'Ajouter une ligne' : 'Add Row'}</span>
                 </button>
               </div>
 
               {/* Table Column Headers */}
               {items.length > 0 && (
                 <div className="grid grid-cols-12 gap-2 text-[10px] font-semibold text-zinc-500 uppercase px-3">
-                  <div className="col-span-4">Terme Source (EN)</div>
-                  <div className="col-span-4">Traduction Cible (FR)</div>
-                  <div className="col-span-3">Note / Directive</div>
-                  <div className="col-span-1 text-right">Action</div>
+                  <div className="col-span-4">{lang === 'fr' ? 'Terme Source (EN)' : 'Source Term (EN)'}</div>
+                  <div className="col-span-4">{lang === 'fr' ? 'Traduction Cible (FR)' : 'Target Term (FR)'}</div>
+                  <div className="col-span-3">{lang === 'fr' ? 'Note / Directive' : 'Note / Directive'}</div>
+                  <div className="col-span-1 text-right">{lang === 'fr' ? 'Action' : 'Action'}</div>
                 </div>
               )}
 
@@ -477,8 +477,8 @@ export default function GlossaryManager({ lang = 'en' }) {
               <div className="space-y-2 max-h-[360px] overflow-y-auto pr-1">
                 {items.length === 0 ? (
                   <div className="p-8 text-center text-zinc-500 text-xs bg-black/40 rounded-xl border border-white/[0.06] space-y-1">
-                    <p className="text-zinc-300 font-semibold">Le glossaire est actuellement vide.</p>
-                    <p className="text-zinc-500">Utilisez le bouton « Coller / Importer » ou cliquez sur « Ajouter une ligne » pour commencer.</p>
+                    <p className="text-zinc-300 font-semibold">{lang === 'fr' ? 'Le glossaire est actuellement vide.' : 'The glossary is currently empty.'}</p>
+                    <p className="text-zinc-500">{lang === 'fr' ? 'Utilisez le bouton « Coller / Importer » ou cliquez sur « Ajouter une ligne » pour commencer.' : 'Use the "Paste / Import" button or click "Add Row" to get started.'}</p>
                   </div>
                 ) : (
                   items.map((item, idx) => (
@@ -486,7 +486,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                       <div className="col-span-4">
                         <input
                           type="text"
-                          placeholder="Terme Source (ex: Arthur Pendragon)"
+                          placeholder={lang === 'fr' ? 'Terme Source (ex: Arthur)' : 'Source Term (e.g. Arthur)'}
                           value={item.source}
                           onChange={(e) => handleItemChange(idx, 'source', e.target.value)}
                           className="w-full input-chill px-3 py-1.5 text-xs font-mono"
@@ -495,7 +495,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                       <div className="col-span-4">
                         <input
                           type="text"
-                          placeholder="Traduction Cible (ex: Arthur Pendragon)"
+                          placeholder={lang === 'fr' ? 'Traduction Cible (ex: Arthur)' : 'Target Term (e.g. Arthur)'}
                           value={item.target}
                           onChange={(e) => handleItemChange(idx, 'target', e.target.value)}
                           className="w-full input-chill px-3 py-1.5 text-xs font-mono"
@@ -504,7 +504,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                       <div className="col-span-3">
                         <input
                           type="text"
-                          placeholder="Note / Règle (optionnel)"
+                          placeholder={lang === 'fr' ? 'Note / Règle (optionnel)' : 'Note / Directive (optional)'}
                           value={item.note || ''}
                           onChange={(e) => handleItemChange(idx, 'note', e.target.value)}
                           className="w-full input-chill px-3 py-1.5 text-xs"
@@ -515,7 +515,7 @@ export default function GlossaryManager({ lang = 'en' }) {
                           type="button"
                           onClick={() => handleRemoveItem(idx)}
                           className="text-zinc-600 hover:text-rose-400 p-1.5 transition-colors"
-                          title="Supprimer la ligne"
+                          title={lang === 'fr' ? 'Supprimer la ligne' : 'Delete row'}
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
@@ -535,7 +535,7 @@ export default function GlossaryManager({ lang = 'en' }) {
               className="btn-orange px-6 py-2.5 text-xs font-semibold flex items-center space-x-2"
             >
               <Save className="w-3.5 h-3.5 fill-white" />
-              <span>Sauvegarder le Glossaire</span>
+              <span>{lang === 'fr' ? 'Sauvegarder le Glossaire' : 'Save Glossary'}</span>
             </button>
           </div>
 

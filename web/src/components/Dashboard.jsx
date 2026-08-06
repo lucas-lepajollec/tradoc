@@ -16,6 +16,19 @@ const PROVIDER_NAMES = {
   ollama: 'Ollama (Local)',
 };
 
+const PROVIDER_LOGOS = {
+  openai: '/providers/openai.png',
+  claude: '/providers/claude.png',
+  gemini: '/providers/gemini.png',
+  deepseek: '/providers/deepseek.png',
+  openrouter: '/providers/openrouter.png',
+  minimax: '/providers/minimax.png',
+  kimi: '/providers/kimi.png',
+  glm: '/providers/glm.png',
+  'lm-studio': '/providers/lmstudio.webp',
+  ollama: '/providers/ollama.png',
+};
+
 export default function Dashboard({ onSelectJob, settings, endpointStatus, availableModels, setActiveTab, lang = 'en', onSelectModel }) {
   const [jobMode, setJobMode] = useState('translation'); // 'translation' or 'proofreading'
   const [proofreadSourceType, setProofreadSourceType] = useState('existing'); // 'existing' or 'upload'
@@ -217,16 +230,16 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
       
       {/* Connection Warning Banner */}
       {!endpointStatus && (
-        <div className="card-chill p-4 border border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-500/5 text-zinc-200 text-xs flex items-center justify-between">
-          <div className="flex items-center space-x-3">
-            <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
-            <span>
-              <strong className="text-white">{t('nav.unreachableBanner', lang)}</strong> {t('nav.checkServerUrl', lang)} <code className="bg-black/50 px-2 py-0.5 rounded text-zinc-300 font-mono">{settings.endpoint}</code>.
+        <div className="card-chill p-4 border border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-500/5 text-zinc-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+          <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
+            <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+            <span className="leading-relaxed">
+              <strong className="text-white">{t('nav.unreachableBanner', lang)}</strong> {t('nav.checkServerUrl', lang)} <code className="bg-black/50 px-2 py-0.5 rounded text-zinc-300 font-mono inline-block break-all max-w-full">{settings.endpoint}</code>.
             </span>
           </div>
           <button
             onClick={() => setActiveTab('settings')}
-            className="btn-chill px-3 py-1 text-[11px] font-bold text-zinc-200 hover:text-white"
+            className="btn-chill px-3 py-1.5 text-[11px] font-bold text-zinc-200 hover:text-white flex-shrink-0 self-end sm:self-auto"
           >
             {t('nav.configureIp', lang)}
           </button>
@@ -239,15 +252,15 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
         {/* Upload Card (2 cols) */}
         <div className="lg:col-span-2 card-chill p-6 sm:p-8 space-y-6">
           
-          <div className="flex items-start justify-between flex-wrap gap-2">
-            <div className="flex-1 min-w-0">
-              <h2 className="font-semibold text-base text-white tracking-tight flex items-center space-x-2 truncate">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
+            <div>
+              <h2 className="font-semibold text-base text-white tracking-tight flex items-center space-x-2">
                 <UploadCloud className="w-5 h-5 text-white flex-shrink-0" />
-                <span className="truncate">Importer un document</span>
+                <span>{t('dashboard.importTitle', lang)}</span>
               </h2>
-              <p className="text-xs text-[#888] mt-0.5">Glissez-déposez votre fichier EPUB, PDF, DOCX, MD ou TXT</p>
+              <p className="text-xs text-[#888] mt-0.5">{t('dashboard.importSubtitle', lang)}</p>
             </div>
-            <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[#888] bg-white/[0.04] px-2.5 py-1 rounded-md border border-white/[0.08] flex-shrink-0">
+            <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[#888] bg-white/[0.04] px-2.5 py-1 rounded-md border border-white/[0.08] self-start sm:self-auto">
               EPUB / PDF / DOCX / MD / TXT
             </span>
           </div>
@@ -264,26 +277,26 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
             <button
               type="button"
               onClick={() => setJobMode('translation')}
-              className={`py-2 px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-2 border ${
+              className={`py-2 px-2 sm:px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-1.5 text-[11px] sm:text-xs border ${
                 jobMode === 'translation'
                   ? 'bg-white/10 text-white border-white/15 shadow-sm backdrop-blur-md'
                   : 'bg-transparent text-[#888] border-transparent hover:text-white hover:bg-white/[0.02]'
               }`}
             >
-              <BookOpen className="w-4 h-4" />
-              <span>{lang === 'fr' ? 'Mode Traduction' : 'Translation Mode'}</span>
+              <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{t('dashboard.translationMode', lang)}</span>
             </button>
             <button
               type="button"
               onClick={() => setJobMode('proofreading')}
-              className={`py-2 px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-2 border ${
+              className={`py-2 px-2 sm:px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-1.5 text-[11px] sm:text-xs border ${
                 jobMode === 'proofreading'
                   ? 'bg-white/10 text-white border-white/15 shadow-sm backdrop-blur-md'
                   : 'bg-transparent text-[#888] border-transparent hover:text-white hover:bg-white/[0.02]'
               }`}
             >
-              <Layers className="w-4 h-4" />
-              <span>Mode Relecture & Correction</span>
+              <Layers className="w-3.5 h-3.5 flex-shrink-0" />
+              <span className="truncate">{t('dashboard.proofreadMode', lang)}</span>
             </button>
           </div>
 
@@ -356,10 +369,9 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
             </div>
           </div>
 
-          {/* Sub-selector if Proofreading mode is active */}
+          {/* Proofreading Mode Sub-options (Select existing job vs upload new file) */}
           {jobMode === 'proofreading' && (
-            <div className="flex items-center space-x-4 p-3 rounded-lg bg-white/[0.02] border border-white/[0.08] text-xs">
-              <span className="text-[#666] font-bold uppercase tracking-widest text-[9px]">Source :</span>
+            <div className="p-3.5 rounded-xl bg-[#090b10] border border-white/[0.08] flex items-center space-x-6 text-xs">
               <label className="flex items-center space-x-2 cursor-pointer text-zinc-300 font-medium">
                 <input
                   type="radio"
@@ -368,7 +380,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                   onChange={() => setProofreadSourceType('existing')}
                   className="accent-white"
                 />
-                <span>Livre de la base de données</span>
+                <span>{t('dashboard.sourceProject', lang)}</span>
               </label>
               <label className="flex items-center space-x-2 cursor-pointer text-zinc-300 font-medium">
                 <input
@@ -378,7 +390,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                   onChange={() => setProofreadSourceType('upload')}
                   className="accent-white"
                 />
-                <span>Importer un nouveau fichier</span>
+                <span>{t('dashboard.uploadNewFile', lang)}</span>
               </label>
             </div>
           )}
@@ -389,23 +401,20 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
             {jobMode === 'proofreading' && proofreadSourceType === 'existing' ? (
               <div className="space-y-2 p-6 rounded-lg bg-[#070708] border border-white/[0.08]">
                 <label className="block text-xs font-semibold text-white uppercase tracking-wider">
-                  Sélectionner un livre existant à relire
+                  {t('dashboard.proofreadSourcePrompt', lang)}
                 </label>
                 <select
                   value={selectedExistingJobId}
                   onChange={(e) => setSelectedExistingJobId(e.target.value)}
                   className="w-full input-chill px-3 py-2.5 text-xs font-medium"
                 >
-                  <option value="">-- Choisir un projet dans la base --</option>
+                  <option value="">-- {t('dashboard.sourceProject', lang)} --</option>
                   {jobs.map((j) => (
                     <option key={j.id} value={j.id}>
                       {j.file_name} ({j.completed_chunks}/{j.total_chunks} chunks - {j.status})
                     </option>
                   ))}
                 </select>
-                <p className="text-[10px] text-[#666]">
-                  Le système va dupliquer le livre en mode Relecture & Correction avec le prompt d'édition senior.
-                </p>
               </div>
             ) : (
               /* Dropzone */
@@ -443,9 +452,9 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                   ) : (
                     <div>
                       <p className="font-medium text-zinc-300 text-xs">
-                        {jobMode === 'proofreading' ? 'Déposez le document à relire et corriger' : 'Déposez votre document ici ou cliquez pour choisir'}
+                        {t('dashboard.dropHere', lang)}
                       </p>
-                      <p className="text-[10px] text-[#666] mt-1">Fichiers EPUB, PDF, DOCX, Markdown (.md) ou Texte (.txt)</p>
+                      <p className="text-[10px] text-[#666] mt-1">{t('dashboard.allowedFormats', lang)}</p>
                     </div>
                   )}
                 </label>
@@ -455,7 +464,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
             {/* Options */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">Modèle LLM</label>
+                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">{t('dashboard.llmModel', lang)}</label>
                 <select
                   value={selectedModel}
                   onChange={(e) => {
@@ -474,13 +483,13 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               </div>
 
               <div>
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">Glossaire Littéraire</label>
+                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">{t('dashboard.literaryGlossary', lang)}</label>
                 <select
                   value={selectedGlossary}
                   onChange={(e) => setSelectedGlossary(e.target.value)}
                   className="w-full input-chill px-3 py-2 text-xs text-zinc-200"
                 >
-                  <option value="">Aucun glossaire</option>
+                  <option value="">{t('dashboard.noGlossary', lang)}</option>
                   {glossaries.map((g) => <option key={g} value={g}>{g}</option>)}
                 </select>
               </div>
@@ -499,11 +508,11 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                 }`}
               >
                 {uploading ? (
-                  <span>Analyse en cours...</span>
+                  <span>{t('dashboard.analyzing', lang)}</span>
                 ) : (
                   <>
                     <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>{jobMode === 'proofreading' ? 'Démarrer la Relecture' : 'Démarrer la Traduction'}</span>
+                    <span>{jobMode === 'proofreading' ? t('dashboard.startProofreading', lang) : t('dashboard.startTranslation', lang)}</span>
                   </>
                 )}
               </button>
@@ -513,14 +522,13 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                 onClick={(e) => handleUploadSubmit(e, false)}
                 disabled={uploading || (jobMode === 'proofreading' && proofreadSourceType === 'existing' ? !selectedExistingJobId : !file)}
                 className="py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-[#ededed] border border-white/[0.08] text-xs font-semibold rounded-lg transition-all flex items-center justify-center space-x-2 disabled:opacity-40"
-                title="Découpe le livre en segments et l'envoie dans l'inspecteur sans lancer"
               >
                 {uploading ? (
-                  <span>Analyse en cours...</span>
+                  <span>{t('dashboard.analyzing', lang)}</span>
                 ) : (
                   <>
                     <Layers className="w-3.5 h-3.5" />
-                    <span>{jobMode === 'proofreading' ? 'Préparer la Relecture (Sans lancer)' : 'Préparer & Inspecter (Sans lancer)'}</span>
+                    <span>{t('dashboard.prepareInspect', lang)}</span>
                   </>
                 )}
               </button>
@@ -534,25 +542,30 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           <div className="card-chill p-6 space-y-5">
             <h3 className="text-xs font-semibold text-[#888] uppercase tracking-wider flex items-center space-x-1.5">
               <Cpu className="w-4 h-4 text-white" />
-              <span>Paramètres du Serveur</span>
+              <span>{t('dashboard.serverParams', lang)}</span>
             </h3>
 
             <div className="space-y-3 text-xs">
-              <div className="flex justify-between py-2 border-b border-white/[0.08]">
-                <span className="text-[#666]">Fournisseur</span>
-                <span className="font-mono text-zinc-300 truncate max-w-[150px]">{PROVIDER_NAMES[settings.apiType] || settings.apiType || 'OpenAI'}</span>
+              <div className="flex justify-between items-center py-2 border-b border-white/[0.08]">
+                <span className="text-[#666]">{t('dashboard.provider', lang)}</span>
+                <span className="font-mono text-zinc-300 truncate max-w-[170px] flex items-center space-x-1.5 justify-end">
+                  {PROVIDER_LOGOS[settings.apiType] && (
+                    <img src={PROVIDER_LOGOS[settings.apiType]} alt="" className="w-4 h-4 object-contain rounded-sm flex-shrink-0" />
+                  )}
+                  <span>{PROVIDER_NAMES[settings.apiType] || settings.apiType || 'OpenAI'}</span>
+                </span>
               </div>
               <div className="flex justify-between py-2 border-b border-white/[0.08]">
-                <span className="text-[#666]">Modèle Actif</span>
+                <span className="text-[#666]">{t('dashboard.model', lang)}</span>
                 <span className="font-mono text-[#60a5fa] truncate max-w-[150px]">{settings.model}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-white/[0.08]">
-                <span className="text-[#666]">Concurrence</span>
-                <span className="font-bold text-emerald-400">{(settings.concurrency || 1)} requêtes</span>
+                <span className="text-[#666]">{t('dashboard.concurrency', lang)}</span>
+                <span className="font-bold text-emerald-400">{(settings.concurrency || 1)} {t('dashboard.requestsUnit', lang)}</span>
               </div>
               <div className="flex justify-between py-2">
-                <span className="text-[#666]">Fenêtre Sémantique</span>
-                <span className="font-bold text-zinc-300">{(settings.chunkSize || 1000)} tokens</span>
+                <span className="text-[#666]">{t('dashboard.semanticWindow', lang)}</span>
+                <span className="font-bold text-zinc-300">{(settings.chunkSize || 1000)} {t('dashboard.tokensUnit', lang)}</span>
               </div>
             </div>
 
@@ -560,7 +573,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               onClick={() => setActiveTab('settings')}
               className="w-full btn-chill py-2 text-xs font-semibold flex items-center justify-center space-x-2"
             >
-              <span>Modifier la configuration</span>
+              <span>{t('dashboard.editConfig', lang)}</span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -568,17 +581,16 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           <div className="card-chill p-6 space-y-3">
             <h3 className="text-xs font-semibold text-[#888] uppercase tracking-wider flex items-center space-x-1.5">
               <TestTube className="w-4 h-4 text-white" />
-              <span>Testeur en Direct</span>
+              <span>{t('dashboard.liveTester', lang)}</span>
             </h3>
             <p className="text-xs text-[#888] leading-relaxed">
-              Testez vos phrases et votre modèle en 2 secondes sans importer de livre.
+              {t('dashboard.liveTesterDesc', lang)}
             </p>
             <button
               onClick={() => setActiveTab('sandbox')}
               className="w-full py-2 bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-semibold rounded-lg border border-white/[0.08] transition-all flex items-center justify-center space-x-2"
             >
-              <span>Ouvrir le Bac à Sable</span>
-              <ArrowRight className="w-3.5 h-3.5" />
+              <span>{t('dashboard.openSandbox', lang)}</span>
             </button>
           </div>
         </div>
@@ -589,12 +601,12 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
       <div className="space-y-4">
         <h2 className="font-semibold text-sm text-white tracking-tight flex items-center space-x-2">
           <Layers className="w-4 h-4 text-white" />
-          <span>Projets enregistrés ({jobs.length})</span>
+          <span>{t('dashboard.recentProjects', lang)} ({jobs.length})</span>
         </h2>
 
         {jobs.length === 0 ? (
           <div className="card-chill p-12 text-center text-[#666] text-xs">
-            Aucun projet enregistré. Glissez un livre ci-dessus pour démarrer.
+            {t('dashboard.noProjectsYet', lang)}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
@@ -619,13 +631,16 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                         j.status === 'PROCESSING' ? 'bg-[#2563eb]/10 text-[#60a5fa] border border-[#2563eb]/20 animate-pulse' :
                         'bg-white/[0.04] text-[#888] border border-white/[0.08]'
                       }`}>
-                        {j.status}
+                        {j.status === 'PAUSED' ? t('dashboard.paused', lang) :
+                         j.status === 'COMPLETED' ? t('dashboard.completed', lang) :
+                         j.status === 'PROCESSING' ? t('dashboard.processing', lang) :
+                         j.status === 'FAILED' ? t('dashboard.failed', lang) : j.status}
                       </span>
                       
                       <button
                         onClick={(e) => handleDeleteJob(e, j.id, j.file_name)}
                         className="text-[#444] hover:text-rose-400 p-1 transition-colors"
-                        title="Supprimer ce projet"
+                        title={t('dashboard.deleteProject', lang)}
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
@@ -634,13 +649,13 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
                   <div>
                     <h3 className="font-semibold text-white text-xs truncate" title={j.file_name}>{truncatedName}</h3>
-                    <p className="text-[10px] text-[#666] mt-0.5 font-mono truncate">Modèle: {j.model}</p>
+                    <p className="text-[10px] text-[#666] mt-0.5 font-mono truncate">{t('dashboard.model', lang)}: {j.model}</p>
                   </div>
 
                   {/* Progress bar */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[10px] font-medium">
-                      <span className="text-[#888]">Progression</span>
+                      <span className="text-[#888]">{lang === 'fr' ? 'Progression' : 'Progress'}</span>
                       <span className="text-[#60a5fa] font-semibold">{percent}% ({j.completed_chunks}/{j.total_chunks})</span>
                     </div>
                     <div className="w-full h-1.5 bg-black rounded-full overflow-hidden border border-white/[0.08]">
@@ -660,7 +675,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                           className="px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.08] rounded-md text-[10px] font-medium flex items-center space-x-1"
                         >
                           <Pause className="w-3 h-3 text-[#ff6369]" />
-                          <span>Pause</span>
+                          <span>{t('dashboard.pause', lang)}</span>
                         </button>
                       ) : (
                         <button
@@ -668,7 +683,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                           className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-md text-[10px] font-medium flex items-center space-x-1 transition-all"
                         >
                           <Play className="w-3 h-3 fill-blue-300 text-blue-300" />
-                          <span>{j.completed_chunks > 0 ? 'Reprendre' : 'Lancer'}</span>
+                          <span>{j.completed_chunks > 0 ? t('dashboard.resume', lang) : (lang === 'fr' ? 'Lancer' : 'Start')}</span>
                         </button>
                       )}
 
@@ -682,7 +697,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                             ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.08]'
                             : 'opacity-20 pointer-events-none'
                         }`}
-                        title="Télécharger le fichier EPUB/PDF traduit"
+                        title={t('dashboard.downloadEpub', lang)}
                       >
                         <Download className="w-3 h-3" />
                         <span>EPUB</span>
@@ -690,7 +705,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                     </div>
 
                     <span className="text-[#666] group-hover:text-white flex items-center space-x-1 text-[10px] font-medium transition-colors">
-                      <span>Inspecter</span>
+                      <span>{t('dashboard.inspect', lang)}</span>
                       <ChevronRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
