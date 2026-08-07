@@ -238,7 +238,8 @@ class TranslationEngine:
                         "job_id": job_id,
                         "chunk_index": segment.chunk_index,
                         "completed_chunks": done_cnt,
-                        "total_chunks": job.total_chunks
+                        "total_chunks": job.total_chunks,
+                        "translated_text": final_translation
                     })
                 except ProviderDownError as pde:
                     error_msg = str(pde)
@@ -348,7 +349,7 @@ class TranslationEngine:
                 blocks = [translated_text]
 
             for idx, node_idx in enumerate(seg.node_indices):
-                translated_node_map[node_idx] = blocks[idx] if idx < len(blocks) else blocks[-1]
+                translated_node_map[node_idx] = blocks[idx] if idx < len(blocks) else ""
 
         max_idx = max(translated_node_map.keys()) if translated_node_map else 0
         translated_nodes = [translated_node_map.get(i, "") for i in range(max_idx + 1)]
@@ -357,29 +358,36 @@ class TranslationEngine:
         output_path = settings.OUTPUT_DIR / f"traduit_{job.file_name}"
 
         def _rebuild():
-            if job.file_type == "epub":
-                parser = EpubParser(input_path)
-                node_meta, _ = parser.extract_nodes()
-                parser.reconstruct_epub(node_meta, translated_nodes, output_path)
-                return output_path
-            elif job.file_type == "pdf":
-                parser = PdfParser(input_path)
-                pdf_output_epub = settings.OUTPUT_DIR / f"traduit_{Path(job.file_name).stem}.epub"
-                parser.export_translated_epub(f"Traduction - {job.file_name}", translated_nodes, pdf_output_epub)
-                return pdf_output_epub
-            elif job.file_type == "docx":
-                parser = DocxParser(input_path)
-                node_meta, _ = parser.extract_nodes()
-                parser.reconstruct_docx(node_meta, translated_nodes, output_path)
-                return output_path
-            elif job.file_type in ["md", "txt"]:
-                parser = TextParser(input_path)
-                node_meta, _ = parser.extract_nodes()
-                parser.reconstruct_text(node_meta, translated_nodes, output_path)
-                return output_path
-            else:
-                raise ValueError(f"Reconstruction non supportée pour le type {job.file_type}")
+            try:
+                if job.file_type == "epub":
+                    parser = EpubParser(input_path)
+                    node_meta, _ = parser.extract_nodes()
+                    parser.reconstruct_epub(node_meta, translated_nodes, output_path)
+                    return output_path
+                elif job.file_type == "pdf":
+                    parser = PdfParser(input_path)
+                    node_meta, _ = parser.extract_nodes()
+                    pdf_output_pdf = settings.OUTPUT_DIR / f"traduit_{job.file_name}"
+                    parser.reconstruct_pdf(node_meta, translated_nodes, pdf_output_pdf)
+                    return pdf_output_pdf
+                elif job.file_type == "docx":
+                    parser = DocxParser(input_path)
+                    node_meta, _ = parser.extract_nodes()
+                    parser.reconstruct_docx(node_meta, translated_nodes, output_path)
+                    return output_path
+                elif job.file_type in ["md", "txt"]:
+                    parser = TextParser(input_path)
+                    node_meta, _ = parser.extract_nodes()
+                    parser.reconstruct_text(node_meta, translated_nodes, output_path)
+                    return output_path
+                else:
+                    raise ValueError(f"Reconstruction non supportée pour le type {job.file_type}")
+            except Exception as e:
+                print(f"[TraDoc Engine WARNING] ⚠️ Erreur lors de la reconstruction de {job.file_name}: {e}")
+                if output_path.exists():
+                    return output_path
+                raise e
 
         out_path = await asyncio.to_thread(_rebuild)
-        print(f"[TraDoc Engine] 📖 Fichier reconstruit avec succès: {out_path}")
+        print(f"[TraDoc Engine] Fichier reconstruit avec succes: {out_path}")
         return out_path

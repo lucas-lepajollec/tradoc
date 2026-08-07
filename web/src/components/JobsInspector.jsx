@@ -14,6 +14,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   const [copied, setCopied] = useState(false);
   const [secondsPerChunk, setSecondsPerChunk] = useState(3.5);
   const [autoScroll, setAutoScroll] = useState(true);
+  const [isDownloading, setIsDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
@@ -57,20 +58,29 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     }
   };
 
-  // Auto-focus on the newly completed segment
+  const autoScrollRef = useRef(autoScroll);
   useEffect(() => {
-    if (job?.status === 'PROCESSING' && segments.length > 0 && prevSegmentsRef.current.length === segments.length) {
-      const newlyDoneIdx = segments.findIndex((seg, idx) => {
-        const prevSeg = prevSegmentsRef.current[idx];
-        return seg.status === 'DONE' && prevSeg && prevSeg.status !== 'DONE';
-      });
-      if (newlyDoneIdx !== -1 && autoScroll) {
-        setSelectedSegIndex(newlyDoneIdx);
+    autoScrollRef.current = autoScroll;
+  }, [autoScroll]);
+
+  const jumpToLatestSegment = (segArray = segments) => {
+    if (!segArray || segArray.length === 0) return;
+    let targetIdx = -1;
+    for (let i = segArray.length - 1; i >= 0; i--) {
+      if (segArray[i].status === 'DONE' || segArray[i].status === 'PROCESSING') {
+        targetIdx = i;
+        break;
       }
     }
-    prevSegmentsRef.current = segments;
-  }, [segments, job?.status, autoScroll]);
+    setSelectedSegIndex(targetIdx !== -1 ? targetIdx : 0);
+  };
 
+  const handleResync = () => {
+    setAutoScroll(true);
+    jumpToLatestSegment();
+  };
+
+  // Persist and restore sessionStats & speed calculation seamlessly across reloads
   useEffect(() => {
     if (!job) {
       if (sessionStats.jobId) {
@@ -80,78 +90,154 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     }
 
     if (job.status === 'PROCESSING') {
-      if (sessionStats.jobId !== job.id || sessionStats.startTime === null) {
-        setSessionStats({
+      const savedKey = `tradoc_session_${job.id}`;
+      const saved = localStorage.getItem(savedKey);
+      let activeStats = sessionStats;
+
+      // Restore from localStorage first if React state isn't initialized yet
+      if (saved && (sessionStats.jobId !== job.id || sessionStats.startTime === null)) {
+        try {
+          const parsed = JSON.parse(saved);
+          if (parsed && parsed.jobId === job.id && parsed.startTime) {
+            activeStats = parsed;
+            setSessionStats(parsed);
+            if (parsed.speed) setSecondsPerChunk(parsed.speed);
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (activeStats.jobId !== job.id || activeStats.startTime === null) {
+        const isGemma = job.model && job.model.toLowerCase().includes('gemma');
+        const defaultSpeed = isGemma ? 9.0 : 3.5;
+        const newStats = {
           jobId: job.id,
           startTime: Date.now(),
           startCompletedCount: job.completed_chunks,
+          lastCompletedCount: job.completed_chunks,
+          speed: defaultSpeed
+        };
+        setSessionStats(newStats);
+        setSecondsPerChunk(defaultSpeed);
+        localStorage.setItem(savedKey, JSON.stringify(newStats));
+      } else if (job.completed_chunks > activeStats.lastCompletedCount) {
+        const updatedStats = {
+          ...activeStats,
           lastCompletedCount: job.completed_chunks
-        });
-        const isGemma = job.model && job.model.toLowerCase().includes('gemma');
-        setSecondsPerChunk(isGemma ? 9.0 : 3.5);
-      } else if (job.completed_chunks > sessionStats.lastCompletedCount) {
-        setSessionStats(prev => ({
-          ...prev,
-          lastCompletedCount: job.completed_chunks
-        }));
+        };
 
-        // Calculate speed ONLY on chunk completion event
-        const completedInSession = job.completed_chunks - sessionStats.startCompletedCount;
-        const minHistory = 8;
-        
-        if (completedInSession >= minHistory) {
-          const elapsedSec = (Date.now() - sessionStats.startTime) / 1000;
-          if (elapsedSec > 0) {
-            const speed = elapsedSec / completedInSession;
-            setSecondsPerChunk(Math.max(0.5, Math.min(25.0, speed)));
-          }
+        const completedInSession = job.completed_chunks - activeStats.startCompletedCount;
+        const elapsedSec = (Date.now() - activeStats.startTime) / 1000;
+        let newSpeed = activeStats.speed || secondsPerChunk;
+
+        if (completedInSession >= 1 && elapsedSec > 0) {
+          newSpeed = Math.max(0.5, Math.min(25.0, elapsedSec / completedInSession));
+          setSecondsPerChunk(newSpeed);
         }
+
+        updatedStats.speed = newSpeed;
+        setSessionStats(updatedStats);
+        localStorage.setItem(savedKey, JSON.stringify(updatedStats));
       }
     } else {
       if (sessionStats.startTime !== null) {
         setSessionStats(prev => ({ ...prev, startTime: null }));
       }
+      localStorage.removeItem(`tradoc_session_${job.id}`);
     }
   }, [job?.id, job?.status, job?.completed_chunks]);
+
+  const currentJobIdRef = useRef(job?.id);
+  useEffect(() => {
+    currentJobIdRef.current = job?.id;
+  }, [job?.id]);
+
+  // Tab visibility change auto-sync (prevents UI freezing when returning to tab)
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        refreshActiveJob();
+        loadJobsList();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
 
   useEffect(() => {
     loadJobsList();
 
-    const eventSource = new EventSource('/api/events');
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'job_paused' || data.type === 'job_auto_paused') {
-          setJob((prev) => prev ? { ...prev, status: 'PAUSED' } : null);
-          setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PAUSED' } : j));
-        } else if (data.type === 'job_started') {
-          setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
-          setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PROCESSING' } : j));
-          loadJobsList();
-        } else if (data.type === 'job_completed') {
-          setJob((prev) => prev ? { ...prev, status: 'COMPLETED' } : null);
-          refreshActiveJob();
-          loadJobsList();
-        } else if (data.type === 'segment_completed' || data.type === 'segment_failed') {
-          setLogs((prev) => [data, ...prev.slice(0, 49)]);
-          refreshActiveJob();
+    let eventSource = null;
+    const connectSSE = () => {
+      eventSource = new EventSource('/api/events');
+      
+      eventSource.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'job_paused' || data.type === 'job_auto_paused') {
+            setJob((prev) => prev ? { ...prev, status: 'PAUSED' } : null);
+            setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PAUSED' } : j));
+          } else if (data.type === 'job_started') {
+            setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
+            setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PROCESSING' } : j));
+            loadJobsList();
+          } else if (data.type === 'job_completed') {
+            setJob((prev) => prev ? { ...prev, status: 'COMPLETED' } : null);
+            refreshActiveJob();
+            loadJobsList();
+          } else if (data.type === 'segment_completed' || data.type === 'segment_failed') {
+            const currentId = currentJobIdRef.current;
+            const targetId = data.job_id || currentId;
+
+            // Only append log and update segments if event belongs to currently selected job
+            if (data.job_id && data.job_id === currentId) {
+              setLogs((prev) => [data, ...prev.slice(0, 49)]);
+              if (data.chunk_index !== undefined) {
+                setSegments((prev) => prev.map((s) => s.chunk_index === data.chunk_index ? { ...s, status: data.type === 'segment_completed' ? 'DONE' : 'FAILED', translated_text: data.translated_text || s.translated_text } : s));
+                if (autoScrollRef.current) {
+                  setSelectedSegIndex(data.chunk_index);
+                }
+              }
+            }
+
+            // Update lightweight job detail to reflect progress across sidebar & header
+            if (targetId) {
+              fetchJobDetail(targetId).then((jData) => {
+                if (currentJobIdRef.current === targetId) {
+                  setJob(jData);
+                }
+                setJobs((prev) => prev.map((j) => j.id === targetId ? { ...j, completed_chunks: jData.completed_chunks, status: jData.status } : j));
+              }).catch(console.error);
+            }
+          }
+        } catch (e) {
+          console.error(e);
         }
-      } catch (e) {
-        console.error(e);
-      }
+      };
+
+      eventSource.onerror = () => {
+        if (eventSource) eventSource.close();
+        setTimeout(connectSSE, 3000);
+      };
     };
 
-    return () => eventSource.close();
+    connectSSE();
+
+    return () => {
+      if (eventSource) eventSource.close();
+    };
   }, []);
 
+  // Background backup polling interval to ensure progress never freezes even if SSE throttles
   useEffect(() => {
     const timer = setInterval(() => {
-      if (job?.id && job.status === 'PROCESSING') {
+      if (currentJobIdRef.current) {
         refreshActiveJob();
       }
-    }, 2500);
+    }, 3500);
     return () => clearInterval(timer);
-  }, [job?.id, job?.status]);
+  }, []);
 
   useEffect(() => {
     loadJobsList();
@@ -164,50 +250,97 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   const loadJobsList = async () => {
     try {
       const data = await fetchJobs();
-      setJobs(data);
-      if (data.length > 0) {
-        const targetId = selectedJobId && data.some(j => j.id === selectedJobId) ? selectedJobId : data[0].id;
-        const targetJob = data.find(j => j.id === targetId) || data[0];
-        setJob(targetJob);
-        loadJobDetails(targetJob.id);
-        if (!selectedJobId && onSelectJob) {
-          onSelectJob(targetId);
+      if (Array.isArray(data)) {
+        setJobs(data);
+        if (data.length > 0) {
+          const targetId = selectedJobId && data.some(j => j.id === selectedJobId) ? selectedJobId : data[0].id;
+          const targetJob = data.find(j => j.id === targetId) || data[0];
+          setJob(targetJob);
+          loadJobDetails(targetJob.id);
+          if (!selectedJobId && onSelectJob) {
+            onSelectJob(targetId);
+          }
+        } else {
+          setJob(null);
+          setSegments([]);
+          setLogs([]);
+          if (onSelectJob) onSelectJob(null);
         }
+      }
+    } catch (e) {
+      console.error('loadJobsList failed, retrying...', e);
+      setTimeout(async () => {
+        try {
+          const data = await fetchJobs();
+          if (Array.isArray(data) && data.length > 0) {
+            setJobs(data);
+            const targetId = selectedJobId && data.some(j => j.id === selectedJobId) ? selectedJobId : data[0].id;
+            const targetJob = data.find(j => j.id === targetId) || data[0];
+            setJob(targetJob);
+            loadJobDetails(targetJob.id);
+          }
+        } catch (retryErr) {
+          console.error('Retry loadJobsList failed:', retryErr);
+        }
+      }, 1200);
+    }
+  };
+
+  const selectJobOptimistic = (targetJob) => {
+    if (!targetJob) return;
+    const isNewJob = !job || job.id !== targetJob.id;
+    setJob(targetJob);
+    if (isNewJob) {
+      setLogs([]);
+      setSegments([]);
+    }
+    if (onSelectJob) onSelectJob(targetJob.id);
+    loadJobDetails(targetJob.id);
+  };
+
+  const loadJobDetails = async (id) => {
+    const isNewJob = !job || job.id !== id;
+    if (isNewJob) {
+      setLogs([]);
+      setSegments([]);
+    }
+    try {
+      const jData = await fetchJobDetail(id);
+      setJob(jData);
+      const sData = await fetchJobSegments(id);
+      setSegments(sData);
+
+      // Auto-focus on the latest completed or processing segment on initial load
+      jumpToLatestSegment(sData);
+
+      // Restore past completed/failed segment events into logs on load/reload
+      if (sData && sData.length > 0) {
+        const pastEvents = sData
+          .filter(s => s.status === 'DONE' || s.status === 'FAILED')
+          .slice(-30)
+          .reverse()
+          .map(s => ({
+            type: s.status === 'DONE' ? 'segment_completed' : 'segment_failed',
+            job_id: id,
+            chunk_index: s.chunk_index,
+            timestamp: s.updated_at
+          }));
+        setLogs(pastEvents);
       } else {
-        setJob(null);
-        setSegments([]);
-        if (onSelectJob) onSelectJob(null);
+        setLogs([]);
       }
     } catch (e) {
       console.error(e);
     }
   };
 
-  const selectJobOptimistic = (targetJob) => {
-    if (!targetJob) return;
-    setJob(targetJob);
-    if (onSelectJob) onSelectJob(targetJob.id);
-    loadJobDetails(targetJob.id);
-  };
-
-  const loadJobDetails = async (id) => {
-    try {
-      const jData = await fetchJobDetail(id);
-      setJob(jData);
-      const sData = await fetchJobSegments(id);
-      setSegments(sData);
-    } catch (e) {
-      console.error(e);
-    }
-  };
-
   const refreshActiveJob = async () => {
-    if (job?.id) {
+    const activeId = currentJobIdRef.current || selectedJobId;
+    if (activeId) {
       try {
-        const jData = await fetchJobDetail(job.id);
-        const sData = await fetchJobSegments(job.id);
+        const jData = await fetchJobDetail(activeId);
         setJob(jData);
-        setSegments(sData);
+        setJobs((prev) => prev.map((j) => j.id === activeId ? { ...j, completed_chunks: jData.completed_chunks, status: jData.status } : j));
       } catch (e) {
         console.error(e);
       }
@@ -289,6 +422,46 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     }
   };
 
+  const handleDownload = async () => {
+    if (!job || isDownloading) return;
+    setIsDownloading(true);
+    try {
+      const response = await fetch(`/api/jobs/${job.id}/download?t=${Date.now()}`);
+      if (!response.ok) {
+        throw new Error('Erreur lors du telechargement');
+      }
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+
+      // Extract filename from Content-Disposition header if available
+      const contentDisposition = response.headers.get('content-disposition');
+      let filename = `traduit_${job.file_name}`;
+      if (contentDisposition) {
+        const match = contentDisposition.match(/filename="(.+?)"/);
+        if (match && match[1]) {
+          filename = match[1];
+        }
+      } else {
+        if (job.file_type === 'pdf') {
+          filename = `traduit_${job.file_name}`;
+        }
+      }
+
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error(err);
+      alert(lang === 'fr' ? 'Echec de la reconstruction ou du telechargement.' : 'Failed to rebuild or download file.');
+    } finally {
+      setIsDownloading(false);
+    }
+  };
+
   const handleCopyText = (text) => {
     if (!text) return;
     navigator.clipboard.writeText(text);
@@ -309,6 +482,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     if (!job || job.total_chunks === 0) return lang === 'fr' ? 'Calcul de la vitesse...' : 'Calculating speed...';
     const isProofread = job.job_type === 'proofreading';
     if (job.status === 'COMPLETED') return isProofread ? (lang === 'fr' ? 'Relecture terminée' : 'Proofreading completed') : (lang === 'fr' ? 'Traduction terminée' : 'Translation completed');
+    if (job.status === 'PENDING') return isProofread ? (lang === 'fr' ? 'En attente de relecture...' : 'Waiting for proofreading...') : (lang === 'fr' ? 'En attente du lancement...' : 'Waiting to start...');
     if (job.status === 'PAUSED') return lang === 'fr' ? 'En pause' : 'Paused';
     if (job.completed_chunks === 0) return isProofread ? (lang === 'fr' ? 'Démarrage de la relecture...' : 'Starting proofreading...') : (lang === 'fr' ? 'Démarrage de la traduction...' : 'Starting translation...');
 
@@ -597,20 +771,30 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     <span>{lang === 'fr' ? 'Relancer Échecs' : 'Retry Failed'}</span>
                   </button>
 
-                  <a
-                    href={`/api/jobs/${job.id}/download?t=${Date.now()}`}
-                    target="_blank"
-                    rel="noreferrer"
-                    title={job.file_type === 'pdf' ? 'Export EPUB' : `Download ${job.file_type ? job.file_type.toUpperCase() : 'file'}`}
+                  <button
+                    onClick={handleDownload}
+                    disabled={isDownloading || !(job.status === 'COMPLETED' || job.completed_chunks > 0)}
+                    title={lang === 'fr' ? 'Télécharger le fichier' : 'Download file'}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center space-x-1.5 transition-all border ${
-                      job.status === 'COMPLETED' || job.completed_chunks > 0
-                        ? 'bg-white/[0.04] text-white border-white/[0.12] hover:bg-white/[0.08]'
+                      isDownloading
+                        ? 'bg-blue-500/10 text-blue-400 border-blue-500/30 cursor-wait'
+                        : job.status === 'COMPLETED' || job.completed_chunks > 0
+                        ? 'bg-white/[0.04] text-white border-white/[0.12] hover:bg-white/[0.08] cursor-pointer'
                         : 'bg-white/[0.02] text-zinc-500 border-white/[0.08] opacity-50 cursor-not-allowed pointer-events-none'
                     }`}
                   >
-                    <Download className="w-3.5 h-3.5" />
-                    <span>{lang === 'fr' ? 'Télécharger' : 'Download'} {job.file_type === 'pdf' ? 'EPUB' : (job.file_type ? job.file_type.toUpperCase() : '')}</span>
-                  </a>
+                    {isDownloading ? (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#60a5fa]" />
+                        <span>{lang === 'fr' ? 'Reconstruction...' : 'Rebuilding...'}</span>
+                      </>
+                    ) : (
+                      <>
+                        <Download className="w-3.5 h-3.5" />
+                        <span>{lang === 'fr' ? 'Télécharger' : 'Download'}</span>
+                      </>
+                    )}
+                  </button>
 
                   <button
                     onClick={(e) => handleDeleteJob(e, job.id, job.file_name)}
@@ -655,7 +839,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     {!autoScroll && (
                       <button
                         type="button"
-                        onClick={() => setAutoScroll(true)}
+                        onClick={handleResync}
                         className="px-2 py-0.5 text-[9px] font-semibold bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#60a5fa] rounded-md transition-all flex-shrink-0"
                       >
                         {lang === 'fr' ? 'Resynchroniser' : 'Resync'}

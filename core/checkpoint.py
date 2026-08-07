@@ -44,11 +44,11 @@ class CheckpointDatabase:
         self._init_db()
 
     def _get_conn(self):
-        conn = sqlite3.connect(str(self.db_path), check_same_thread=False)
+        conn = sqlite3.connect(str(self.db_path), timeout=30.0, check_same_thread=False)
         conn.row_factory = sqlite3.Row
         try:
             conn.execute("PRAGMA journal_mode=WAL;")
-            conn.execute("PRAGMA busy_timeout=5000;")
+            conn.execute("PRAGMA busy_timeout=30000;")
         except Exception:
             pass
         return conn
@@ -100,6 +100,10 @@ class CheckpointDatabase:
             )
             """)
             cursor.execute("CREATE INDEX IF NOT EXISTS idx_segments_job ON segments(job_id, chunk_index);")
+            
+            # Auto-pause any jobs left in 'PROCESSING' state when server previously stopped/restarted
+            cursor.execute("UPDATE jobs SET status = 'PAUSED' WHERE status = 'PROCESSING'")
+            cursor.execute("UPDATE segments SET status = 'PENDING' WHERE status = 'PROCESSING'")
             conn.commit()
 
     async def create_job(self, job: JobRecord, segments: List[SegmentRecord]):

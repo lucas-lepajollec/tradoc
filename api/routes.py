@@ -393,8 +393,9 @@ async def download_translated_book(job_id: str):
     if not job:
         raise HTTPException(status_code=404, detail="Job non trouvé")
 
-    # Always rebuild output file using the latest completed segments in SQLite
+    # Always rebuild output file on download so latest parser typography & segment edits are immediately applied
     out_file = await engine.rebuild_output_file(job_id)
+
     if not out_file.exists():
         raise HTTPException(status_code=400, detail="Fichier non prêt. Impossible de générer le document de sortie.")
 

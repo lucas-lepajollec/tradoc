@@ -43,7 +43,11 @@ web/.vite/
 
 # TraDoc Data & SQLite DB
 data/*.db
+data/*.db-shm
+data/*.db-wal
 *.db
+*.db-shm
+*.db-wal
 scratch/
 data/checkpoint.db
 data/input/*

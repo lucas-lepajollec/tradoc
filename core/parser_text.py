@@ -68,9 +68,13 @@ class TextParser:
         """
         output_blocks = []
         for meta, trans_html in zip(node_meta, translated_nodes):
+            if not trans_html or not trans_html.strip():
+                continue
             soup = BeautifulSoup(trans_html, "html.parser")
             tag_name = meta["tag_name"]
             text_val = soup.get_text().strip()
+            if not text_val:
+                continue
 
             if tag_name == "h1":
                 output_blocks.append(f"# {text_val}")
