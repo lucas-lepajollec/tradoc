@@ -1,22 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Cloud, BookOpen, FileText, Library, Bookmark, CheckCircle2, Sparkles, ArrowRight, ShieldCheck, Zap, Sliders, TrendingDown } from 'lucide-react';
+import { Cpu, Cloud, BookOpen, FileText, Library, Bookmark, Sparkles, ArrowRight, TrendingDown } from 'lucide-react';
 import { t } from '../i18n/translations';
 
 export default function SetupWizard({ settings, onSaveSettings, setActiveTab, lang = 'en' }) {
-  // Mode selection: 'local' (Free & Private) or 'cloud' (Fast API)
   const [mode, setMode] = useState('local');
-  
-  // Book size in pages (up to 3000 pages)
   const [pages, setPages] = useState(350);
-
-  // Advanced customizable parameters
   const [chunkSize, setChunkSize] = useState(1000);
   const [concurrency, setConcurrency] = useState(1);
   const [inputPrice, setInputPrice] = useState(0.14);
   const [outputPrice, setOutputPrice] = useState(0.28);
   const [enableCaching, setEnableCaching] = useState(true);
 
-  // Auto-tune default recommended parameters when mode changes
   useEffect(() => {
     if (mode === 'local') {
       setChunkSize(1000);
@@ -27,373 +21,113 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
     }
   }, [mode]);
 
-  // Calculations
   const wordsCount = pages * 275;
   const totalTokens = Math.round(wordsCount * 1.35);
   const totalRequests = Math.max(1, Math.ceil(totalTokens / chunkSize));
-
-  // Prompt Caching Math: System Prompt + Glossary + Literary Guidelines (~4,500 tokens per chunk)
   const promptPrefixPerChunk = 4500;
   const baseInputTokens = (totalRequests * promptPrefixPerChunk) + totalTokens;
   const rawInputCost = (baseInputTokens / 1000000) * inputPrice;
-
   let computedInputCost = rawInputCost;
 
   if (enableCaching && mode === 'cloud' && totalRequests > 1) {
     const firstChunkContent = totalTokens / totalRequests;
-    const firstRequestTokens = promptPrefixPerChunk + firstChunkContent;
-    const firstRequestCost = (firstRequestTokens / 1000000) * inputPrice;
-
-    const remainingContentTokens = totalTokens - firstChunkContent;
-    const remainingCachedPromptTokens = (totalRequests - 1) * promptPrefixPerChunk;
-
-    const remainingContentCost = (remainingContentTokens / 1000000) * inputPrice;
-    const remainingCachedPromptCost = (remainingCachedPromptTokens / 1000000) * inputPrice * 0.10;
-
+    const firstRequestCost = ((promptPrefixPerChunk + firstChunkContent) / 1000000) * inputPrice;
+    const remainingContentCost = ((totalTokens - firstChunkContent) / 1000000) * inputPrice;
+    const remainingCachedPromptCost = (((totalRequests - 1) * promptPrefixPerChunk) / 1000000) * inputPrice * 0.10;
     computedInputCost = firstRequestCost + remainingContentCost + remainingCachedPromptCost;
   }
 
   const computedOutputCost = (totalTokens / 1000000) * outputPrice;
   const totalCostNumber = computedInputCost + computedOutputCost;
   const totalCost = totalCostNumber.toFixed(2);
-
-  const rawTotalCostNumber = rawInputCost + computedOutputCost;
-  const cachingSavings = Math.max(0, rawTotalCostNumber - totalCostNumber).toFixed(2);
+  const cachingSavings = Math.max(0, rawInputCost + computedOutputCost - totalCostNumber).toFixed(2);
 
   const handleApplySettings = () => {
-    if (onSaveSettings && settings) {
-      onSaveSettings({
-        ...settings,
-        chunkSize: Number(chunkSize),
-        concurrency: Number(concurrency)
-      });
-    }
-    if (setActiveTab) {
-      setActiveTab('dashboard');
-    }
+    if (onSaveSettings && settings) onSaveSettings({ ...settings, chunkSize: Number(chunkSize), concurrency: Number(concurrency) });
+    if (setActiveTab) setActiveTab('dashboard');
   };
 
+  const presets = [
+    { pages: 50, label: t('wizard.novella', lang), icon: FileText },
+    { pages: 300, label: t('wizard.novel', lang), icon: BookOpen },
+    { pages: 800, label: t('wizard.thickBook', lang), icon: Library },
+    { pages: 2500, label: t('wizard.fullSeries', lang), icon: Bookmark },
+  ];
+
   return (
-    <div className="space-y-5">
-      
-      {/* Perfectly Balanced Bento Grid Layout */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        
-        {/* Left Column: Configuration Controls (7 Cols) */}
-        <div className="lg:col-span-7 space-y-5 flex flex-col justify-between">
-          
-          {/* Bento Box 1: Mode Switcher */}
-          <div className="card-chill p-6 lg:p-7 space-y-4 rounded-2xl">
-            <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
-              <Cpu className="w-4 h-4 text-[#60a5fa]" />
-              <span>{t('wizard.executionEnv', lang)}</span>
-            </h2>
+    <div className="estimator-page page-stack">
+      <header className="page-intro">
+        <p className="page-kicker">{lang === 'fr' ? 'Planification' : 'Planning'}</p>
+        <h1>{lang === 'fr' ? 'Estimer une traduction' : 'Estimate a translation'}</h1>
+        <p>{lang === 'fr' ? 'Configurez votre ouvrage et obtenez immédiatement une estimation lisible du volume et du coût.' : 'Configure your document and instantly get a clear volume and cost estimate.'}</p>
+      </header>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 pt-1">
-              
-              {/* Local Card */}
-              <div
-                onClick={() => setMode('local')}
-                className={`p-4 rounded-xl cursor-pointer transition-all duration-150 border flex flex-col justify-between space-y-3 ${
-                  mode === 'local'
-                    ? 'bg-white/[0.08] border-white/30 text-white shadow-sm'
-                    : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:bg-white/[0.05] hover:border-white/[0.14]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-2 rounded-lg bg-blue-500/10 border border-blue-500/20 text-[#60a5fa]">
-                    <Cpu className="w-4 h-4" />
-                  </div>
-                  {mode === 'local' && (
-                    <span className="text-[9px] font-bold font-mono px-2.5 py-0.5 rounded bg-white/10 text-white border border-white/20 uppercase">
-                      {t('wizard.activeBadge', lang)}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-white">{t('wizard.localServer', lang)}</h3>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-normal">{t('wizard.localDesc', lang)}</p>
-                </div>
-                <div className="pt-2.5 border-t border-white/[0.06] text-[11px] text-emerald-400 font-mono font-semibold flex items-center space-x-1">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                  <span>{t('wizard.localBadge', lang)}</span>
-                </div>
-              </div>
-
-              {/* Cloud Card */}
-              <div
-                onClick={() => setMode('cloud')}
-                className={`p-4 rounded-xl cursor-pointer transition-all duration-150 border flex flex-col justify-between space-y-3 ${
-                  mode === 'cloud'
-                    ? 'bg-white/[0.08] border-white/30 text-white shadow-sm'
-                    : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:bg-white/[0.05] hover:border-white/[0.14]'
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <div className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400">
-                    <Cloud className="w-4 h-4" />
-                  </div>
-                  {mode === 'cloud' && (
-                    <span className="text-[9px] font-bold font-mono px-2.5 py-0.5 rounded bg-white/10 text-white border border-white/20 uppercase">
-                      {t('wizard.activeBadge', lang)}
-                    </span>
-                  )}
-                </div>
-                <div>
-                  <h3 className="text-xs font-semibold text-white">{t('wizard.cloudApi', lang)}</h3>
-                  <p className="text-[11px] text-zinc-400 mt-0.5 leading-normal">{t('wizard.cloudDesc', lang)}</p>
-                </div>
-                <div className="pt-2.5 border-t border-white/[0.06] text-[11px] text-purple-300 font-mono font-semibold flex items-center space-x-1">
-                  <Zap className="w-3.5 h-3.5" />
-                  <span>{t('wizard.cloudBadge', lang)}</span>
-                </div>
-              </div>
-
-            </div>
-          </div>
-
-          {/* Bento Box 2: Ultra-Pro Book Pages Selection Bar */}
-          <div className="card-chill p-6 lg:p-7 space-y-4 rounded-2xl">
-            <div className="flex items-center justify-between">
-              <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
-                <BookOpen className="w-4 h-4 text-[#60a5fa]" />
-                <span>{t('wizard.bookSizeTitle', lang)}</span>
-              </h2>
-              <div className="flex items-center space-x-2">
-                <input
-                  type="number"
-                  min="20"
-                  max="3000"
-                  value={pages}
-                  onChange={(e) => setPages(Math.max(20, Math.min(3000, parseInt(e.target.value, 10) || 20)))}
-                  className="w-20 input-chill px-2.5 py-1 text-center text-xs font-mono text-white font-bold"
-                />
-                <span className="text-xs text-zinc-400 font-medium">{t('wizard.pagesUnit', lang)}</span>
-              </div>
-            </div>
-
-            {/* Pro Range Slider */}
-            <div className="space-y-1.5 py-1">
-              <input
-                type="range"
-                min={20}
-                max={3000}
-                step={10}
-                value={pages}
-                onChange={(e) => setPages(parseInt(e.target.value, 10))}
-                className="w-full cursor-pointer"
-              />
-              <div className="flex justify-between text-[10px] text-zinc-500 font-mono">
-                <span>20 p.</span>
-                <span>1 500 p.</span>
-                <span>3 000 p.</span>
-              </div>
-            </div>
-
-            {/* Pro Preset Icon Buttons */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
-              <button
-                type="button"
-                onClick={() => setPages(50)}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border flex items-center justify-center space-x-1.5 transition-all ${
-                  pages === 50
-                    ? 'bg-white/10 text-white border-white/20 font-semibold'
-                    : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
-                }`}
-              >
-                <FileText className="w-3.5 h-3.5 text-zinc-400" />
-                <span>{t('wizard.novella', lang)}</span>
+      <div className="estimator-shell">
+        <div className="estimator-form">
+          <section className="form-section">
+            <div className="section-heading"><span>01</span><div><h2>{t('wizard.executionEnv', lang)}</h2><p>{lang === 'fr' ? 'Choisissez où la traduction sera exécutée.' : 'Choose where translation will run.'}</p></div></div>
+            <div className="choice-grid">
+              <button type="button" onClick={() => setMode('local')} className={`choice-card ${mode === 'local' ? 'is-selected' : ''}`}>
+                <span className="choice-icon"><Cpu /></span><div><em>{lang === 'fr' ? 'Sur votre machine' : 'On your machine'}</em><strong>{t('wizard.localServer', lang)}</strong><small>{t('wizard.localDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.localBadge', lang)}</span>
               </button>
-
-              <button
-                type="button"
-                onClick={() => setPages(300)}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border flex items-center justify-center space-x-1.5 transition-all ${
-                  pages === 300
-                    ? 'bg-white/10 text-white border-white/20 font-semibold'
-                    : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
-                }`}
-              >
-                <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                <span>{t('wizard.novel', lang)}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPages(800)}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border flex items-center justify-center space-x-1.5 transition-all ${
-                  pages === 800
-                    ? 'bg-white/10 text-white border-white/20 font-semibold'
-                    : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
-                }`}
-              >
-                <Library className="w-3.5 h-3.5 text-zinc-400" />
-                <span>{t('wizard.thickBook', lang)}</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setPages(2500)}
-                className={`py-2 px-3 rounded-xl text-xs font-medium border flex items-center justify-center space-x-1.5 transition-all ${
-                  pages === 2500
-                    ? 'bg-white/10 text-white border-white/20 font-semibold'
-                    : 'bg-white/[0.02] text-zinc-400 border-white/[0.06] hover:bg-white/[0.05] hover:text-white'
-                }`}
-              >
-                <Bookmark className="w-3.5 h-3.5 text-zinc-400" />
-                <span>{t('wizard.fullSeries', lang)}</span>
+              <button type="button" onClick={() => setMode('cloud')} className={`choice-card ${mode === 'cloud' ? 'is-selected' : ''}`}>
+                <span className="choice-icon"><Cloud /></span><div><em>{lang === 'fr' ? 'Via un fournisseur' : 'Through a provider'}</em><strong>{t('wizard.cloudApi', lang)}</strong><small>{t('wizard.cloudDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.cloudBadge', lang)}</span>
               </button>
             </div>
-          </div>
+          </section>
 
-          {/* Bento Box 3: Advanced Parameters */}
-          <div className="card-chill p-6 lg:p-7 space-y-4 rounded-2xl">
-            <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
-              <Sliders className="w-4 h-4 text-zinc-400" />
-              <span>{t('wizard.fineTuningTitle', lang)}</span>
-            </h2>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              
-              {/* Chunk Size */}
-              <div className="space-y-1">
-                <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.chunkSize', lang)}</label>
-                <input
-                  type="number"
-                  step="250"
-                  value={chunkSize}
-                  onChange={(e) => setChunkSize(parseInt(e.target.value, 10) || 1000)}
-                  className="w-full input-chill px-3.5 py-2 text-xs font-mono"
-                />
+          <section className="form-section">
+            <div className="section-heading"><span>02</span><div><h2>{t('wizard.bookSizeTitle', lang)}</h2><p>{lang === 'fr' ? 'Indiquez la longueur approximative du document.' : 'Set the approximate document length.'}</p></div></div>
+            <div className="page-control">
+              <div className="page-amount">
+                <span>{lang === 'fr' ? 'Longueur du document' : 'Document length'}</span>
+                <div><input type="number" min="20" max="3000" value={pages} style={{ width: `${Math.max(3, String(pages).length) * 15}px` }} onChange={(e) => setPages(Math.max(20, Math.min(3000, parseInt(e.target.value, 10) || 20)))} /><strong>{t('wizard.pagesUnit', lang)}</strong></div>
+                <small>~{wordsCount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'mots estimés' : 'estimated words'}</small>
               </div>
-
-              {/* Concurrency */}
-              <div className="space-y-1">
-                <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.concurrencySlots', lang)}</label>
-                <input
-                  type="number"
-                  min="1"
-                  max="16"
-                  value={concurrency}
-                  onChange={(e) => setConcurrency(parseInt(e.target.value, 10) || 1)}
-                  className="w-full input-chill px-3.5 py-2 text-xs font-mono"
-                />
+              <div className="page-slider">
+                <input type="range" min={20} max={3000} step={10} value={pages} onChange={(e) => setPages(parseInt(e.target.value, 10))} />
+                <div><span>20 p.</span><span>3 000 p.</span></div>
               </div>
-
-              {/* API Prices if Cloud */}
-              {mode === 'cloud' && (
-                <>
-                  <div className="space-y-1">
-                    <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.inputPrice', lang)}</label>
-                    <input
-                      type="number"
-                      step="0.05"
-                      value={inputPrice}
-                      onChange={(e) => setInputPrice(parseFloat(e.target.value) || 0)}
-                      className="w-full input-chill px-3.5 py-2 text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <label className="block text-[10px] text-zinc-400 uppercase font-semibold">{t('wizard.outputPrice', lang)}</label>
-                    <input
-                      type="number"
-                      step="0.05"
-                      value={outputPrice}
-                      onChange={(e) => setOutputPrice(parseFloat(e.target.value) || 0)}
-                      className="w-full input-chill px-3.5 py-2 text-xs font-mono"
-                    />
-                  </div>
-
-                  <div className="sm:col-span-2 pt-1 border-t border-white/[0.06]">
-                    <label className="flex items-center space-x-2.5 cursor-pointer text-xs">
-                      <input
-                        type="checkbox"
-                        checked={enableCaching}
-                        onChange={(e) => setEnableCaching(e.target.checked)}
-                        className="accent-[#2563eb] w-4 h-4"
-                      />
-                      <span className="text-zinc-200 text-xs">{t('wizard.enableCaching', lang)}</span>
-                    </label>
-                  </div>
-                </>
-              )}
-
             </div>
-          </div>
+            <div className="preset-row">
+              {presets.map(({ pages: presetPages, label, icon: Icon }) => (
+                <button type="button" key={presetPages} onClick={() => setPages(presetPages)} className={pages === presetPages ? 'is-selected' : ''}><Icon /><span>{label}</span><small>{presetPages} p.</small></button>
+              ))}
+            </div>
+          </section>
 
+          <section className="form-section">
+            <div className="section-heading"><span>03</span><div><h2>{t('wizard.fineTuningTitle', lang)}</h2><p>{lang === 'fr' ? 'Ajustez uniquement si vous connaissez les limites de votre modèle.' : 'Adjust only if you know your model limits.'}</p></div></div>
+            <div className="field-grid">
+              <label><span>{t('wizard.chunkSize', lang)}</span><input type="number" step="250" value={chunkSize} onChange={(e) => setChunkSize(parseInt(e.target.value, 10) || 1000)} /></label>
+              <label><span>{t('wizard.concurrencySlots', lang)}</span><input type="number" min="1" max="16" value={concurrency} onChange={(e) => setConcurrency(parseInt(e.target.value, 10) || 1)} /></label>
+              {mode === 'cloud' && <>
+                <label><span>{t('wizard.inputPrice', lang)}</span><input type="number" step="0.05" value={inputPrice} onChange={(e) => setInputPrice(parseFloat(e.target.value) || 0)} /></label>
+                <label><span>{t('wizard.outputPrice', lang)}</span><input type="number" step="0.05" value={outputPrice} onChange={(e) => setOutputPrice(parseFloat(e.target.value) || 0)} /></label>
+                <button type="button" role="switch" aria-checked={enableCaching} className={`cache-toggle-card ${enableCaching ? 'is-active' : ''}`} onClick={() => setEnableCaching(!enableCaching)}>
+                  <span className="cache-icon"><Sparkles /></span>
+                  <span className="cache-copy"><strong>{lang === 'fr' ? 'Prompt Caching' : 'Prompt Caching'}</strong><small>{t('wizard.enableCaching', lang)} · {lang === 'fr' ? 'jusqu’à 90 % d’économie sur les prompts répétés' : 'up to 90% savings on repeated prompts'}</small></span>
+                  <span className="cache-switch"><i /></span>
+                </button>
+              </>}
+            </div>
+          </section>
         </div>
 
-        {/* Right Column: Live Results Hero Card (5 Cols) */}
-        <div className="lg:col-span-5 flex flex-col justify-between">
-          
-          <div className="card-chill p-6 lg:p-7 rounded-2xl flex flex-col justify-between h-full space-y-6 border border-white/[0.12]">
-            
-            <div className="space-y-6">
-              <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
-                <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
-                  <Sparkles className="w-4 h-4 text-[#60a5fa]" />
-                  <span>{t('wizard.resultsTitle', lang)}</span>
-                </h2>
-                <span className="text-xs font-mono text-zinc-400 bg-white/[0.06] px-2.5 py-1 rounded-lg border border-white/[0.08]">
-                  {totalRequests} {t('wizard.chunksUnit', lang)}
-                </span>
-              </div>
-
-              {/* Volume Metrics */}
-              <div className="space-y-2.5 text-xs">
-                <div className="flex justify-between py-2 border-b border-white/[0.06]">
-                  <span className="text-zinc-400">{t('wizard.estimatedVolume', lang)}</span>
-                  <span className="text-white font-mono font-bold">~{wordsCount.toLocaleString()} {lang === 'fr' ? 'mots' : 'words'}</span>
-                </div>
-                <div className="flex justify-between py-2 border-b border-white/[0.06]">
-                  <span className="text-zinc-400">{t('wizard.totalTokens', lang)}</span>
-                  <span className="text-white font-mono font-bold">~{totalTokens.toLocaleString()} tokens</span>
-                </div>
-              </div>
-
-              {/* Cost Highlight Hero Box */}
-              <div className="p-6 rounded-2xl bg-black/50 border border-white/[0.1] text-center space-y-2">
-                <span className="text-xs font-semibold text-zinc-400 uppercase tracking-wider block">{t('wizard.estimatedCost', lang)}</span>
-                <span className="text-3xl font-extrabold text-emerald-400 font-mono block tracking-tight">
-                  {mode === 'local' ? '0.00 €' : `$${totalCost}`}
-                </span>
-                <span className="text-xs text-zinc-400 block pt-0.5">
-                  {mode === 'local' ? t('wizard.freeLocal', lang) : `Prix API (${inputPrice}$ in / ${outputPrice}$ out)`}
-                </span>
-
-                {mode === 'cloud' && enableCaching && parseFloat(cachingSavings) > 0 && (
-                  <div className="pt-2">
-                    <span className="inline-flex items-center space-x-1.5 text-xs font-semibold text-emerald-400 bg-emerald-500/10 px-3 py-1 rounded-full border border-emerald-500/20">
-                      <TrendingDown className="w-3.5 h-3.5" />
-                      <span>-{cachingSavings}$ Prompt Caching</span>
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Disclaimer & Apply Action Button */}
-            <div className="pt-4 border-t border-white/[0.08] space-y-2.5">
-              <p className="text-[11px] text-zinc-500 italic text-center leading-normal">
-                {t('wizard.disclaimer', lang)}
-              </p>
-              <button
-                type="button"
-                onClick={handleApplySettings}
-                className="w-full btn-orange py-3.5 text-xs font-semibold flex items-center justify-center space-x-2"
-              >
-                <span>{t('wizard.applySettings', lang)}</span>
-                <ArrowRight className="w-4 h-4" />
-              </button>
-            </div>
-
-          </div>
-
-        </div>
-
+        <aside className="estimate-receipt">
+          <div className="receipt-heading"><Sparkles /><span>{t('wizard.resultsTitle', lang)}</span></div>
+          <div className="cost-display"><small>{t('wizard.estimatedCost', lang)}</small><strong>{mode === 'local' ? '0,00 €' : `$${totalCost}`}</strong><p>{mode === 'local' ? t('wizard.freeLocal', lang) : `${inputPrice}$ input · ${outputPrice}$ output`}</p></div>
+          <dl>
+            <div><dt>{t('wizard.estimatedVolume', lang)}</dt><dd>~{wordsCount.toLocaleString()} {lang === 'fr' ? 'mots' : 'words'}</dd></div>
+            <div><dt>{t('wizard.totalTokens', lang)}</dt><dd>~{totalTokens.toLocaleString()}</dd></div>
+            <div><dt>{t('wizard.chunksUnit', lang)}</dt><dd>{totalRequests}</dd></div>
+            <div><dt>{lang === 'fr' ? 'Exécution' : 'Execution'}</dt><dd>{mode === 'local' ? t('wizard.localServer', lang) : t('wizard.cloudApi', lang)}</dd></div>
+          </dl>
+          {mode === 'cloud' && enableCaching && parseFloat(cachingSavings) > 0 && <div className="saving-note"><TrendingDown />{lang === 'fr' ? 'Économie estimée' : 'Estimated savings'}: {cachingSavings}$</div>}
+          <p className="receipt-note">{t('wizard.disclaimer', lang)}</p>
+          <button type="button" onClick={handleApplySettings} className="primary-button">{t('wizard.applySettings', lang)}<ArrowRight /></button>
+        </aside>
       </div>
-
     </div>
   );
 }

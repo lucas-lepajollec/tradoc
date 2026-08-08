@@ -235,18 +235,23 @@ export default function Settings({
 
     // 2. Load target provider config if saved previously
     const targetConfig = updatedConfigs[prov.id];
+    const targetIsLocal = ['lm-studio', 'ollama'].includes(prov.id);
+    const targetChunkMin = 200;
+    const targetChunkMax = 10000;
+    const targetChunkRecommended = targetIsLocal ? 1000 : 7000;
     setApiType(prov.id);
     if (targetConfig) {
       setEndpoint(targetConfig.endpoint || prov.defaultUrl);
       setApiKey(targetConfig.apiKey !== undefined ? targetConfig.apiKey : '');
       setModel(targetConfig.model || prov.defaultModel);
       setConcurrency(targetConfig.concurrency !== undefined ? targetConfig.concurrency : (['lm-studio', 'ollama'].includes(prov.id) ? 1 : 4));
-      if (targetConfig.chunkSize) setChunkSize(targetConfig.chunkSize);
+      setChunkSize(Math.max(targetChunkMin, Math.min(targetChunkMax, targetConfig.chunkSize || targetChunkRecommended)));
     } else {
       setEndpoint(prov.defaultUrl);
       setApiKey('');
       setModel(prov.defaultModel);
-      setConcurrency(['lm-studio', 'ollama'].includes(prov.id) ? 1 : 4);
+      setConcurrency(targetIsLocal ? 1 : 4);
+      setChunkSize(targetChunkRecommended);
     }
     setFetchedModels([]);
     setModelSearch('');
@@ -363,24 +368,20 @@ export default function Settings({
   ];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6">
+    <div className="settings-page space-y-7">
       
       {/* Header */}
-      <div className="flex items-center space-x-3 border-b border-white/[0.08] pb-4">
-        <div className="w-10 h-10 rounded-xl bg-white/[0.04] border border-white/[0.08] text-white flex items-center justify-center">
-          <Server className="w-5 h-5 text-[#60a5fa]" />
-        </div>
-        <div>
-          <h1 className="text-base font-semibold text-white tracking-tight">{t('settings.title', lang)}</h1>
-          <p className="text-xs text-[#888]">{t('settings.subtitle', lang)}</p>
-        </div>
-      </div>
+      <header className="page-intro">
+        <p className="page-kicker">{lang === 'fr' ? 'Préférences' : 'Preferences'}</p>
+        <h1>{t('settings.title', lang)}</h1>
+        <p>{t('settings.subtitle', lang)}</p>
+      </header>
 
       {/* Main Settings Layout with Internal Sidebar Navigation */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 items-start">
+      <div className="settings-layout">
         
         {/* Internal Sub-Navigation Sidebar */}
-        <div className="card-chill p-2.5 space-y-1 md:col-span-1">
+        <div className="settings-tabs flex gap-1 overflow-x-auto p-1.5">
           {subTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeSubTab === tab.id;
@@ -389,7 +390,7 @@ export default function Settings({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveSubTab(tab.id)}
-                className={`w-full flex items-center space-x-3 px-3.5 py-3 rounded-xl text-xs font-medium transition-colors duration-100 outline-none focus:outline-none focus:ring-0 ${
+                className={`settings-tab flex-1 min-w-max flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-colors duration-100 outline-none focus:outline-none focus:ring-0 ${
                   isActive
                     ? 'bg-white/[0.08] text-white font-semibold border border-white/[0.12]'
                     : 'text-[#888] hover:text-white hover:bg-white/[0.04] border border-transparent'
@@ -403,7 +404,7 @@ export default function Settings({
         </div>
 
         {/* Settings Tab Content Area */}
-        <div className="md:col-span-3 card-chill p-6 sm:p-8">
+        <div className="settings-content card-chill p-6 sm:p-8">
           <form onSubmit={handleSaveAll}>
 
             {/* TAB 1: PROVIDERS & MODELS */}
@@ -464,32 +465,6 @@ export default function Settings({
 
               {/* Form Parameters */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* API Key */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2 flex items-center space-x-1.5">
-                    <Key className="w-3.5 h-3.5 text-[#444]" />
-                    <span>{t('settings.apiKey', lang)}</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder={isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang)}
-                      disabled={isLocal && apiType !== 'lm-studio'}
-                      className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-40 pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                      title={showApiKey ? "Masquer la clé" : "Afficher la clé"}
-                    >
-                      {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                </div>
-
                 {/* Model Name Selector */}
                 <div className="space-y-1.5">
                   <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider flex items-center justify-between">
@@ -531,6 +506,32 @@ export default function Settings({
                   </div>
                 </div>
 
+                {/* API Key */}
+                <div>
+                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2 flex items-center space-x-1.5">
+                    <Key className="w-3.5 h-3.5 text-[#444]" />
+                    <span>{t('settings.apiKey', lang)}</span>
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showApiKey ? 'text' : 'password'}
+                      value={apiKey}
+                      onChange={(e) => setApiKey(e.target.value)}
+                      placeholder={isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang)}
+                      disabled={isLocal && apiType !== 'lm-studio'}
+                      className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-40 pr-9"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowApiKey(!showApiKey)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
+                      title={showApiKey ? "Masquer la clé" : "Afficher la clé"}
+                    >
+                      {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
+
                 {/* Endpoint URL */}
                 <div>
                   <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2 flex items-center space-x-1.5">
@@ -544,6 +545,17 @@ export default function Settings({
                     disabled={!isLocal}
                     className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-50"
                   />
+                </div>
+              </div>
+
+              <div className="local-model-detection-note">
+                <RefreshCw />
+                <div>
+                  <strong>{lang === 'fr' ? 'Détection automatique des modèles' : 'Automatic model detection'}</strong>
+                  <span>{isLocal
+                    ? (lang === 'fr' ? 'Renseignez l’endpoint de votre serveur local : TraDoc détectera automatiquement les modèles disponibles.' : 'Enter your local server endpoint and TraDoc will automatically detect the available models.')
+                    : (lang === 'fr' ? 'Renseignez votre clé API : TraDoc détectera automatiquement les modèles Cloud disponibles.' : 'Enter your API key and TraDoc will automatically detect the available Cloud models.')}
+                  </span>
                 </div>
               </div>
 
@@ -643,15 +655,18 @@ export default function Settings({
                     {t('settings.chunkSizeLabel', lang, { count: chunkSize })}
                   </label>
                   <input
-                    type="number"
+                    type="range"
                     min={200}
-                    max={15000}
+                    max={10000}
                     step={100}
                     value={chunkSize}
-                    onChange={(e) => setChunkSize(parseInt(e.target.value) || 1000)}
-                    className="w-full input-chill px-3 py-1.5 text-xs font-mono"
+                    onChange={(e) => setChunkSize(parseInt(e.target.value, 10))}
+                    className="w-full accent-[#2563eb] mt-2"
                   />
-                  <span className="text-[10px] text-[#666] font-mono mt-1 block">{t('settings.chunkSizeAdvice', lang)}</span>
+                  <div className="segment-size-advice">
+                    <span><i />Local : 500–2 500 <b>1 000 recommandé</b></span>
+                    <span><i />Cloud : 2 500–10 000 <b>7 000 recommandé</b></span>
+                  </div>
                 </div>
 
                 {/* Temperature */}
@@ -689,27 +704,14 @@ export default function Settings({
               </div>
 
               {/* Proofreading Toggle */}
-              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/[0.08] backdrop-blur-md flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-white uppercase tracking-wider">{t('settings.proofreadingTitle', lang)}</span>
-                    <span className="text-[9px] font-mono text-[#888] bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08] font-bold flex-shrink-0">{t('settings.proofreadingBadge', lang)}</span>
-                  </div>
-                  <p className="text-xs text-[#888] leading-relaxed">{t('settings.proofreadingDesc', lang)}</p>
-                </div>
-                <div className="flex items-center justify-between sm:justify-end gap-3 flex-shrink-0 pt-1 sm:pt-0 border-t sm:border-t-0 border-white/[0.06]">
-                  <span className="text-xs font-semibold text-zinc-400 sm:hidden">Activer la Passe 2 :</span>
-                  <label className="relative inline-flex items-center cursor-pointer flex-shrink-0">
-                    <input
-                      type="checkbox"
-                      checked={enableProofreading}
-                      onChange={(e) => setEnableProofreading(e.target.checked)}
-                      className="sr-only peer"
-                    />
-                    <div className="w-11 h-6 bg-zinc-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-zinc-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#2563eb]"></div>
-                  </label>
-                </div>
-              </div>
+              <button type="button" role="switch" aria-checked={enableProofreading} className={`proofreading-toggle-compact ${enableProofreading ? 'is-active' : ''}`} onClick={() => setEnableProofreading(!enableProofreading)}>
+                <span className="proofreading-toggle-copy">
+                  <strong>{lang === 'fr' ? 'Relecture éditoriale' : 'Editorial proofreading'}</strong>
+                  <small>{lang === 'fr' ? 'Deuxième passe automatique après la traduction' : 'Automatic second pass after translation'}</small>
+                </span>
+                <span className="proofreading-toggle-status">{enableProofreading ? (lang === 'fr' ? 'Activée' : 'Enabled') : (lang === 'fr' ? 'Désactivée' : 'Disabled')}</span>
+                <span className="proofreading-switch"><i /></span>
+              </button>
 
               {/* System Prompt Presets */}
               <div className="space-y-3 pt-2">
@@ -771,174 +773,110 @@ export default function Settings({
             </div>
 
             {/* TAB 3: GLOBAL SETTINGS & LANGUAGE */}
-            <div className={activeSubTab === 'global' ? 'space-y-6' : 'hidden'}>
-              <div className="border-b border-white/[0.08] pb-3">
-                <h2 className="text-sm font-semibold text-white flex items-center space-x-2">
-                  <Globe className="w-4 h-4 text-[#60a5fa]" />
-                  <span>{t('settings.tabGlobal', lang)}</span>
-                </h2>
-                <p className="text-xs text-[#888] mt-0.5">{t('settings.languageDesc', lang)}</p>
-              </div>
-
-              <div className="space-y-4">
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider">
-                  {t('settings.languageTitle', lang)}
-                </label>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setLang('en')}
-                    className={`p-5 rounded-2xl border flex items-center justify-between text-left transition-all ${
-                      lang === 'en'
-                        ? 'bg-white/[0.08] border-[#60a5fa] text-white'
-                        : 'bg-black/30 border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.03]'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">🇬🇧</span>
-                      <div>
-                        <p className="text-xs font-semibold text-white">{t('settings.langEnglish', lang)}</p>
-                        <p className="text-[10px] text-zinc-500">Default application language</p>
-                      </div>
-                    </div>
-                    {lang === 'en' && <Check className="w-4 h-4 text-[#60a5fa]" />}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => setLang('fr')}
-                    className={`p-5 rounded-2xl border flex items-center justify-between text-left transition-all ${
-                      lang === 'fr'
-                        ? 'bg-white/[0.08] border-[#60a5fa] text-white'
-                        : 'bg-black/30 border-white/[0.08] text-zinc-400 hover:text-white hover:bg-white/[0.03]'
-                    }`}
-                  >
-                    <div className="flex items-center space-x-3">
-                      <span className="text-2xl">🇫🇷</span>
-                      <div>
-                        <p className="text-xs font-semibold text-white">{t('settings.langFrench', lang)}</p>
-                        <p className="text-[10px] text-zinc-500">Interface entièrement traduite en Français</p>
-                      </div>
-                    </div>
-                    {lang === 'fr' && <Check className="w-4 h-4 text-[#60a5fa]" />}
-                  </button>
-                </div>
-              </div>
-
-              {/* Security & Authentication Box */}
-              <div className="pt-6 border-t border-white/[0.08] space-y-4">
+            <div className={activeSubTab === 'global' ? 'settings-global-panel' : 'hidden'}>
+              <div className="settings-section-heading">
+                <span className="settings-section-heading-icon"><Globe /></span>
                 <div>
-                  <label className="block text-xs font-semibold text-white uppercase tracking-wider flex items-center space-x-2">
-                    <Lock className="w-4 h-4 text-[#60a5fa]" />
-                    <span>{lang === 'fr' ? 'Sécurité & Jeton d\'Authentification App' : 'Security & App Token Authentication'}</span>
-                  </label>
-                  <p className="text-[11px] text-[#888] mt-1">
-                    {lang === 'fr' 
-                      ? 'Si la variable APP_SECRET est configurée sur votre serveur Docker, entrez votre mot de passe secret ci-dessous pour autoriser les requêtes API.'
-                      : 'If APP_SECRET is configured on your Docker server, enter your secret token below to authorize API requests.'}
-                  </p>
-                </div>
-
-                <div className="p-4 rounded-xl bg-black/40 border border-white/[0.08] space-y-3">
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider">
-                    {lang === 'fr' ? 'Clé Secrète de l\'Application (X-App-Secret)' : 'Application Secret Token (X-App-Secret)'}
-                  </label>
-                  <input
-                    type="password"
-                    value={appSecret}
-                    onChange={(e) => setAppSecret(e.target.value)}
-                    placeholder={lang === 'fr' ? 'Ex: MonSecretUltraSecurise2026' : 'Ex: MySuperSecretToken2026'}
-                    className="w-full input-chill px-3 py-2 text-xs font-mono"
-                  />
-                  <span className="text-[10px] text-zinc-500 block">
-                    {lang === 'fr' 
-                      ? 'Ce jeton est stocké localement et envoyé dans les en-têtes HTTP de chaque requête vers le conteneur TraDoc.'
-                      : 'This token is stored locally and sent in HTTP headers for each request to your TraDoc container.'}
-                  </span>
+                  <h2>{t('settings.tabGlobal', lang)}</h2>
+                  <p>{t('settings.languageDesc', lang)}</p>
                 </div>
               </div>
+
+              <section className="global-settings-section">
+                <div className="global-section-copy">
+                  <div>
+                    <span className="section-eyebrow">Interface</span>
+                    <h3>{t('settings.languageTitle', lang)}</h3>
+                    <p>{lang === 'fr' ? 'Choisissez la langue utilisée dans toute l’application.' : 'Choose the language used throughout the application.'}</p>
+                  </div>
+                </div>
+                <div className="language-choice-grid">
+                  <button type="button" onClick={() => setLang('en')} className={`language-choice ${lang === 'en' ? 'is-selected' : ''}`}>
+                    <span className="language-code">EN</span>
+                    <span className="language-copy"><strong>{t('settings.langEnglish', lang)}</strong><small>English interface</small></span>
+                    <span className="language-radio" aria-hidden="true"><i /></span>
+                  </button>
+                  <button type="button" onClick={() => setLang('fr')} className={`language-choice ${lang === 'fr' ? 'is-selected' : ''}`}>
+                    <span className="language-code">FR</span>
+                    <span className="language-copy"><strong>{t('settings.langFrench', lang)}</strong><small>Interface en français</small></span>
+                    <span className="language-radio" aria-hidden="true"><i /></span>
+                  </button>
+                </div>
+              </section>
+
+              <section className="global-settings-section security-settings-section">
+                <div className="global-section-copy">
+                  <span className="global-section-icon"><Lock /></span>
+                  <div>
+                    <span className="section-eyebrow">{lang === 'fr' ? 'Sécurité' : 'Security'}</span>
+                    <h3>{lang === 'fr' ? 'Jeton d’application' : 'Application token'}</h3>
+                    <p>{lang === 'fr' ? 'Renseignez ce champ uniquement si APP_SECRET est activé sur votre serveur.' : 'Only fill this field when APP_SECRET is enabled on your server.'}</p>
+                  </div>
+                </div>
+                <label className="secret-field">
+                  <span>{lang === 'fr' ? 'Clé secrète' : 'Secret token'} <small>X-App-Secret</small></span>
+                  <input type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} placeholder={lang === 'fr' ? 'Saisissez votre jeton' : 'Enter your token'} className="input-chill font-mono" />
+                  <p>{lang === 'fr' ? 'Stocké localement puis envoyé avec chaque requête adressée à TraDoc.' : 'Stored locally and sent with every request made to TraDoc.'}</p>
+                </label>
+              </section>
             </div>
 
             {/* TAB 4: CONFIG PRESETS MANAGER */}
-            <div className={activeSubTab === 'presets' ? 'space-y-6' : 'hidden'}>
-              <div className="border-b border-white/[0.08] pb-3">
-                <h2 className="text-sm font-semibold text-white flex items-center space-x-2">
-                  <Bookmark className="w-4 h-4 text-[#60a5fa]" />
-                  <span>{t('settings.presetsManagerTitle', lang)}</span>
-                </h2>
-                <p className="text-xs text-[#888] mt-0.5">{t('settings.presetsManagerDesc', lang)}</p>
-              </div>
-
-              {/* Create New Preset Form */}
-              <div className="p-4 bg-white/[0.02] border border-white/[0.08] rounded-xl space-y-3">
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider">
-                  {t('settings.saveCurrentAsPreset', lang)}
-                </label>
-                <div className="flex items-center space-x-3">
-                  <input
-                    type="text"
-                    value={newPresetNameInput}
-                    onChange={(e) => setNewPresetNameInput(e.target.value)}
-                    placeholder={t('settings.presetNamePlaceholder', lang)}
-                    className="input-chill px-3 py-2 text-xs flex-1 font-mono"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleSaveConfigPreset}
-                    disabled={!newPresetNameInput.trim()}
-                    className="btn-chill px-4 py-2 text-xs flex items-center space-x-2 disabled:opacity-40"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('settings.savePresetBtn', lang)}</span>
-                  </button>
+            <div className={activeSubTab === 'presets' ? 'settings-presets-panel' : 'hidden'}>
+              <div className="settings-section-heading">
+                <span className="settings-section-heading-icon"><Bookmark /></span>
+                <div>
+                  <h2>{t('settings.presetsManagerTitle', lang)}</h2>
+                  <p>{t('settings.presetsManagerDesc', lang)}</p>
                 </div>
               </div>
 
-              {/* List of Saved Presets */}
-              <div className="space-y-3">
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider">
-                  {t('settings.savedPresetsList', lang)}
-                </label>
+              <section className="preset-create-card">
+                <span className="preset-create-icon"><Plus /></span>
+                <div className="preset-create-copy">
+                  <strong>{lang === 'fr' ? 'Enregistrer la configuration actuelle' : 'Save the current configuration'}</strong>
+                  <p>{lang === 'fr' ? 'Créez un raccourci avec le fournisseur, le modèle et les réglages actifs.' : 'Create a shortcut with the active provider, model and settings.'}</p>
+                </div>
+                <div className="preset-create-controls">
+                  <input type="text" value={newPresetNameInput} onChange={(e) => setNewPresetNameInput(e.target.value)} placeholder={t('settings.presetNamePlaceholder', lang)} className="input-chill" />
+                  <button type="button" onClick={handleSaveConfigPreset} disabled={!newPresetNameInput.trim()} className="btn-chill">
+                    <Plus /><span>{t('settings.savePresetBtn', lang)}</span>
+                  </button>
+                </div>
+              </section>
 
-                <div className="grid grid-cols-1 gap-3">
+              <section className="preset-library">
+                <div className="preset-library-heading">
+                  <div><span className="section-eyebrow">{lang === 'fr' ? 'Bibliothèque' : 'Library'}</span><h3>{t('settings.savedPresetsList', lang)}</h3></div>
+                  <span className="preset-count">{presets.length}</span>
+                </div>
+
+                <div className="preset-card-grid">
+                  {presets.length === 0 && (
+                    <div className="preset-empty-state">
+                      <Bookmark />
+                      <strong>{lang === 'fr' ? 'Aucun preset enregistré' : 'No saved presets'}</strong>
+                      <p>{lang === 'fr' ? 'Donnez un nom à la configuration actuelle pour la retrouver ici.' : 'Name the current configuration to find it here.'}</p>
+                    </div>
+                  )}
                   {presets.map((preset) => {
                     const isActive = activePresetId === preset.id;
                     return (
-                      <div
-                        key={preset.id}
-                        className={`p-4 rounded-xl border flex items-center justify-between transition-all ${
-                          isActive
-                            ? 'bg-white/[0.06] border-[#60a5fa]/40 text-white'
-                            : 'bg-black/30 border-white/[0.08] text-zinc-300'
-                        }`}
-                      >
-                        <div className="space-y-1">
-                          <div className="flex items-center space-x-2">
-                            <span className="font-semibold text-xs text-white">{preset.name}</span>
-                            {isActive && (
-                              <span className="text-[9px] font-mono text-[#60a5fa] bg-blue-500/10 px-2 py-0.5 rounded border border-blue-500/20 font-bold">
-                                {t('settings.activeBadge', lang)}
-                              </span>
-                            )}
-                          </div>
-                          <p className="text-[10px] font-mono text-zinc-500">
-                            Provider: <span className="text-zinc-300">{preset.apiType}</span> | Model: <span className="text-zinc-300">{preset.model}</span> | Concurrency: <span className="text-zinc-300">{preset.concurrency}</span>
-                          </p>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          {!isActive && (
-                            <button
-                              type="button"
-                              onClick={() => onApplyPreset && onApplyPreset(preset.id)}
-                              className="btn-chill px-3 py-1.5 text-xs flex items-center space-x-1.5"
-                            >
-                              <Check className="w-3.5 h-3.5 text-emerald-400" />
-                              <span>{t('settings.activatePresetBtn', lang)}</span>
-                            </button>
-                          )}
-
+                      <article key={preset.id} className={`settings-preset-card ${isActive ? 'is-active' : ''}`}>
+                        <header>
+                          <div><small>Configuration</small><strong title={preset.name}>{preset.name}</strong></div>
+                          <span className={`preset-state ${isActive ? 'is-active' : ''}`}><i />{isActive ? t('settings.activeBadge', lang) : (lang === 'fr' ? 'Disponible' : 'Available')}</span>
+                        </header>
+                        <dl>
+                          <div><dt>{lang === 'fr' ? 'Fournisseur' : 'Provider'}</dt><dd>{preset.apiType || '—'}</dd></div>
+                          <div><dt>{lang === 'fr' ? 'Modèle' : 'Model'}</dt><dd title={preset.model}>{preset.model || '—'}</dd></div>
+                          <div><dt>{lang === 'fr' ? 'Concurrence' : 'Concurrency'}</dt><dd>{preset.concurrency ?? '—'}</dd></div>
+                          <div><dt>{lang === 'fr' ? 'Segment' : 'Chunk'}</dt><dd>{preset.chunkSize || 1000} tokens</dd></div>
+                        </dl>
+                        <footer>
+                          {!isActive ? (
+                            <button type="button" onClick={() => onApplyPreset && onApplyPreset(preset.id)} className="preset-activate-button"><Check /><span>{t('settings.activatePresetBtn', lang)}</span></button>
+                          ) : <span className="preset-active-copy"><Check />{lang === 'fr' ? 'Preset utilisé' : 'Preset in use'}</span>}
                           <button
                             type="button"
                             onClick={() => {
@@ -946,18 +884,17 @@ export default function Settings({
                                 if (onDeletePreset) onDeletePreset(preset.id);
                               }
                             }}
-                            className="p-2 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 rounded-lg transition-all"
+                            className="preset-delete-button"
                             title={t('settings.deletePresetBtn', lang)}
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 />
                           </button>
-                        </div>
-                      </div>
+                        </footer>
+                      </article>
                     );
                   })}
                 </div>
-              </div>
-
+              </section>
             </div>
 
             {/* Bottom Save All Bar */}

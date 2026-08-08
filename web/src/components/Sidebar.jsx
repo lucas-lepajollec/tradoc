@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookOpen, LayoutDashboard, Settings as SettingsIcon, BookMarked, Cpu, TestTube, X, Sliders } from 'lucide-react';
+import { BookOpen, LayoutDashboard, Settings as SettingsIcon, BookMarked, Cpu, TestTube, X, Sliders, ChevronDown } from 'lucide-react';
 import { t } from '../i18n/translations';
 
 export default function Sidebar({
@@ -17,13 +17,23 @@ export default function Sidebar({
   availableModels = [],
   onSelectModel
 }) {
-  const navItems = [
-    { id: 'dashboard', label: t('nav.projects', lang), icon: LayoutDashboard },
-    { id: 'jobs', label: t('nav.inspector', lang), icon: BookOpen },
-    { id: 'wizard', label: t('nav.vram', lang), icon: Cpu },
-    { id: 'sandbox', label: t('nav.sandbox', lang), icon: TestTube },
-    { id: 'glossary', label: t('nav.glossaries', lang), icon: BookMarked },
-    { id: 'settings', label: t('nav.settings', lang), icon: SettingsIcon },
+  const navGroups = [
+    {
+      label: lang === 'fr' ? 'Traduire' : 'Translate',
+      items: [
+        { id: 'dashboard', label: t('nav.projects', lang), icon: LayoutDashboard },
+        { id: 'jobs', label: t('nav.inspector', lang), icon: BookOpen },
+        { id: 'sandbox', label: t('nav.sandbox', lang), icon: TestTube },
+      ]
+    },
+    {
+      label: lang === 'fr' ? 'Outils' : 'Tools',
+      items: [
+        { id: 'glossary', label: t('nav.glossaries', lang), icon: BookMarked },
+        { id: 'wizard', label: t('nav.vram', lang), icon: Cpu },
+        { id: 'settings', label: t('nav.settings', lang), icon: SettingsIcon },
+      ]
+    }
   ];
 
   const handleNavClick = (id) => {
@@ -31,21 +41,24 @@ export default function Sidebar({
     if (onClose) onClose();
   };
 
+  const activePresetName = presets.find((preset) => preset.id === activePresetId)?.name
+    || (lang === 'fr' ? 'Aucun preset' : 'No preset');
+
   const renderContent = (isMobile = false) => (
     <>
       {/* Top Brand & Navigation */}
-      <div className="space-y-6">
+      <div className="space-y-8">
         
         {/* Brand Logo */}
-        <div className="flex items-center justify-between px-2 pt-1">
+        <div className="flex items-center justify-between px-2 pt-2">
           <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => handleNavClick('dashboard')}>
-            <img src="/logo.svg" alt="TraDoc Logo" className="w-9 h-9 rounded-xl border border-white/[0.08]" />
+            <img src="/logo.svg" alt="TraDoc Logo" className="brand-mark w-10 h-10 rounded-xl" />
             <div>
               <div className="flex items-center space-x-1.5">
-                <span className="font-semibold text-sm text-white tracking-tight">{t('nav.appName', lang)}</span>
-                <span className="text-[9px] font-mono text-[#888] bg-white/[0.06] px-1.5 py-0.5 rounded border border-white/[0.08] font-bold">Pro</span>
+                <span className="font-semibold text-[15px] text-white tracking-tight">{t('nav.appName', lang)}</span>
+                <span className="edition-badge text-[9px] px-1.5 py-0.5 rounded font-bold">Pro</span>
               </div>
-              <p className="text-[10px] text-[#666]">{t('nav.appSubtitle', lang)}</p>
+              <p className="text-[10px] text-[#868a93] mt-0.5">{t('nav.appSubtitle', lang)}</p>
             </div>
           </div>
 
@@ -61,88 +74,69 @@ export default function Sidebar({
         </div>
 
         {/* Navigation Items */}
-        <nav className="space-y-1">
-          <p className="text-[9px] font-semibold uppercase tracking-wider text-[#444] px-2 mb-2">
-            {lang === 'fr' ? 'Menu Principal' : 'Main Menu'}
-          </p>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            const isActive = activeTab === item.id;
-            return (
-              <button
-                key={item.id}
-                onClick={() => handleNavClick(item.id)}
-                className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 group ${
-                  isActive
-                    ? 'bg-white/[0.08] text-white font-semibold'
-                    : 'text-[#888] hover:text-[#ededed] hover:bg-white/[0.04]'
-                }`}
-              >
-                <div className="flex items-center space-x-2.5">
-                  <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#60a5fa]' : 'text-[#666] group-hover:text-zinc-400'}`} />
-                  <span>{item.label}</span>
-                </div>
-              </button>
-            );
-          })}
+        <nav className="space-y-6">
+          {navGroups.map((group) => (
+            <div key={group.label} className="space-y-1">
+              <p className="nav-eyebrow text-[9px] font-semibold uppercase tracking-[0.16em] px-3 mb-2">{group.label}</p>
+              {group.items.map((item) => {
+                const Icon = item.icon;
+                const isActive = activeTab === item.id;
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => handleNavClick(item.id)}
+                    className={`nav-item w-full flex items-center justify-between px-3 py-2.5 rounded-xl text-xs font-medium transition-all duration-150 group ${isActive ? 'nav-item-active text-white font-semibold' : 'text-[#9a9ca3] hover:text-[#f4f2ec]'}`}
+                  >
+                    <div className="flex items-center space-x-2.5">
+                      <Icon className={`w-4 h-4 transition-colors ${isActive ? 'text-[#8eb8ff]' : 'text-[#747984] group-hover:text-zinc-300'}`} />
+                      <span>{item.label}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ))}
         </nav>
       </div>
 
-      {/* Bottom: Presets Switcher & Model Switcher */}
-      <div className="pt-3 border-t border-white/[0.08] space-y-2.5">
-        {/* Preset Selector Dropdown with Status Dot */}
+      {/* Bottom: active preset and model */}
+      <div className="sidebar-tools">
+        <div className="sidebar-runtime-heading">
+          <span>{lang === 'fr' ? 'Configuration active' : 'Active configuration'}</span>
+          <span className={`sidebar-service-state ${endpointStatus ? 'is-online' : ''}`}>
+            <i />{endpointStatus ? (lang === 'fr' ? 'Prêt' : 'Ready') : (lang === 'fr' ? 'Hors ligne' : 'Offline')}
+          </span>
+        </div>
+
         {onSelectPreset && (
-          <div className="px-2 space-y-1">
-            <div className="flex items-center justify-between text-[10px] text-[#666] font-medium">
-              <span className="flex items-center space-x-1">
-                <Sliders className="w-3 h-3 text-[#666]" />
-                <span>{t('nav.presetSelect', lang)}</span>
-              </span>
-              <div
-                className={`w-1.5 h-1.5 rounded-full ${endpointStatus ? 'bg-emerald-500 shadow-sm shadow-emerald-500/50' : 'bg-rose-500 shadow-sm shadow-rose-500/50'}`}
-                title={endpointStatus ? t('nav.gpuOnline', lang) : t('nav.gpuOffline', lang)}
-              />
-            </div>
-            <select
-              value={activePresetId || ''}
-              onChange={(e) => onSelectPreset(e.target.value)}
-              className="w-full input-chill text-[11px] text-zinc-200 py-1.5 px-2.5 font-medium cursor-pointer"
-            >
-              <option value="">-- {lang === 'fr' ? 'Aucun preset' : 'No preset'} --</option>
-              {presets.map((p) => (
-                <option key={p.id} value={p.id}>
-                  {p.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <label className="sidebar-select-card">
+            <span className="sidebar-select-icon"><Sliders /></span>
+            <span className="sidebar-select-copy">
+              <small>{t('nav.presetSelect', lang)}</small>
+              <strong>{activePresetName}</strong>
+              <select aria-label={t('nav.presetSelect', lang)} value={activePresetId || ''} onChange={(e) => onSelectPreset(e.target.value)}>
+                <option value="">{lang === 'fr' ? 'Aucun preset' : 'No preset'}</option>
+                {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+              </select>
+            </span>
+            <ChevronDown className="sidebar-select-chevron" />
+          </label>
         )}
 
-        {/* Model Quick Switcher Dropdown */}
         {onSelectModel && (
-          <div className="px-2 space-y-1">
-            <div className="flex items-center justify-between text-[10px] text-[#666] font-medium">
-              <span className="flex items-center space-x-1">
-                <Cpu className="w-3 h-3 text-[#666]" />
-                <span>{lang === 'fr' ? 'Modèle Actif' : 'Active Model'}</span>
-              </span>
-            </div>
-            <select
-              value={currentModel}
-              onChange={(e) => onSelectModel(e.target.value)}
-              className="w-full input-chill text-[11px] text-zinc-200 py-1.5 px-2.5 font-mono cursor-pointer truncate"
-            >
-              {availableModels.length > 0 ? (
-                availableModels.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))
-              ) : (
-                <option value={currentModel}>{currentModel || 'Model'}</option>
-              )}
-            </select>
-          </div>
+          <label className="sidebar-select-card">
+            <span className="sidebar-select-icon"><Cpu /></span>
+            <span className="sidebar-select-copy">
+              <small>{lang === 'fr' ? 'Modèle actif' : 'Active model'}</small>
+              <strong className="is-model">{currentModel || (lang === 'fr' ? 'Aucun modèle' : 'No model')}</strong>
+              <select aria-label={lang === 'fr' ? 'Modèle actif' : 'Active model'} value={currentModel} onChange={(e) => onSelectModel(e.target.value)}>
+                {availableModels.length > 0
+                  ? availableModels.map((m) => <option key={m} value={m}>{m}</option>)
+                  : <option value={currentModel}>{currentModel || (lang === 'fr' ? 'Aucun modèle' : 'No model')}</option>}
+              </select>
+            </span>
+            <ChevronDown className="sidebar-select-chevron" />
+          </label>
         )}
       </div>
     </>
@@ -151,7 +145,7 @@ export default function Sidebar({
   return (
     <>
       {/* Desktop Sidebar (hidden on mobile, visible on lg screens) */}
-      <aside className="w-60 h-screen bg-black/40 backdrop-blur-xl border-r border-white/[0.08] hidden lg:flex flex-col justify-between p-4 fixed top-0 left-0 z-40">
+      <aside className="sidebar-shell w-[272px] h-screen hidden lg:flex flex-col justify-between p-5 fixed top-0 left-0 z-40">
         {renderContent(false)}
       </aside>
 
@@ -164,7 +158,7 @@ export default function Sidebar({
       )}
 
       <aside
-        className={`fixed inset-y-0 left-0 w-64 bg-black/80 backdrop-blur-xl border-r border-white/[0.08] flex flex-col justify-between p-4 z-50 transform transition-transform duration-200 ease-in-out lg:hidden ${
+        className={`sidebar-shell fixed inset-y-0 left-0 w-[272px] flex flex-col justify-between p-5 z-50 transform transition-transform duration-200 ease-in-out lg:hidden ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >

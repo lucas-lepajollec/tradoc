@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { BookMarked, Plus, Trash2, Save, FileText, CheckCircle2, Copy, Check, Upload, Sparkles, HelpCircle, FileCode, ArrowDown } from 'lucide-react';
 import { fetchGlossaries, fetchGlossary, saveGlossary, deleteGlossary } from '../api';
 import { t } from '../i18n/translations';
+import GlossaryWorkspace from './GlossaryWorkspace';
 
 const AI_MASTER_PROMPT = `Tu es un assistant éditorial expert en traduction littéraire.
 Analyse le texte du livre fourni ci-dessous et extrait tous les noms propres (personnages, lieux fictifs, organisations, artefacts) ainsi que les termes récurrents spécifiques.
@@ -31,7 +32,7 @@ export default function GlossaryManager({ lang = 'en' }) {
   const [message, setMessage] = useState(null);
 
   // Active assistant tool tab: null | 'prompt' | 'import' | 'guide'
-  const [activeTool, setActiveTool] = useState(null);
+  const [activeTool, setActiveTool] = useState('import');
   
   // Prompt copy & Paste state
   const [copiedPrompt, setCopiedPrompt] = useState(false);
@@ -206,11 +207,48 @@ export default function GlossaryManager({ lang = 'en' }) {
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
+  return <GlossaryWorkspace
+    lang={lang}
+    glossaries={glossaries}
+    selectedName={selectedName}
+    nameInput={nameInput}
+    setNameInput={setNameInput}
+    descInput={descInput}
+    setDescInput={setDescInput}
+    items={items}
+    message={message}
+    activeTool={activeTool}
+    setActiveTool={setActiveTool}
+    copiedPrompt={copiedPrompt}
+    pasteText={pasteText}
+    setPasteText={setPasteText}
+    fileInputRef={fileInputRef}
+    aiPrompt={AI_MASTER_PROMPT}
+    onCreate={handleCreateNew}
+    onSelect={loadSingleGlossary}
+    onDelete={handleDelete}
+    onCopyPrompt={handleCopyPrompt}
+    onFileUpload={handleFileUpload}
+    onParsePaste={handleParseBatchPaste}
+    onAddItem={handleAddItem}
+    onItemChange={handleItemChange}
+    onRemoveItem={handleRemoveItem}
+    onSave={handleSave}
+  />;
+
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
+    <div className="glossary-page space-y-7">
+
+      <header className="page-intro">
+        <p className="page-kicker">{lang === 'fr' ? 'Cohérence terminologique' : 'Terminology consistency'}</p>
+        <h1>{lang === 'fr' ? 'Glossaires de traduction' : 'Translation glossaries'}</h1>
+        <p>{lang === 'fr' ? 'Fixez les noms, lieux et termes récurrents pour obtenir une traduction cohérente du début à la fin.' : 'Lock names, places, and recurring terms for consistent translation from beginning to end.'}</p>
+      </header>
+
+      <div className="glossary-layout">
       
       {/* Left Sidebar: Glossaries List (4 Cols) */}
-      <div className="lg:col-span-4 card-chill p-5 space-y-4 rounded-2xl flex flex-col justify-between h-full">
+      <div className="glossary-library card-chill p-4 space-y-4 rounded-2xl flex flex-col justify-between">
         <div className="space-y-3">
           <div className="flex items-center justify-between border-b border-white/[0.08] pb-3">
             <h2 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
@@ -254,7 +292,7 @@ export default function GlossaryManager({ lang = 'en' }) {
       </div>
 
       {/* Right Column: Master Editor Card (8 Cols) */}
-      <div className="lg:col-span-8 card-chill p-6 sm:p-8 space-y-6 rounded-2xl flex flex-col justify-between h-full">
+      <div className="glossary-editor card-chill p-6 sm:p-8 space-y-6 rounded-2xl flex flex-col justify-between h-full">
         
         <form onSubmit={handleSave} className="space-y-6 flex-1 flex flex-col justify-between">
           
@@ -281,7 +319,7 @@ export default function GlossaryManager({ lang = 'en' }) {
             </div>
 
             {/* Inputs: Name & Description */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="glossary-meta grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <label className="block text-[10px] font-semibold text-zinc-400 uppercase tracking-wider">{lang === 'fr' ? 'Nom du Glossaire' : 'Glossary Name'}</label>
                 <input
@@ -306,7 +344,7 @@ export default function GlossaryManager({ lang = 'en' }) {
             </div>
 
             {/* Integrated Assistant Toolbar */}
-            <div className="p-4 rounded-xl bg-black/40 border border-white/[0.08] space-y-3">
+            <div className="glossary-assistant p-4 rounded-xl bg-black/40 border border-white/[0.08] space-y-3">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5">
                 <span className="text-[11px] font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-1.5">
                   <Sparkles className="w-3.5 h-3.5 text-[#60a5fa]" />
@@ -448,7 +486,7 @@ export default function GlossaryManager({ lang = 'en' }) {
             </div>
 
             {/* Terms Table Section */}
-            <div className="space-y-3 pt-2">
+            <div className="terms-section space-y-3 pt-2">
               <div className="flex items-center justify-between flex-wrap gap-2 border-b border-white/[0.08] pb-2.5">
                 <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
                   {lang === 'fr' ? `Termes du Glossaire (${items.length})` : `Glossary Terms (${items.length})`}
@@ -543,6 +581,7 @@ export default function GlossaryManager({ lang = 'en' }) {
 
       </div>
 
+      </div>
     </div>
   );
 }

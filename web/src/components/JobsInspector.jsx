@@ -1,7 +1,25 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RefreshCw, Download, FileText, CheckCircle2, AlertTriangle, Terminal, ChevronRight, ChevronLeft, Clock, Copy, Check, Trash2, ArrowRight, Sparkles, Sliders } from 'lucide-react';
 import { fetchJobs, fetchJobDetail, fetchJobSegments, startJob, pauseJob, retryJob, deleteJob, updateJobConfig } from '../api';
-import { t } from '../i18n/translations';
+import { AVAILABLE_LANGUAGES, t } from '../i18n/translations';
+
+const readableSegment = (text = '') => text
+  .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ')
+  .replace(/&amp;/g, '&')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/[ \t]{2,}/g, ' ')
+  .replace(/\n\s+/g, '\n')
+  .trim();
+
+const estimateTokens = (text = '') => {
+  if (!text) return 0;
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(Math.floor(text.length / 3.8), Math.floor(words * 1.3));
+};
 
 export default function JobsInspector({ selectedJobId, onSelectJob, settings, availableModels = [], lang = 'en', onSelectModel }) {
   const [jobs, setJobs] = useState([]);
@@ -16,6 +34,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   const [autoScroll, setAutoScroll] = useState(true);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
+  const [showRawSegments, setShowRawSegments] = useState(false);
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [editModel, setEditModel] = useState('');
@@ -516,17 +535,32 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
   const currentSegment = segments[selectedSegIndex] || segments[0];
   const failedCount = segments.filter((s) => s.status === 'FAILED').length;
+  const overviewTitle = job?.file_name && job.file_name.length > 80 ? `${job.file_name.slice(0, 80)}…` : (job?.file_name || '');
+  const sourceLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === job?.source_lang);
+  const targetLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === job?.target_lang);
+  const sourceLanguageName = sourceLanguage ? (lang === 'fr' ? sourceLanguage.label : sourceLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : job?.source_lang?.toUpperCase();
+  const targetLanguageName = targetLanguage ? (lang === 'fr' ? targetLanguage.label : targetLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : job?.target_lang?.toUpperCase();
+  const sourceTokenCount = currentSegment ? (currentSegment.tokens_est || estimateTokens(currentSegment.original_text)) : 0;
+  const targetTokenCount = currentSegment?.translated_text ? estimateTokens(currentSegment.translated_text) : 0;
+  const displayedSourceText = currentSegment ? (showRawSegments ? currentSegment.original_text : readableSegment(currentSegment.original_text)) : '';
+  const displayedTargetText = currentSegment?.translated_text ? (showRawSegments ? currentSegment.translated_text : readableSegment(currentSegment.translated_text)) : '';
 
   return (
-    <div className="space-y-6">
+    <div className="inspector-page space-y-6">
+
+      <header className="page-intro">
+        <p className="page-kicker">{lang === 'fr' ? 'Atelier éditorial' : 'Editorial workspace'}</p>
+        <h1>{lang === 'fr' ? 'Inspection et révision' : 'Inspect and review'}</h1>
+        <p>{lang === 'fr' ? 'Comparez les segments, contrôlez la progression et préparez une traduction prête à publier.' : 'Compare segments, monitor progress, and prepare a translation ready to publish.'}</p>
+      </header>
       
       {/* Upper Grid Layout: Books List (1 col) + Inspector Details (3 cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 items-stretch">
+      <div className="inspector-layout space-y-5">
         
         {/* Sidebar List (1 col) */}
-        <div className="card-chill p-4 space-y-3 rounded-2xl flex flex-col h-auto max-h-[300px] lg:h-full lg:max-h-none">
+        <div className="project-switcher card-chill p-4 space-y-3 rounded-2xl">
           <h2 className="text-[10px] font-semibold text-[#888] uppercase tracking-wider px-2">{t('inspector.projectsList', lang)} ({jobs.length})</h2>
-          <div className="space-y-2 overflow-y-auto pr-1 flex-1 min-h-0 max-h-[250px] lg:max-h-none">
+          <div className="project-switcher-list flex gap-2 overflow-x-auto pb-1">
             {jobs.map((j) => {
               const percent = j.total_chunks > 0 ? Math.round((j.completed_chunks / j.total_chunks) * 100) : 0;
               const isSelected = job?.id === j.id;
@@ -536,7 +570,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 <div
                   key={j.id}
                   onClick={() => selectJobOptimistic(j)}
-                  className={`group p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex items-center justify-between border ${
+                  className={`project-switcher-item group p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex items-center justify-between border ${
                     isSelected
                       ? 'bg-white/[0.09] border-white/[0.16] text-white font-semibold shadow-sm'
                       : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.12]'
@@ -565,12 +599,108 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
         </div>
 
         {/* Main Inspector (3 cols) */}
-        <div className="lg:col-span-3 space-y-6">
+        <div className="inspector-content space-y-5">
           
           {job ? (
             <>
+              <section className="project-overview">
+                <div className="project-overview-main">
+                  <div className="project-identity">
+                    <div className="project-title-line">
+                      <h2 title={job.file_name}>{overviewTitle}</h2>
+                    </div>
+                    <div className="project-subline">
+                      <span>{job.file_type.toUpperCase()}</span>
+                      <span>{job.job_type === 'proofreading' ? t('inspector.modeProofread', lang) : t('inspector.modeTranslation', lang)}</span>
+                      <span>{job.model}</span>
+                      <span>{job.source_lang.toUpperCase()} <ArrowRight /> {job.target_lang.toUpperCase()}</span>
+                      {showDetails && <>
+                        <span>ID {job.id}</span>
+                        <span>{lang === 'fr' ? 'Glossaire' : 'Glossary'}: {job.glossary_name || (lang === 'fr' ? 'Aucun' : 'None')}</span>
+                        <span>{job.chunk_size || 1000} tokens</span>
+                        <span>{new Date(job.created_at).toLocaleDateString()}</span>
+                      </>}
+                      <button type="button" className="project-more" onClick={() => setShowDetails(!showDetails)}>{showDetails ? (lang === 'fr' ? 'Réduire' : 'Show less') : (lang === 'fr' ? 'Voir plus' : 'Show more')}</button>
+                    </div>
+                  </div>
+
+                  <div className="overview-actions">
+                    {job.status === 'PROCESSING' ? (
+                      <button type="button" onClick={handlePause} className="primary-action"><Pause />{t('dashboard.pause', lang)}</button>
+                    ) : (
+                      <button type="button" onClick={handleStartResume} className="primary-action"><Play />{job.completed_chunks > 0 ? t('dashboard.resume', lang) : (lang === 'fr' ? 'Démarrer' : 'Start')}</button>
+                    )}
+                    <button type="button" onClick={handleDownload} disabled={isDownloading || !(job.status === 'COMPLETED' || job.completed_chunks > 0)} className="secondary-action">
+                      {isDownloading ? <RefreshCw className="animate-spin" /> : <Download />}{isDownloading ? (lang === 'fr' ? 'Préparation' : 'Preparing') : (lang === 'fr' ? 'Exporter' : 'Export')}
+                    </button>
+                    <button type="button" onClick={() => setIsEditingConfig(!isEditingConfig)} className={`icon-action ${isEditingConfig ? 'is-active' : ''}`} title={lang === 'fr' ? 'Configuration' : 'Settings'}><Sliders /></button>
+                  </div>
+                </div>
+
+                <div className="overview-progress">
+                  <div className="progress-copy">
+                    <span className={`status-dot status-${String(job.status).toLowerCase()}`} />
+                    <strong>{job.status === 'PROCESSING' ? t('dashboard.processing', lang) : job.status === 'COMPLETED' ? t('dashboard.completed', lang) : job.status === 'FAILED' ? t('dashboard.failed', lang) : t('dashboard.paused', lang)}</strong>
+                    {job.status === 'PROCESSING' && <span>{calculateETA()}</span>}
+                  </div>
+                  <div className="progress-value"><strong>{Math.round((job.completed_chunks / (job.total_chunks || 1)) * 100)}%</strong><span>{job.completed_chunks} / {job.total_chunks}</span></div>
+                  <div className="progress-track"><span style={{ width: `${(job.completed_chunks / (job.total_chunks || 1)) * 100}%` }} /></div>
+                </div>
+
+                <div className="overview-more-actions">
+                  <button type="button" onClick={handleRetryAndStart}><RefreshCw />{lang === 'fr' ? 'Relancer les échecs' : 'Retry failed'}</button>
+                  <button type="button" onClick={(e) => handleDeleteJob(e, job.id, job.file_name)} className="danger-link"><Trash2 />{lang === 'fr' ? 'Supprimer le projet' : 'Delete project'}</button>
+                </div>
+              </section>
+
+              {isEditingConfig && job.status !== 'PROCESSING' && (
+                <form onSubmit={handleSaveJobConfig} className="project-config-card">
+                  <div className="project-config-card-heading">
+                    <strong>{lang === 'fr' ? 'Configuration du projet' : 'Project configuration'}</strong>
+                    <button
+                      type="button"
+                      className="project-config-global"
+                      onClick={() => {
+                        if (settings?.model) setEditModel(settings.model);
+                        if (settings?.concurrency) setEditConcurrency(settings.concurrency);
+                        if (settings?.temperature !== undefined) setEditTemperature(settings.temperature);
+                      }}
+                    >
+                      {lang === 'fr' ? 'Utiliser les valeurs actuelles' : 'Use current values'}
+                    </button>
+                  </div>
+
+                  <div className="project-config-card-fields">
+                    <label>
+                      <span>{t('dashboard.llmModel', lang)}</span>
+                      <select value={editModel} onChange={(e) => setEditModel(e.target.value)}>
+                        {availableModels.length > 0
+                          ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
+                          : <option value={editModel}>{editModel}</option>}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t('dashboard.concurrency', lang)}</span>
+                      <input type="number" min="1" max="16" value={editConcurrency} onChange={(e) => setEditConcurrency(parseInt(e.target.value, 10) || 1)} />
+                    </label>
+                    <label>
+                      <span>{lang === 'fr' ? 'Température' : 'Temperature'} <b>{Number(editTemperature).toFixed(2)}</b></span>
+                      <div className="project-temperature-control">
+                        <input type="range" min="0" max="1" step="0.05" value={editTemperature} onChange={(e) => setEditTemperature(parseFloat(e.target.value))} />
+                      </div>
+                    </label>
+                    <div className="project-config-card-actions">
+                      <button type="button" onClick={() => setIsEditingConfig(false)}>{lang === 'fr' ? 'Fermer' : 'Close'}</button>
+                      <button type="submit" disabled={savingConfig} className="primary-action">
+                        {savingConfig ? (lang === 'fr' ? 'Enregistrement…' : 'Saving…') : (lang === 'fr' ? 'Enregistrer' : 'Save')}
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              )}
+
               {/* Header & Controls */}
-              <div className="card-chill p-6 space-y-4 rounded-2xl">
+              <div className="job-command-bar legacy-project-panel hidden p-6 space-y-4 rounded-2xl">
                 {/* Top Row: Title + Badges on Left, Config & Details Links on Right */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
@@ -660,7 +790,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
                 {/* Inline Job Config Editor (Minimalist pure black container, no border) */}
                 {isEditingConfig && job.status !== 'PROCESSING' && (
-                  <form onSubmit={handleSaveJobConfig} className="p-4 rounded-xl bg-black space-y-4 mt-2">
+                  <form onSubmit={handleSaveJobConfig} className="project-config-panel p-5 space-y-5 mt-2">
                     <div className="flex items-center justify-between border-b border-white/10 pb-2.5 flex-wrap gap-2">
                       <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
                         {lang === 'fr' ? 'Modifier la Config du Projet' : 'Modify Project Configuration'}
@@ -743,7 +873,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 )}
 
                 {/* Middle Row: Action Buttons */}
-                <div className="flex items-center gap-2 flex-wrap pt-3 border-t border-white/[0.08]">
+                <div className="project-actions flex items-center gap-2 flex-wrap pt-3 border-t border-white/[0.08]">
                   {job.status === 'PROCESSING' ? (
                     <button
                       onClick={handlePause}
@@ -806,7 +936,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 </div>
 
                 {/* Progress & ETA Section */}
-                <div className="space-y-2 pt-2">
+                <div className="project-progress space-y-2 pt-2">
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between text-xs gap-2">
                     <div className="flex items-center space-x-2 text-[#888]">
                       <Clock className="w-3.5 h-3.5 text-[#444]" />
@@ -825,106 +955,129 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 </div>
               </div>
 
-              {/* Clear Side-by-Side Reading Inspector */}
-              <div className="card-chill p-6 space-y-4 rounded-2xl">
-                
-                <div className="flex items-center justify-between flex-wrap gap-3">
-                  <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-1.5">
-                    <FileText className="w-4 h-4 text-white" />
-                    <span>{t('inspector.title', lang)}</span>
-                  </h3>
+              {/* Professional side-by-side translation workspace */}
+              <div className="segment-workbench card-chill">
+                <div className="segment-toolbar">
+                  <div className="segment-workbench-title">
+                    <FileText />
+                    <div>
+                      <span>{lang === 'fr' ? 'Atelier de traduction' : 'Translation workspace'}</span>
+                      <h3>{t('inspector.title', lang)}</h3>
+                    </div>
+                  </div>
 
-                  {/* Direct Segment Jumper Controls */}
-                  <div className="flex items-center space-x-2 flex-wrap">
-                    {!autoScroll && (
+                  <div className="segment-toolbar-controls">
+                    <button
+                      type="button"
+                      className={`segment-view-toggle ${showRawSegments ? 'is-active' : ''}`}
+                      onClick={() => setShowRawSegments(!showRawSegments)}
+                      aria-pressed={showRawSegments}
+                    >
+                      <span className="segment-toggle-track"><i /></span>
+                      <span>{lang === 'fr' ? 'Texte brut' : 'Raw text'}</span>
+                    </button>
+
+                    <div className="flex items-center space-x-2 flex-wrap">
+                      {!autoScroll && (
+                        <button
+                          type="button"
+                          onClick={handleResync}
+                          className="px-2 py-0.5 text-[9px] font-semibold bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#60a5fa] rounded-md transition-all flex-shrink-0"
+                        >
+                          {lang === 'fr' ? 'Resynchroniser' : 'Resync'}
+                        </button>
+                      )}
+
                       <button
-                        type="button"
-                        onClick={handleResync}
-                        className="px-2 py-0.5 text-[9px] font-semibold bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#60a5fa] rounded-md transition-all flex-shrink-0"
+                        disabled={selectedSegIndex <= 0}
+                        onClick={() => { setSelectedSegIndex((prev) => Math.max(0, prev - 1)); setAutoScroll(false); }}
+                        className="text-zinc-400 hover:text-white disabled:opacity-20 transition-colors p-1"
+                        aria-label={lang === 'fr' ? 'Segment précédent' : 'Previous segment'}
                       >
-                        {lang === 'fr' ? 'Resynchroniser' : 'Resync'}
+                        <ChevronLeft className="w-4 h-4" />
                       </button>
-                    )}
 
-                    <button
-                      disabled={selectedSegIndex <= 0}
-                      onClick={() => { setSelectedSegIndex((prev) => Math.max(0, prev - 1)); setAutoScroll(false); }}
-                      className="text-zinc-400 hover:text-white disabled:opacity-20 transition-colors p-1"
-                    >
-                      <ChevronLeft className="w-4 h-4" />
-                    </button>
+                      <form onSubmit={handleJumpSubmit} className="flex items-center space-x-1">
+                        <input
+                          type="text"
+                          value={jumpInput}
+                          onChange={(e) => setJumpInput(e.target.value)}
+                          aria-label={lang === 'fr' ? 'Numéro du segment' : 'Segment number'}
+                          className="w-10 bg-transparent border-b border-white/10 hover:border-white/30 focus:border-[#2563eb] text-center text-xs font-mono text-white outline-none pb-0.5"
+                        />
+                        <span className="text-xs text-zinc-500 font-mono">/ {segments.length}</span>
+                      </form>
 
-                    <form onSubmit={handleJumpSubmit} className="flex items-center space-x-1">
-                      <input
-                        type="text"
-                        value={jumpInput}
-                        onChange={(e) => setJumpInput(e.target.value)}
-                        className="w-10 bg-transparent border-b border-white/10 hover:border-white/30 focus:border-[#2563eb] text-center text-xs font-mono text-white outline-none pb-0.5"
-                      />
-                      <span className="text-xs text-zinc-500 font-mono">/ {segments.length}</span>
-                    </form>
-
-                    <button
-                      disabled={selectedSegIndex >= segments.length - 1}
-                      onClick={() => { setSelectedSegIndex((prev) => Math.min(segments.length - 1, prev + 1)); setAutoScroll(false); }}
-                      className="text-[#888] hover:text-white disabled:opacity-20 transition-colors p-1"
-                    >
-                      <ChevronRight className="w-4 h-4" />
-                    </button>
+                      <button
+                        disabled={selectedSegIndex >= segments.length - 1}
+                        onClick={() => { setSelectedSegIndex((prev) => Math.min(segments.length - 1, prev + 1)); setAutoScroll(false); }}
+                        className="text-[#888] hover:text-white disabled:opacity-20 transition-colors p-1"
+                        aria-label={lang === 'fr' ? 'Segment suivant' : 'Next segment'}
+                      >
+                        <ChevronRight className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 </div>
 
                 {currentSegment ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    
-                    {/* Left Column: Original Text */}
-                    <div className="bg-[#030303]/50 backdrop-blur-md p-4 rounded-xl border border-white/[0.08] space-y-2">
-                      <div className="flex items-center justify-between text-xs text-[#888] font-mono border-b border-white/[0.08] pb-2">
-                        <span className="font-semibold uppercase tracking-wider text-[#888]">{t('inspector.originalText', lang)} ({job.source_lang.toUpperCase()})</span>
-                        <span>~{currentSegment.tokens_est} tokens</span>
+                  <div className="segment-compare">
+                    <section className="translation-pane source-pane">
+                      <header className="translation-pane-header">
+                        <div className="translation-language">
+                          <span>{lang === 'fr' ? 'Texte source' : 'Source text'}</span>
+                          <strong>{sourceLanguageName}<small>{job.source_lang.toUpperCase()}</small></strong>
+                        </div>
+                        <div className="translation-pane-meta">
+                          <span className="translation-token-count">{sourceTokenCount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens envoyés' : 'tokens sent'}</span>
+                        </div>
+                      </header>
+                      <div className="document-text">
+                        {displayedSourceText}
                       </div>
-                      <div className="text-xs text-zinc-300 font-mono whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed p-1">
-                        {currentSegment.original_text}
-                      </div>
-                    </div>
+                      <footer className="translation-pane-footer">
+                        <span>{displayedSourceText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+                      </footer>
+                    </section>
 
-                    {/* Right Column: Translated or Proofread Text */}
-                    <div className="bg-[#030303]/50 backdrop-blur-md p-4 rounded-xl border border-white/[0.08] space-y-2">
-                      <div className="flex items-center justify-between text-xs text-[#888] font-mono border-b border-white/[0.08] pb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="font-semibold uppercase tracking-wider text-white">
-                            {job.job_type === 'proofreading' ? t('inspector.proofreadText', lang) : t('inspector.targetText', lang)}
-                          </span>
-                          <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
-                            currentSegment.status === 'DONE' ? 'bg-[#00d4aa]/10 text-[#00d4aa] border border-[#00d4aa]/20' :
-                            currentSegment.status === 'FAILED' ? 'bg-rose-500/10 text-[#ff6369] border border-[#ff6369]/20' : 'bg-[#2563eb]/10 text-[#60a5fa] border border-[#2563eb]/20 animate-pulse'
-                          }`}>
+                    <section className="translation-pane target-pane">
+                      <header className="translation-pane-header">
+                        <div className="translation-language">
+                          <span>{job.job_type === 'proofreading' ? (lang === 'fr' ? 'Texte relu' : 'Proofread text') : (lang === 'fr' ? 'Traduction' : 'Translation')}</span>
+                          <strong>{targetLanguageName}<small>{job.target_lang.toUpperCase()}</small></strong>
+                        </div>
+                        <div className="translation-pane-meta">
+                          <span className={`translation-status status-${String(currentSegment.status).toLowerCase()}`}>
+                            <i />
                             {currentSegment.status === 'DONE' ? (job.job_type === 'proofreading' ? (lang === 'fr' ? 'Relu' : 'Proofread') : (lang === 'fr' ? 'Traduit' : 'Translated')) : currentSegment.status === 'FAILED' ? t('dashboard.failed', lang) : t('dashboard.processing', lang)}
                           </span>
-                        </div>
-
-                        {currentSegment.translated_text && (
+                          <span className="translation-token-count">{targetTokenCount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens reçus' : 'tokens received'}</span>
+                          {currentSegment.translated_text && (
                           <button
+                            type="button"
                             onClick={() => handleCopyText(currentSegment.translated_text)}
-                            className="text-[#666] hover:text-white transition-colors p-1"
+                            className="translation-copy"
                             title={t('inspector.copyText', lang)}
                           >
-                            {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                            {copied ? <Check /> : <Copy />}
                           </button>
-                        )}
-                      </div>
-                      <div className="text-xs text-zinc-100 font-mono whitespace-pre-wrap max-h-80 overflow-y-auto leading-relaxed p-1">
-                        {currentSegment.translated_text || (
-                          <span className="text-[#444] italic">
+                          )}
+                        </div>
+                      </header>
+                      <div className="document-text">
+                        {currentSegment.translated_text ? displayedTargetText : (
+                          <span className="translation-empty">
                             {job.job_type === 'proofreading' ? (lang === 'fr' ? 'En attente de relecture...' : 'Waiting for proofreading...') : (lang === 'fr' ? 'En attente de traduction...' : 'Waiting for translation...')}
                           </span>
                         )}
                       </div>
-                    </div>
-
+                      <footer className="translation-pane-footer">
+                        <span>{displayedTargetText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+                      </footer>
+                    </section>
                   </div>
                 ) : (
-                  <div className="text-center p-8 text-[#666] text-xs">{lang === 'fr' ? 'Chargement...' : 'Loading...'}</div>
+                  <div className="segment-loading">{lang === 'fr' ? 'Chargement...' : 'Loading...'}</div>
                 )}
               </div>
 

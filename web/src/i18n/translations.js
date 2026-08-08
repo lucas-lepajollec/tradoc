@@ -220,7 +220,7 @@ export const translations = {
 
       // Translation Engine Tab
       chunkSizeLabel: 'Segment Chunk Size ({count} tokens)',
-      chunkSizeAdvice: 'Local GPU advice: 2500 | Cloud API: 8000',
+      chunkSizeAdvice: 'Local: 500–2,500 (recommended 1,000) | Cloud: 2,500–10,000 (recommended 7,000)',
       temperatureLabel: 'Temperature ({val})',
       temperatureAdvice: 'Recommended: 0.15 for precise literary translation',
       concurrencyLabel: 'Max Concurrency ({val} requests)',
@@ -458,7 +458,7 @@ export const translations = {
 
       // Onglet Moteur de Traduction
       chunkSizeLabel: 'Taille du segment ({count} tokens)',
-      chunkSizeAdvice: 'Conseil local : 2500 | Cloud API : 8000',
+      chunkSizeAdvice: 'Local : 500–2 500 (recommandé 1 000) | Cloud : 2 500–10 000 (recommandé 7 000)',
       temperatureLabel: 'Température ({val})',
       temperatureAdvice: 'Recommandé : 0.15 pour une traduction littéraire précise',
       concurrencyLabel: 'Concurrence Max ({val} requêtes)',

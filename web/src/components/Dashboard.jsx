@@ -226,7 +226,19 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
   };
 
   return (
-    <div className="space-y-8">
+    <div className="dashboard-page space-y-8">
+
+      <header className="page-intro flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <p className="page-kicker">{lang === 'fr' ? 'Espace de traduction' : 'Translation workspace'}</p>
+          <h1>{lang === 'fr' ? 'Vos documents, fidèlement traduits.' : 'Your documents, faithfully translated.'}</h1>
+          <p>{lang === 'fr' ? 'Importez un ouvrage, choisissez vos langues et suivez chaque étape jusqu’à l’export.' : 'Import a document, choose your languages, and follow every step through export.'}</p>
+        </div>
+        <div className={`connection-pill ${endpointStatus ? 'is-online' : 'is-offline'}`}>
+          <span />
+          {endpointStatus ? (lang === 'fr' ? 'Service prêt' : 'Service ready') : (lang === 'fr' ? 'Service hors ligne' : 'Service offline')}
+        </div>
+      </header>
       
       {/* Connection Warning Banner */}
       {!endpointStatus && (
@@ -247,10 +259,10 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
       )}
 
       {/* Main Bento Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+      <div className="translation-workspace space-y-5">
         
         {/* Upload Card (2 cols) */}
-        <div className="lg:col-span-2 card-chill p-6 sm:p-8 space-y-6">
+        <div className="translation-card card-chill p-6 sm:p-8 space-y-6 w-full">
           
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
             <div>
@@ -273,7 +285,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           )}
 
           {/* Mode Switcher Tabs */}
-          <div className="p-1 rounded-xl bg-black/40 border border-white/[0.08] grid grid-cols-2 gap-1 text-xs">
+          <div className="mode-switcher p-1 rounded-xl bg-black/40 border border-white/[0.08] grid grid-cols-2 gap-1 text-xs">
             <button
               type="button"
               onClick={() => setJobMode('translation')}
@@ -301,7 +313,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           </div>
 
           {/* Language Selector Bar (Source & Target Languages) */}
-          <div className="p-3.5 rounded-xl bg-black/40 border border-white/[0.08] space-y-2.5">
+          <div className="language-route p-4 rounded-xl space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-[#888] uppercase tracking-wider flex items-center space-x-1.5">
                 <Globe className="w-3.5 h-3.5 text-[#60a5fa]" />
@@ -371,58 +383,27 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
           {/* Proofreading Mode Sub-options (Select existing job vs upload new file) */}
           {jobMode === 'proofreading' && (
-            <div className="p-3.5 rounded-xl bg-[#090b10] border border-white/[0.08] flex items-center space-x-6 text-xs">
-              <label className="flex items-center space-x-2 cursor-pointer text-zinc-300 font-medium">
-                <input
-                  type="radio"
-                  name="proofreadSource"
-                  checked={proofreadSourceType === 'existing'}
-                  onChange={() => setProofreadSourceType('existing')}
-                  className="accent-white"
-                />
-                <span>{t('dashboard.sourceProject', lang)}</span>
-              </label>
-              <label className="flex items-center space-x-2 cursor-pointer text-zinc-300 font-medium">
-                <input
-                  type="radio"
-                  name="proofreadSource"
-                  checked={proofreadSourceType === 'upload'}
-                  onChange={() => setProofreadSourceType('upload')}
-                  className="accent-white"
-                />
-                <span>{t('dashboard.uploadNewFile', lang)}</span>
-              </label>
+            <div className="proofreading-source-compact">
+              <span className="proofreading-source-label">{lang === 'fr' ? 'Document à relire' : 'Document to proofread'}</span>
+              <div className="proofreading-source-toggle">
+                <button type="button" onClick={() => setProofreadSourceType('existing')} className={proofreadSourceType === 'existing' ? 'is-selected' : ''}><BookOpen />{lang === 'fr' ? 'Projet existant' : 'Existing project'}</button>
+                <button type="button" onClick={() => setProofreadSourceType('upload')} className={proofreadSourceType === 'upload' ? 'is-selected' : ''}><UploadCloud />{lang === 'fr' ? 'Nouveau fichier' : 'New file'}</button>
+              </div>
+              {proofreadSourceType === 'existing' && <select value={selectedExistingJobId} onChange={(e) => setSelectedExistingJobId(e.target.value)}><option value="">{lang === 'fr' ? 'Sélectionner un projet…' : 'Select a project…'}</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.file_name} · {j.completed_chunks}/{j.total_chunks} · {j.status}</option>)}</select>}
+              {proofreadSourceType === 'upload' && <span className="proofreading-upload-hint">{lang === 'fr' ? 'Déposez le fichier dans la zone ci-dessous' : 'Drop the file in the area below'}</span>}
             </div>
           )}
 
           <form onSubmit={handleUploadSubmit} className="space-y-6">
             
             {/* If proofreading from existing DB book */}
-            {jobMode === 'proofreading' && proofreadSourceType === 'existing' ? (
-              <div className="space-y-2 p-6 rounded-lg bg-[#070708] border border-white/[0.08]">
-                <label className="block text-xs font-semibold text-white uppercase tracking-wider">
-                  {t('dashboard.proofreadSourcePrompt', lang)}
-                </label>
-                <select
-                  value={selectedExistingJobId}
-                  onChange={(e) => setSelectedExistingJobId(e.target.value)}
-                  className="w-full input-chill px-3 py-2.5 text-xs font-medium"
-                >
-                  <option value="">-- {t('dashboard.sourceProject', lang)} --</option>
-                  {jobs.map((j) => (
-                    <option key={j.id} value={j.id}>
-                      {j.file_name} ({j.completed_chunks}/{j.total_chunks} chunks - {j.status})
-                    </option>
-                  ))}
-                </select>
-              </div>
-            ) : (
+            {jobMode === 'proofreading' && proofreadSourceType === 'existing' ? null : (
               /* Dropzone */
               <div
                 onDragOver={(e) => e.preventDefault()}
                 onDrop={handleFileDrop}
                 onClick={() => document.getElementById('file-upload')?.click()}
-                className={`border border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer relative overflow-hidden group ${
+                className={`document-dropzone border border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer relative overflow-hidden group ${
                   file
                     ? 'border-[#2563eb]/50 bg-[#2563eb]/5'
                     : 'border-white/10 hover:bg-white/[0.02] bg-[#030303]/30'
@@ -497,7 +478,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
             </div>
 
             {/* Submit Action Buttons */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+            <div className="translation-actions grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
               <button
                 type="button"
                 onClick={(e) => handleUploadSubmit(e, true)}
@@ -539,67 +520,26 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
         </div>
 
         {/* Status Card (1 col) */}
-        <div className="space-y-6">
-          <div className="card-chill p-6 space-y-5">
-            <h3 className="text-xs font-semibold text-[#888] uppercase tracking-wider flex items-center space-x-1.5">
-              <Cpu className="w-4 h-4 text-white" />
-              <span>{t('dashboard.serverParams', lang)}</span>
-            </h3>
+        <div className="dashboard-utilities">
+          <button type="button" className="utility-panel server-utility" onClick={() => setActiveTab('settings')}>
+            <span className="utility-icon"><Cpu /></span>
+            <span className="utility-copy"><small>{t('dashboard.serverParams', lang)}</small><strong>{PROVIDER_NAMES[settings.apiType] || settings.apiType || 'OpenAI'} <i>·</i> {settings.model}</strong><span>{settings.concurrency || 1} {t('dashboard.requestsUnit', lang)} · {settings.chunkSize || 1000} {t('dashboard.tokensUnit', lang)}</span></span>
+            {PROVIDER_LOGOS[settings.apiType] && <img src={PROVIDER_LOGOS[settings.apiType]} alt="" className="utility-provider-logo" />}
+            <span className="utility-arrow"><ArrowRight /></span>
+          </button>
 
-            <div className="space-y-3 text-xs">
-              <div className="flex justify-between items-center py-2 border-b border-white/[0.08]">
-                <span className="text-[#666]">{t('dashboard.provider', lang)}</span>
-                <span className="font-mono text-zinc-300 truncate max-w-[170px] flex items-center space-x-1.5 justify-end">
-                  {PROVIDER_LOGOS[settings.apiType] && (
-                    <img src={PROVIDER_LOGOS[settings.apiType]} alt="" className="w-4 h-4 object-contain rounded-sm flex-shrink-0" />
-                  )}
-                  <span>{PROVIDER_NAMES[settings.apiType] || settings.apiType || 'OpenAI'}</span>
-                </span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-white/[0.08]">
-                <span className="text-[#666]">{t('dashboard.model', lang)}</span>
-                <span className="font-mono text-[#60a5fa] truncate max-w-[150px]">{settings.model}</span>
-              </div>
-              <div className="flex justify-between py-2 border-b border-white/[0.08]">
-                <span className="text-[#666]">{t('dashboard.concurrency', lang)}</span>
-                <span className="font-bold text-emerald-400">{(settings.concurrency || 1)} {t('dashboard.requestsUnit', lang)}</span>
-              </div>
-              <div className="flex justify-between py-2">
-                <span className="text-[#666]">{t('dashboard.semanticWindow', lang)}</span>
-                <span className="font-bold text-zinc-300">{(settings.chunkSize || 1000)} {t('dashboard.tokensUnit', lang)}</span>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setActiveTab('settings')}
-              className="w-full btn-chill py-2 text-xs font-semibold flex items-center justify-center space-x-2"
-            >
-              <span>{t('dashboard.editConfig', lang)}</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-
-          <div className="card-chill p-6 space-y-3">
-            <h3 className="text-xs font-semibold text-[#888] uppercase tracking-wider flex items-center space-x-1.5">
-              <TestTube className="w-4 h-4 text-white" />
-              <span>{t('dashboard.liveTester', lang)}</span>
-            </h3>
-            <p className="text-xs text-[#888] leading-relaxed">
-              {t('dashboard.liveTesterDesc', lang)}
-            </p>
-            <button
-              onClick={() => setActiveTab('sandbox')}
-              className="w-full py-2 bg-white/[0.04] hover:bg-white/[0.08] text-white text-xs font-semibold rounded-lg border border-white/[0.08] transition-all flex items-center justify-center space-x-2"
-            >
-              <span>{t('dashboard.openSandbox', lang)}</span>
-            </button>
-          </div>
+          <button type="button" className="utility-panel sandbox-utility" onClick={() => setActiveTab('sandbox')}>
+            <span className="utility-icon"><TestTube /></span>
+            <span className="utility-copy"><small>{t('dashboard.liveTester', lang)}</small><strong>{lang === 'fr' ? 'Tester une phrase avant de lancer un livre' : 'Test a sentence before starting a book'}</strong><span>{t('dashboard.liveTesterDesc', lang)}</span></span>
+            <span className="utility-action-label">{t('dashboard.openSandbox', lang)}</span>
+            <span className="utility-arrow"><ArrowRight /></span>
+          </button>
         </div>
 
       </div>
 
       {/* Projects List with Direct Controls & Download Buttons */}
-      <div className="space-y-4">
+      <div className="projects-section space-y-4">
         <h2 className="font-semibold text-sm text-white tracking-tight flex items-center space-x-2">
           <Layers className="w-4 h-4 text-white" />
           <span>{t('dashboard.recentProjects', lang)} ({jobs.length})</span>

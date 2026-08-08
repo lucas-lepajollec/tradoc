@@ -20,6 +20,7 @@ export default function App() {
   const handleSetActiveTab = (tab) => {
     setActiveTab(tab);
     localStorage.setItem('tradoc_active_tab', tab);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const [selectedJobId, setSelectedJobId] = useState(null);
@@ -198,7 +199,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen flex bg-black text-[#ededed] font-sans relative overflow-x-hidden selection:bg-white/10 selection:text-white">
+    <div className="app-shell min-h-screen flex text-[#e8e6df] font-sans relative overflow-x-hidden selection:bg-blue-500/20 selection:text-white">
       
       {/* Ambient Subtle Background Halo Orbs */}
       <div className="halo-bg-1" />
@@ -222,10 +223,10 @@ export default function App() {
       />
 
       {/* Main Right Content Area */}
-      <div className="flex-1 min-w-0 min-h-screen flex flex-col z-10 lg:pl-60">
+      <div className="flex-1 min-w-0 min-h-screen flex flex-col z-10 lg:pl-[272px]">
         
         {/* Mobile Header Bar (Sans démarcation) */}
-        <div className="lg:hidden flex items-center justify-between px-6 pt-5 pb-1">
+        <div className="mobile-header lg:hidden flex items-center justify-between px-5 py-4 sticky top-0 z-30">
           <div className="flex items-center space-x-2.5">
             <img src="/logo.svg" alt="TraDoc Logo" className="w-7 h-7 rounded-lg border border-white/[0.08]" />
             <span className="font-semibold text-sm text-white tracking-tight">
@@ -248,7 +249,7 @@ export default function App() {
         </div>
 
         {/* Main Body */}
-        <main className="w-full max-w-[1400px] mx-auto px-4 sm:px-8 lg:px-10 pt-4 sm:pt-6 lg:pt-16 pb-14 lg:pb-20">
+        <main className="workspace w-full max-w-[1380px] mx-auto px-4 sm:px-7 lg:px-9 pt-5 sm:pt-8 lg:pt-12 pb-14 lg:pb-20">
           <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
             <Dashboard
               onSelectJob={setSelectedJobId}
@@ -277,7 +278,7 @@ export default function App() {
           </div>
 
           <div className={activeTab === 'wizard' ? 'block' : 'hidden'}>
-            <SetupWizard lang={lang} />
+            <SetupWizard settings={settings} onSaveSettings={updateSettings} setActiveTab={handleSetActiveTab} lang={lang} />
           </div>
 
           <div className={activeTab === 'settings' ? 'block' : 'hidden'}>

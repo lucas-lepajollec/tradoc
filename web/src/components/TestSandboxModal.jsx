@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
-import { TestTube, Play, Clock, AlertCircle, RefreshCw, Upload, Sparkles, BookOpen, Copy, Check, RotateCcw } from 'lucide-react';
+import { TestTube, Play, FileText, AlertCircle, RefreshCw, Upload, Copy, Check, RotateCcw } from 'lucide-react';
 import { testTranslation, extractSandboxSample } from '../api';
-import { t } from '../i18n/translations';
+import { AVAILABLE_LANGUAGES, t } from '../i18n/translations';
 
 // Universal Classic Literary Excerpt (Pride and Prejudice by Jane Austen)
 const DEFAULT_UNIVERSAL_SAMPLE = `<p class="chapter-title">CHAPTER I</p>
@@ -12,22 +12,56 @@ const DEFAULT_UNIVERSAL_SAMPLE = `<p class="chapter-title">CHAPTER I</p>
 
 <p class="dialogue">"My dear Mr. Bennet," said his lady to him one day, "have you heard that Netherfield Park is let at last?"</p>`;
 
+const estimateTokens = (text = '') => {
+  if (!text) return 0;
+  const words = text.split(/\s+/).filter(Boolean).length;
+  return Math.max(Math.floor(text.length / 3.8), Math.floor(words * 1.3));
+};
+
+const readableSegment = (text = '') => text
+  .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+  .replace(/<[^>]+>/g, ' ')
+  .replace(/&nbsp;/g, ' ')
+  .replace(/&amp;/g, '&')
+  .replace(/&lt;/g, '<')
+  .replace(/&gt;/g, '>')
+  .replace(/[ \t]{2,}/g, ' ')
+  .replace(/\n\s+/g, '\n')
+  .trim();
+
 export default function TestSandboxModal({ settings, availableModels, lang = 'en', onSelectModel }) {
   const [sampleText, setSampleText] = useState(DEFAULT_UNIVERSAL_SAMPLE);
   const [selectedModel, setSelectedModel] = useState(settings.model || '');
+  const [selectedTemperature, setSelectedTemperature] = useState(settings.temperature !== undefined ? settings.temperature : 1.5);
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [copied, setCopied] = useState(false);
   const [error, setError] = useState(null);
+  const [showRawText, setShowRawText] = useState(false);
 
   const fileInputRef = useRef(null);
+  const sourceCode = settings.sourceLang || 'en';
+  const targetCode = settings.targetLang || 'fr';
+  const sourceLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === sourceCode);
+  const targetLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === targetCode);
+  const sourceLanguageName = sourceLanguage ? (lang === 'fr' ? sourceLanguage.label : sourceLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : sourceCode.toUpperCase();
+  const targetLanguageName = targetLanguage ? (lang === 'fr' ? targetLanguage.label : targetLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : targetCode.toUpperCase();
+  const sourceTokens = estimateTokens(sampleText);
+  const resultText = result?.translated_text || '';
+  const targetTokens = estimateTokens(resultText);
+  const displayedSourceText = showRawText ? sampleText : readableSegment(sampleText);
+  const displayedResultText = showRawText ? resultText : readableSegment(resultText);
 
   React.useEffect(() => {
     if (settings.model) {
       setSelectedModel(settings.model);
     }
-  }, [settings.model]);
+    if (settings.temperature !== undefined) {
+      setSelectedTemperature(settings.temperature);
+    }
+  }, [settings.model, settings.temperature]);
 
   const handleFileUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -68,7 +102,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
         apiKey: settings.apiKey,
         api_type: settings.apiType,
         system_prompt: settings.systemPrompt,
-        temperature: settings.temperature !== undefined ? settings.temperature : 1.5
+        temperature: selectedTemperature
       });
       setResult(res);
     } catch (err) {
@@ -86,18 +120,14 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
   };
 
   return (
-    <div className="space-y-6">
+    <div className="sandbox-page space-y-6">
       
       {/* Top Header Card */}
-      <div className="card-chill p-6 rounded-2xl flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div className="flex items-center space-x-3">
-          <div className="p-2.5 rounded-xl bg-blue-500/10 border border-blue-500/20 text-[#60a5fa]">
-            <TestTube className="w-5 h-5" />
-          </div>
-          <div>
-            <h1 className="text-sm font-semibold text-white tracking-tight">{t('sandbox.title', lang)}</h1>
-            <p className="text-xs text-zinc-400 mt-0.5">{t('sandbox.desc', lang)}</p>
-          </div>
+      <div className="page-intro flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+        <div>
+          <p className="page-kicker">{lang === 'fr' ? 'Essai instantané' : 'Instant test'}</p>
+          <h1>{t('sandbox.title', lang)}</h1>
+          <p>{t('sandbox.desc', lang)}</p>
         </div>
 
         {/* Quick Controls */}
@@ -139,129 +169,142 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
         </div>
       )}
 
-      {/* Editor & Output Grid (Symmetric Height Items Stretch) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-stretch">
-        
-        {/* Left Card: Input Text Editor */}
-        <div className="card-chill p-6 space-y-4 rounded-2xl flex flex-col justify-between h-full">
-          <div className="space-y-3 flex-1 flex flex-col">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
-              <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider flex items-center space-x-2">
-                <BookOpen className="w-3.5 h-3.5 text-zinc-400" />
-                <span>{t('sandbox.sourceInputLabel', lang)}</span>
-              </span>
-              <span className="text-[10px] font-mono text-zinc-500">
-                ~{sampleText.length} {lang === 'fr' ? 'caractères' : 'chars'}
-              </span>
-            </div>
+      <section className="sandbox-settings-card">
+        <div className="sandbox-settings-heading">
+          <span>{lang === 'fr' ? 'Configuration du test' : 'Test configuration'}</span>
+          <strong>{lang === 'fr' ? 'Paramètres du bac à sable' : 'Sandbox settings'}</strong>
+        </div>
 
-            <textarea
-              rows={12}
-              value={sampleText}
-              onChange={(e) => setSampleText(e.target.value)}
-              placeholder={lang === 'fr' ? 'Saisissez un extrait ou chargez un livre...' : 'Enter an excerpt or import a book...'}
-              className="w-full input-chill p-4 text-xs font-mono leading-relaxed bg-black/40 flex-1 min-h-[320px] resize-none"
-            />
+        <div className="sandbox-settings-controls">
+          <label className="sandbox-model-control">
+            <span>{t('dashboard.model', lang)}</span>
+            <select
+              value={selectedModel || settings.model || ''}
+              onChange={(e) => {
+                const model = e.target.value;
+                setSelectedModel(model);
+                if (onSelectModel) onSelectModel(model);
+              }}
+            >
+              {!selectedModel && settings.model && <option value="">{t('dashboard.model', lang)}: {settings.model}</option>}
+              {availableModels.length > 0
+                ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
+                : <option value={settings.model}>{settings.model}</option>}
+            </select>
+          </label>
+
+          <label className="sandbox-temperature-setting">
+            <span>{lang === 'fr' ? 'Température' : 'Temperature'} <b>{Number(selectedTemperature).toFixed(2)}</b></span>
+            <div>
+              <input
+                type="range"
+                min="0"
+                max="2"
+                step="0.05"
+                value={selectedTemperature}
+                onChange={(event) => setSelectedTemperature(parseFloat(event.target.value))}
+              />
+            </div>
+          </label>
+
+          <button
+            type="button"
+            onClick={handleRunTest}
+            disabled={loading || !sampleText || extracting}
+            className="primary-action sandbox-run-button"
+          >
+            {loading ? <RefreshCw className="animate-spin" /> : <Play />}
+            <span>{loading ? (lang === 'fr' ? 'Traduction en cours...' : 'Processing...') : (lang === 'fr' ? 'Lancer le test' : 'Run test')}</span>
+          </button>
+        </div>
+      </section>
+
+      <div className="sandbox-workbench segment-workbench">
+        <div className="segment-toolbar">
+          <div className="segment-workbench-title">
+            <FileText />
+            <div>
+              <span>{lang === 'fr' ? 'Atelier de traduction' : 'Translation workspace'}</span>
+              <h3>{lang === 'fr' ? 'Inspecteur de test' : 'Test inspector'}</h3>
+            </div>
           </div>
 
-          {/* Action Control Bar */}
-          <div className="pt-3.5 border-t border-white/[0.08] flex items-center justify-between gap-3 flex-wrap">
-            <div className="flex items-center space-x-2">
-              <select
-                value={selectedModel || settings.model || ''}
-                onChange={(e) => {
-                  const m = e.target.value;
-                  setSelectedModel(m);
-                  if (onSelectModel) onSelectModel(m);
-                }}
-                className="input-chill px-3 py-1.5 text-xs text-zinc-200 font-mono max-w-[200px] truncate"
-              >
-                {!selectedModel && settings.model && (
-                  <option value="">{t('dashboard.model', lang)}: {settings.model}</option>
-                )}
-                {availableModels.length > 0 ? (
-                  availableModels.map((m) => <option key={m} value={m}>{m}</option>)
-                ) : (
-                  <option value={settings.model}>{settings.model}</option>
-                )}
-              </select>
-              <span className="text-[10px] text-zinc-500 font-mono">Temp: {settings.temperature !== undefined ? settings.temperature : 1.5}</span>
-            </div>
-
+          <div className="segment-toolbar-controls">
             <button
-              onClick={handleRunTest}
-              disabled={loading || !sampleText || extracting}
-              className="btn-orange px-5 py-2 text-xs flex items-center space-x-2 disabled:opacity-40"
+              type="button"
+              className={`segment-view-toggle ${showRawText ? 'is-active' : ''}`}
+              onClick={() => setShowRawText(!showRawText)}
+              aria-pressed={showRawText}
             >
-              {loading ? (
-                <RefreshCw className="w-4 h-4 animate-spin" />
-              ) : (
-                <Play className="w-4 h-4 fill-white" />
-              )}
-              <span>{loading ? (lang === 'fr' ? 'Traduction en cours...' : 'Processing inference...') : t('sandbox.runInference', lang)}</span>
+              <span className="segment-toggle-track"><i /></span>
+              <span>{lang === 'fr' ? 'Texte brut' : 'Raw text'}</span>
             </button>
           </div>
         </div>
 
-        {/* Right Card: Translation Output Result */}
-        <div className="card-chill p-6 space-y-4 rounded-2xl flex flex-col justify-between h-full">
-          <div className="space-y-3 flex-1 flex flex-col">
-            <div className="flex items-center justify-between border-b border-white/[0.08] pb-2.5">
-              <span className="text-xs font-semibold text-emerald-400 uppercase tracking-wider flex items-center space-x-2">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span>{t('sandbox.resultOutputLabel', lang)}</span>
-              </span>
+        <div className="segment-compare sandbox-compare">
+          <section className="translation-pane source-pane sandbox-pane">
+            <header className="translation-pane-header">
+              <div className="translation-language">
+                <span>{lang === 'fr' ? 'Texte source' : 'Source text'}</span>
+                <strong>{sourceLanguageName}<small>{sourceCode.toUpperCase()}</small></strong>
+              </div>
+              <div className="translation-pane-meta">
+                <span className="translation-token-count">{sourceTokens.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens envoyés' : 'tokens sent'}</span>
+              </div>
+            </header>
 
-              {result && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                    ⚡ {(result.execution_time_ms / 1000).toFixed(2)}s
-                  </span>
+            <textarea
+              rows={12}
+              value={displayedSourceText}
+              onChange={(e) => setSampleText(e.target.value)}
+              placeholder={lang === 'fr' ? 'Saisissez un extrait ou chargez un livre...' : 'Enter an excerpt or import a book...'}
+              className="document-text sandbox-document-editor"
+            />
+
+            <footer className="translation-pane-footer sandbox-pane-footer">
+              <span>{displayedSourceText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+            </footer>
+          </section>
+
+          <section className="translation-pane target-pane sandbox-pane">
+            <header className="translation-pane-header">
+              <div className="translation-language">
+                <span>{lang === 'fr' ? 'Traduction' : 'Translation'}</span>
+                <strong>{targetLanguageName}<small>{targetCode.toUpperCase()}</small></strong>
+              </div>
+              <div className="translation-pane-meta">
+                <span className={`translation-status ${result ? 'status-done' : loading ? 'status-processing' : ''}`}>
+                  <i />
+                  {loading ? (lang === 'fr' ? 'En cours' : 'Processing') : result ? (lang === 'fr' ? 'Traduit' : 'Translated') : (lang === 'fr' ? 'En attente' : 'Waiting')}
+                </span>
+                <span className="translation-token-count">{targetTokens.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens reçus' : 'tokens received'}</span>
+                {result && (
                   <button
+                    type="button"
                     onClick={handleCopyResult}
-                    className="p-1 text-zinc-400 hover:text-white transition-colors"
+                    className="translation-copy"
                     title={t('sandbox.copyResult', lang)}
                   >
-                    {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    {copied ? <Check /> : <Copy />}
                   </button>
-                </div>
+                )}
+              </div>
+            </header>
+
+            <div className="document-text sandbox-document-output">
+              {result ? displayedResultText : (
+                <span className="translation-empty">
+                  {lang === 'fr' ? 'En attente de traduction...' : 'Waiting for translation...'}
+                </span>
               )}
             </div>
 
-            {/* Stretched Display Container with Centered Empty State */}
-            <div className="w-full input-chill p-4 text-xs font-mono leading-relaxed bg-black/40 flex-1 min-h-[320px] overflow-y-auto flex flex-col">
-              {result ? (
-                <div className="text-zinc-100 whitespace-pre-wrap w-full text-left">{result.translated_text}</div>
-              ) : (
-                <div className="flex-1 w-full flex flex-col items-center justify-center text-center p-8 text-zinc-500 space-y-3 my-auto">
-                  <div className="p-3 rounded-2xl bg-white/[0.02] border border-white/[0.06] text-zinc-500">
-                    <TestTube className="w-6 h-6 stroke-1" />
-                  </div>
-                  <p className="text-xs text-zinc-400 max-w-xs leading-relaxed">
-                    {lang === 'fr' ? (
-                      <>Cliquez sur <strong className="text-white">« Tester le Modèle »</strong> pour générer l'aperçu en direct.</>
-                    ) : (
-                      <>Click <strong className="text-white">"Run Test Inference"</strong> to generate a live preview.</>
-                    )}
-                  </p>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Footer Bar (Symmetric height match) */}
-          <div className="pt-3.5 border-t border-white/[0.08] text-[10px] text-zinc-500 font-mono flex items-center justify-between h-[38px]">
-            {result ? (
-              <>
-                <span>{t('dashboard.model', lang)}: <strong className="text-zinc-300">{result.model_used}</strong></span>
-                <span>{t('dashboard.provider', lang)}: <strong className="text-zinc-300">{settings.apiType || 'OpenAI API'}</strong></span>
-              </>
-            ) : (
-              <span className="text-zinc-600 text-center w-full">{lang === 'fr' ? 'En attente de génération...' : 'Waiting for inference...'}</span>
-            )}
-          </div>
+            <footer className="translation-pane-footer sandbox-pane-footer">
+              <span>{displayedResultText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+            </footer>
+          </section>
         </div>
-
       </div>
 
     </div>
