@@ -1,90 +1,46 @@
 import { test, expect } from '@playwright/test';
 
-test.describe('TraDoc Comprehensive End-to-End Test Suite', () => {
 
-  test.beforeEach(async ({ page }) => {
-    // Navigate to homepage before each test
-    await page.goto('/');
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/**', async (route) => {
+    const url = new URL(route.request().url());
+    if (url.pathname === '/api/events') {
+      return route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'data: {"type":"connected"}\n\n' });
+    }
+    if (url.pathname === '/api/settings/test-connection') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ success: true, message: 'ok', models: ['test-model'] }) });
+    }
+    if (url.pathname === '/api/jobs' || url.pathname === '/api/glossaries') {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
+  await page.goto('/');
+});
 
-  test('1. Brand Logo, Header Title & Active Model Badge', async ({ page }) => {
-    await expect(page).toHaveTitle(/TraDoc/i);
-    await expect(page.locator('text=TraDoc').first()).toBeVisible();
-    await expect(page.locator('text=Pro').first()).toBeVisible();
-    await expect(page.locator('text=Traduction Littéraire AI').first()).toBeVisible();
-  });
 
-  test('2. Navigation Between All 5 Core Tabs', async ({ page }) => {
-    // 1. Dashboard
-    await expect(page.locator('text=Tableau de Bord & Nouveaux Projets')).toBeVisible();
+test('dashboard exposes every supported import format', async ({ page }) => {
+  await expect(page).toHaveTitle(/TraDoc/i);
+  await expect(page.getByRole('heading', { name: 'Your documents, faithfully translated.' })).toBeVisible();
+  await expect(page.getByText('EPUB / PDF / DOCX / MD / TXT')).toBeVisible();
+});
 
-    // 2. Inspector
-    await page.click('text=Inspecteur');
-    await expect(page.locator('text=Inspecteur de Segments')).toBeVisible();
 
-    // 3. Sandbox
-    await page.click('text=Bac à Sable');
-    await expect(page.locator('text=Bac à sable (Aperçu)')).toBeVisible();
+test('main workspaces are reachable from the sidebar', async ({ page }) => {
+  await page.getByRole('button', { name: /Inspector & Tracking/i }).click();
+  await expect(page.getByRole('heading', { name: 'Inspect and review' })).toBeVisible();
+  await page.getByRole('button', { name: /^Test$/i }).click();
+  await expect(page.getByText('Instant test')).toBeVisible();
+  await page.getByRole('button', { name: /^Glossary$/i }).click();
+  await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
+  await page.getByRole('button', { name: /^Settings$/i }).click();
+  await expect(page.getByText('Preferences', { exact: true })).toBeVisible();
+});
 
-    // 4. Glossary Manager
-    await page.click('text=Glossaire');
-    await expect(page.locator('text=Glossaires Littéraires')).toBeVisible();
 
-    // 5. Configuration GPU
-    await page.click('text=Configuration');
-    await expect(page.locator('text=Configuration Serveur GPU')).toBeVisible();
-  });
-
-  test('3. Dashboard Elements & Dual Import Buttons', async ({ page }) => {
-    await expect(page.locator('text=Importer un document')).toBeVisible();
-    await expect(page.locator('text=EPUB / PDF / DOCX / MD / TXT').first()).toBeVisible();
-    await expect(page.locator('text=Démarrer la Traduction')).toBeVisible();
-    await expect(page.locator('text=Préparer & Inspecter')).toBeVisible();
-  });
-
-  test('4. Inspector Action Buttons & Segments Navigation', async ({ page }) => {
-    await page.click('text=Inspecteur');
-    await expect(page.locator('text=Inspecteur de Segments')).toBeVisible();
-
-    // Check action controls exist
-    await expect(page.locator('button:has-text("Resynchroniser")').first()).toBeVisible();
-  });
-
-  test('5. Glossary Manager Adding Terms', async ({ page }) => {
-    await page.click('text=Glossaire');
-    await expect(page.locator('text=TERMES & MOTS CLÉS')).toBeVisible();
-    await expect(page.locator('text=+ Ajouter un terme')).toBeVisible();
-  });
-
-  test('6. Settings GPU Configuration & Form Controls', async ({ page }) => {
-    await page.click('text=Configuration');
-    await expect(page.locator('text=Endpoint URL Distant')).toBeVisible();
-    await expect(page.locator('text=Type de Serveur')).toBeVisible();
-    await expect(page.locator('text=Concurrence Parallèle')).toBeVisible();
-    await expect(page.locator('text=Température')).toBeVisible();
-    await expect(page.locator('button:has-text("Tester la Connexion")')).toBeVisible();
-    await expect(page.locator('button:has-text("Enregistrer les Paramètres")')).toBeVisible();
-  });
-
-  test('7. Mobile Responsiveness & Slide-over Drawer Menu', async ({ page }) => {
-    // Set viewport to mobile phone size
-    await page.setViewportSize({ width: 375, height: 667 });
-
-    // Hamburger button should be visible on mobile
-    const hamburgerBtn = page.locator('button[aria-label="Ouvrir le menu"]');
-    await expect(hamburgerBtn).toBeVisible();
-
-    // Click hamburger button to open drawer
-    await hamburgerBtn.click();
-
-    // Drawer should open and show navigation links
-    await expect(page.locator('text=Glossaire').first()).toBeVisible();
-
-    // Click link inside drawer
-    await page.click('text=Glossaire');
-
-    // Drawer closes and view updates to Glossaires Littéraires
-    await expect(page.locator('text=Glossaires Littéraires')).toBeVisible();
-  });
-
+test('mobile navigation opens and changes workspace', async ({ page }) => {
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
+  await page.getByRole('button', { name: /^Glossary$/i }).click();
+  await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
 });

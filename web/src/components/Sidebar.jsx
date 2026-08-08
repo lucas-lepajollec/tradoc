@@ -6,7 +6,6 @@ export default function Sidebar({
   activeTab,
   setActiveTab,
   endpointStatus,
-  endpointUrl,
   isOpen,
   onClose,
   lang = 'en',

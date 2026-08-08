@@ -1,204 +1,195 @@
 const API_BASE = '/api';
 
+function getAppSecret() {
+  const current = sessionStorage.getItem('tradoc_app_secret');
+  if (current) return current;
+  const legacy = localStorage.getItem('tradoc_app_secret');
+  if (legacy) {
+    sessionStorage.setItem('tradoc_app_secret', legacy);
+    localStorage.removeItem('tradoc_app_secret');
+  }
+  return legacy || '';
+}
+
+export function setAppSecret(secret) {
+  if (secret?.trim()) sessionStorage.setItem('tradoc_app_secret', secret.trim());
+  else sessionStorage.removeItem('tradoc_app_secret');
+  localStorage.removeItem('tradoc_app_secret');
+}
+
 function getAuthHeaders(extraHeaders = {}) {
-  const secret = localStorage.getItem('tradoc_app_secret');
-  if (secret) {
-    return { ...extraHeaders, 'X-App-Secret': secret };
-  }
-  return extraHeaders;
+  const secret = getAppSecret();
+  return secret ? { ...extraHeaders, 'X-App-Secret': secret } : extraHeaders;
 }
 
-export async function fetchJobs() {
-  const res = await fetch(`${API_BASE}/jobs`, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Erreur lors du chargement des jobs');
-  return res.json();
-}
-
-export async function fetchJobDetail(jobId) {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}`, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Job introuvable');
-  return res.json();
-}
-
-export async function fetchJobSegments(jobId) {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/segments`, { headers: getAuthHeaders() });
-  if (!res.ok) throw new Error('Erreur lors du chargement des segments');
-  return res.json();
-}
-
-export async function uploadBook(formData) {
-  const res = await fetch(`${API_BASE}/jobs/upload`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body: formData,
+async function request(path, options = {}) {
+  const response = await fetch(`${API_BASE}${path}`, {
+    ...options,
+    headers: getAuthHeaders(options.headers || {}),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || 'Erreur lors de l\'envoi du fichier');
+  if (!response.ok) {
+    let message = `Erreur HTTP ${response.status}`;
+    try {
+      const payload = await response.json();
+      message = payload.detail || payload.message || message;
+    } catch {
+      // Keep the generic status message for non-JSON responses.
+    }
+    throw new Error(message);
   }
-  return res.json();
+  if (response.status === 204) return null;
+  return response.json();
 }
 
-export async function startJob(jobId, options = {}) {
+export const fetchJobs = () => request('/jobs');
+export const fetchJobDetail = (jobId) => request(`/jobs/${encodeURIComponent(jobId)}`);
+export const fetchJobSegments = (jobId) => request(`/jobs/${encodeURIComponent(jobId)}/segments`);
+
+export function uploadBook(formData) {
+  return request('/jobs/upload', { method: 'POST', body: formData });
+}
+
+export function startJob(jobId, options = {}) {
   const body = new FormData();
   if (options.endpoint) body.append('endpoint', options.endpoint);
   if (options.apiKey) body.append('api_key', options.apiKey);
   if (options.apiType) body.append('api_type', options.apiType);
   if (options.model) body.append('model', options.model);
-  if (options.concurrency) body.append('concurrency', options.concurrency);
-  if (options.temperature) body.append('temperature', options.temperature);
+  if (options.concurrency !== undefined) body.append('concurrency', options.concurrency);
+  if (options.temperature !== undefined) body.append('temperature', options.temperature);
   if (options.enableProofreading !== undefined) body.append('enable_proofreading', options.enableProofreading);
-
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/start`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body,
-  });
-  if (!res.ok) throw new Error('Erreur lors du démarrage du job');
-  return res.json();
+  if (options.enablePromptCaching !== undefined) body.append('enable_prompt_caching', options.enablePromptCaching);
+  return request(`/jobs/${encodeURIComponent(jobId)}/start`, { method: 'POST', body });
 }
 
-export async function updateJobConfig(jobId, options = {}) {
+export function updateJobConfig(jobId, options = {}) {
   const body = new FormData();
   if (options.temperature !== undefined) body.append('temperature', options.temperature);
   if (options.concurrency !== undefined) body.append('concurrency', options.concurrency);
   if (options.model) body.append('model', options.model);
-
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/update-config`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body,
-  });
-  if (!res.ok) throw new Error('Erreur lors de la mise à jour de la config du job');
-  return res.json();
+  return request(`/jobs/${encodeURIComponent(jobId)}/update-config`, { method: 'POST', body });
 }
 
-export async function proofreadJob(jobId, options = {}) {
-  const body = new FormData();
-  if (options.endpoint) body.append('endpoint', options.endpoint);
-  if (options.apiKey) body.append('api_key', options.apiKey);
-  if (options.apiType) body.append('api_type', options.apiType);
-  if (options.model) body.append('model', options.model);
-  if (options.concurrency) body.append('concurrency', options.concurrency);
-
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/proofread`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body,
-  });
-  if (!res.ok) throw new Error('Erreur lors du lancement de la relecture');
-  return res.json();
-}
-
-export async function cloneJobForProofread(jobId, model) {
+export function cloneJobForProofread(jobId, model) {
   const body = new FormData();
   if (model) body.append('model', model);
-
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/clone-for-proofread`, {
-    method: 'POST',
-    headers: getAuthHeaders(),
-    body,
-  });
-  if (!res.ok) throw new Error('Erreur lors de la préparation de la relecture');
-  return res.json();
+  return request(`/jobs/${encodeURIComponent(jobId)}/clone-for-proofread`, { method: 'POST', body });
 }
 
-export async function pauseJob(jobId) {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/pause`, { method: 'POST', headers: getAuthHeaders() });
-  return res.json();
-}
-
-export async function retryJob(jobId) {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}/retry`, { method: 'POST', headers: getAuthHeaders() });
-  return res.json();
-}
-
-export async function deleteJob(jobId) {
-  const res = await fetch(`${API_BASE}/jobs/${jobId}`, { method: 'DELETE', headers: getAuthHeaders() });
-  return res.json();
-}
+export const pauseJob = (jobId) => request(`/jobs/${encodeURIComponent(jobId)}/pause`, { method: 'POST' });
+export const retryJob = (jobId) => request(`/jobs/${encodeURIComponent(jobId)}/retry`, { method: 'POST' });
+export const deleteJob = (jobId) => request(`/jobs/${encodeURIComponent(jobId)}`, { method: 'DELETE' });
 
 export async function testConnection(endpoint, apiKey, apiType) {
   try {
-    const res = await fetch(`${API_BASE}/settings/test-connection`, {
+    return await request('/settings/test-connection', {
       method: 'POST',
-      headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
-      body: JSON.stringify({ endpoint, api_key: apiKey, api_type: apiType }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ endpoint: endpoint || null, api_key: apiKey || null, api_type: apiType }),
     });
-    if (!res.ok) {
-      const text = await res.text();
-      return { success: false, message: text || `Erreur HTTP ${res.status}`, models: [] };
-    }
-    return await res.json();
-  } catch (e) {
-    return { success: false, message: e.message, models: [] };
+  } catch (error) {
+    return { success: false, message: error.message, models: [] };
   }
 }
 
-export async function testTranslation(payload) {
-  const res = await fetch(`${API_BASE}/settings/test-translation`, {
+export function testTranslation(payload) {
+  return request('/settings/test-translation', {
     method: 'POST',
-    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || 'Erreur lors du test de traduction');
-  }
-  return res.json();
 }
 
-export async function fetchRemoteModels(endpoint, apiKey) {
-  try {
-    const url = `${API_BASE}/models?endpoint=${encodeURIComponent(endpoint)}&api_key=${encodeURIComponent(apiKey || '')}`;
-    const res = await fetch(url, { headers: getAuthHeaders() });
-    if (!res.ok) return [];
-    return await res.json();
-  } catch (e) {
-    console.error('fetchRemoteModels error:', e);
-    return [];
-  }
-}
-
-export async function fetchGlossaries() {
-  const res = await fetch(`${API_BASE}/glossaries`, { headers: getAuthHeaders() });
-  return res.json();
-}
-
-export async function fetchGlossary(name) {
-  const res = await fetch(`${API_BASE}/glossaries/${name}`, { headers: getAuthHeaders() });
-  return res.json();
-}
-
-export async function saveGlossary(glossary) {
-  const res = await fetch(`${API_BASE}/glossaries`, {
+export const fetchCredentialMetadata = () => request('/settings/credentials');
+export function saveProviderCredentials(provider, apiKey, endpoint) {
+  const payload = { provider };
+  if (apiKey !== undefined) payload.api_key = apiKey;
+  if (endpoint !== undefined) payload.endpoint = endpoint;
+  return request('/settings/credentials', {
     method: 'POST',
-    headers: getAuthHeaders({ 'Content-Type': 'application/json' }),
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+}
+
+export const fetchGlossaries = () => request('/glossaries');
+export const fetchGlossary = (name) => request(`/glossaries/${encodeURIComponent(name)}`);
+export function saveGlossary(glossary) {
+  return request('/glossaries', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(glossary),
   });
-  return res.json();
+}
+export const deleteGlossary = (name) => request(`/glossaries/${encodeURIComponent(name)}`, { method: 'DELETE' });
+
+export function extractSandboxSample(formData) {
+  return request('/settings/sandbox-extract', { method: 'POST', body: formData });
 }
 
-export async function deleteGlossary(name) {
-  const res = await fetch(`${API_BASE}/glossaries/${name}`, { method: 'DELETE', headers: getAuthHeaders() });
-  return res.json();
-}
-
-export function getDownloadUrl(jobId) {
-  const secret = localStorage.getItem('tradoc_app_secret');
-  const query = secret ? `?token=${encodeURIComponent(secret)}` : '';
-  return `${API_BASE}/jobs/${jobId}/download${query}`;
-}
-
-export async function extractSandboxSample(formData) {
-  const res = await fetch(`${API_BASE}/settings/sandbox-extract`, {
-    method: 'POST',
+export async function downloadJob(jobId) {
+  const response = await fetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}/download`, {
     headers: getAuthHeaders(),
-    body: formData,
   });
-  if (!res.ok) {
-    const err = await res.json();
-    throw new Error(err.detail || 'Erreur lors de l\'extraction de l\'extrait');
+  if (!response.ok) {
+    let message = 'Le téléchargement a échoué.';
+    try {
+      message = (await response.json()).detail || message;
+    } catch {
+      // Ignore a non-JSON error body.
+    }
+    throw new Error(message);
   }
-  return res.json();
+  const blob = await response.blob();
+  const disposition = response.headers.get('Content-Disposition') || '';
+  const utfName = disposition.match(/filename\*=UTF-8''([^;]+)/i)?.[1];
+  const plainName = disposition.match(/filename="?([^";]+)"?/i)?.[1];
+  const filename = decodeURIComponent(utfName || plainName || 'traduction');
+  const url = URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+export function subscribeToEvents(onEvent, onError = () => {}) {
+  const controller = new AbortController();
+
+  async function connect() {
+    while (!controller.signal.aborted) {
+      try {
+        const response = await fetch(`${API_BASE}/events`, {
+          headers: getAuthHeaders({ Accept: 'text/event-stream' }),
+          signal: controller.signal,
+        });
+        if (!response.ok || !response.body) throw new Error(`SSE HTTP ${response.status}`);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+        while (!controller.signal.aborted) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const frames = buffer.split('\n\n');
+          buffer = frames.pop() || '';
+          frames.forEach((frame) => {
+            const data = frame.split('\n').filter((line) => line.startsWith('data:')).map((line) => line.slice(5).trim()).join('\n');
+            if (data) {
+              try { onEvent(JSON.parse(data)); } catch { /* malformed event ignored */ }
+            }
+          });
+        }
+      } catch (error) {
+        if (controller.signal.aborted) break;
+        onError(error);
+      }
+      await new Promise((resolve) => setTimeout(resolve, 1500));
+    }
+  }
+
+  connect();
+  return () => controller.abort();
 }

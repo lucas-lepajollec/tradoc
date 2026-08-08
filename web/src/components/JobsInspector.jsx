@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RefreshCw, Download, FileText, CheckCircle2, AlertTriangle, Terminal, ChevronRight, ChevronLeft, Clock, Copy, Check, Trash2, ArrowRight, Sparkles, Sliders } from 'lucide-react';
-import { fetchJobs, fetchJobDetail, fetchJobSegments, startJob, pauseJob, retryJob, deleteJob, updateJobConfig } from '../api';
+import { fetchJobs, fetchJobDetail, fetchJobSegments, startJob, pauseJob, retryJob, deleteJob, updateJobConfig, downloadJob, subscribeToEvents } from '../api';
 import { AVAILABLE_LANGUAGES, t } from '../i18n/translations';
 
 const readableSegment = (text = '') => text
@@ -21,12 +21,56 @@ const estimateTokens = (text = '') => {
   return Math.max(Math.floor(text.length / 3.8), Math.floor(words * 1.3));
 };
 
+const INSPECTOR_SNAPSHOT_KEY = 'tradoc_inspector_snapshot';
+const INSPECTOR_JOBS_SNAPSHOT_KEY = 'tradoc_inspector_jobs_snapshot';
+let inspectorJobsCache = [];
+
+const readJobsSnapshot = () => {
+  if (inspectorJobsCache.length > 0) return inspectorJobsCache;
+  try {
+    const snapshot = JSON.parse(sessionStorage.getItem(INSPECTOR_JOBS_SNAPSHOT_KEY) || '[]');
+    inspectorJobsCache = Array.isArray(snapshot) ? snapshot : [];
+  } catch {
+    sessionStorage.removeItem(INSPECTOR_JOBS_SNAPSHOT_KEY);
+    inspectorJobsCache = [];
+  }
+  return inspectorJobsCache;
+};
+
+const readInspectorSnapshot = (jobId) => {
+  if (!jobId) return null;
+  try {
+    const snapshot = JSON.parse(sessionStorage.getItem(INSPECTOR_SNAPSHOT_KEY) || 'null');
+    return snapshot?.job?.id === jobId && snapshot?.segment ? snapshot : null;
+  } catch {
+    sessionStorage.removeItem(INSPECTOR_SNAPSHOT_KEY);
+    return null;
+  }
+};
+
+const segmentsFromSnapshot = (snapshot) => {
+  if (!snapshot?.segment) return [];
+  const length = Math.max(snapshot.totalSegments || 0, snapshot.selectedSegIndex + 1, 1);
+  const restored = new Array(length);
+  restored[snapshot.selectedSegIndex] = snapshot.segment;
+  return restored;
+};
+
+const latestSegmentIndex = (items = []) => {
+  for (let index = items.length - 1; index >= 0; index -= 1) {
+    if (items[index]?.status === 'DONE' || items[index]?.status === 'PROCESSING') return index;
+  }
+  return 0;
+};
+
 export default function JobsInspector({ selectedJobId, onSelectJob, settings, availableModels = [], lang = 'en', onSelectModel }) {
-  const [jobs, setJobs] = useState([]);
-  const [job, setJob] = useState(null);
-  const [segments, setSegments] = useState([]);
-  const [selectedSegIndex, setSelectedSegIndex] = useState(0);
-  const [jumpInput, setJumpInput] = useState('1');
+  const initialSnapshot = useRef(readInspectorSnapshot(selectedJobId)).current;
+  const initialJobs = useRef(readJobsSnapshot()).current;
+  const [jobs, setJobs] = useState(initialJobs);
+  const [job, setJob] = useState(initialSnapshot?.job || null);
+  const [segments, setSegments] = useState(() => segmentsFromSnapshot(initialSnapshot));
+  const [selectedSegIndex, setSelectedSegIndex] = useState(initialSnapshot?.selectedSegIndex || 0);
+  const [jumpInput, setJumpInput] = useState(String((initialSnapshot?.selectedSegIndex || 0) + 1));
   const [logs, setLogs] = useState([]);
   const [showConsole, setShowConsole] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -47,7 +91,26 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     lastCompletedCount: 0
   });
 
-  const prevSegmentsRef = useRef([]);
+  const jobsRef = useRef(initialJobs);
+  const jobRef = useRef(job);
+  const selectedJobIdRef = useRef(selectedJobId);
+  const detailsRequestRef = useRef(0);
+  const jobsRequestRef = useRef(0);
+  const segmentCacheRef = useRef(new Map());
+
+  useEffect(() => {
+    jobsRef.current = jobs;
+    inspectorJobsCache = jobs;
+    try {
+      sessionStorage.setItem(INSPECTOR_JOBS_SNAPSHOT_KEY, JSON.stringify(jobs));
+    } catch {
+      // The in-memory snapshot still prevents a flash during in-app navigation.
+    }
+  }, [jobs]);
+
+  useEffect(() => {
+    jobRef.current = job;
+  }, [job]);
 
   useEffect(() => {
     if (job) {
@@ -84,14 +147,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
   const jumpToLatestSegment = (segArray = segments) => {
     if (!segArray || segArray.length === 0) return;
-    let targetIdx = -1;
-    for (let i = segArray.length - 1; i >= 0; i--) {
-      if (segArray[i].status === 'DONE' || segArray[i].status === 'PROCESSING') {
-        targetIdx = i;
-        break;
-      }
-    }
-    setSelectedSegIndex(targetIdx !== -1 ? targetIdx : 0);
+    setSelectedSegIndex(latestSegmentIndex(segArray));
   };
 
   const handleResync = () => {
@@ -167,17 +223,18 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     }
   }, [job?.id, job?.status, job?.completed_chunks]);
 
-  const currentJobIdRef = useRef(job?.id);
+  const currentJobIdRef = useRef(selectedJobId || job?.id);
   useEffect(() => {
-    currentJobIdRef.current = job?.id;
-  }, [job?.id]);
+    selectedJobIdRef.current = selectedJobId;
+    currentJobIdRef.current = selectedJobId || jobRef.current?.id || null;
+  }, [selectedJobId]);
 
   // Tab visibility change auto-sync (prevents UI freezing when returning to tab)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
-        refreshActiveJob();
-        loadJobsList();
+        refreshActiveJob(selectedJobIdRef.current || currentJobIdRef.current);
+        loadJobsList(false);
       }
     };
     document.addEventListener('visibilitychange', handleVisibilityChange);
@@ -185,35 +242,36 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   }, []);
 
   useEffect(() => {
-    loadJobsList();
+    loadJobsList(true);
 
-    let eventSource = null;
-    const connectSSE = () => {
-      eventSource = new EventSource('/api/events');
-      
-      eventSource.onmessage = (event) => {
-        try {
-          const data = JSON.parse(event.data);
+    const unsubscribe = subscribeToEvents((data) => {
+          const isCurrentJob = Boolean(data.job_id && data.job_id === selectedJobIdRef.current);
           if (data.type === 'job_paused' || data.type === 'job_auto_paused') {
-            setJob((prev) => prev ? { ...prev, status: 'PAUSED' } : null);
+            if (isCurrentJob) setJob((prev) => prev ? { ...prev, status: 'PAUSED' } : null);
             setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PAUSED' } : j));
           } else if (data.type === 'job_started') {
-            setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
+            if (isCurrentJob) setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
             setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'PROCESSING' } : j));
-            loadJobsList();
           } else if (data.type === 'job_completed') {
-            setJob((prev) => prev ? { ...prev, status: 'COMPLETED' } : null);
-            refreshActiveJob();
-            loadJobsList();
+            if (isCurrentJob) {
+              setJob((prev) => prev ? { ...prev, status: 'COMPLETED' } : null);
+              refreshActiveJob(data.job_id);
+            }
+            setJobs((prev) => prev.map((j) => data.job_id === j.id ? { ...j, status: 'COMPLETED' } : j));
+          } else if (data.type === 'segment_started') {
+            if (isCurrentJob && data.chunk_index !== undefined) {
+              setSegments((prev) => prev.map((segment) => segment?.chunk_index === data.chunk_index ? { ...segment, status: 'PROCESSING' } : segment));
+              if (autoScrollRef.current) setSelectedSegIndex(data.chunk_index);
+            }
           } else if (data.type === 'segment_completed' || data.type === 'segment_failed') {
-            const currentId = currentJobIdRef.current;
+            const currentId = selectedJobIdRef.current;
             const targetId = data.job_id || currentId;
 
             // Only append log and update segments if event belongs to currently selected job
             if (data.job_id && data.job_id === currentId) {
               setLogs((prev) => [data, ...prev.slice(0, 49)]);
               if (data.chunk_index !== undefined) {
-                setSegments((prev) => prev.map((s) => s.chunk_index === data.chunk_index ? { ...s, status: data.type === 'segment_completed' ? 'DONE' : 'FAILED', translated_text: data.translated_text || s.translated_text } : s));
+                setSegments((prev) => prev.map((s) => s?.chunk_index === data.chunk_index ? { ...s, status: data.type === 'segment_completed' ? 'DONE' : 'FAILED', translated_text: data.translated_text || s.translated_text } : s));
                 if (autoScrollRef.current) {
                   setSelectedSegIndex(data.chunk_index);
                 }
@@ -223,28 +281,17 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
             // Update lightweight job detail to reflect progress across sidebar & header
             if (targetId) {
               fetchJobDetail(targetId).then((jData) => {
-                if (currentJobIdRef.current === targetId) {
+                if (selectedJobIdRef.current === targetId) {
                   setJob(jData);
                 }
                 setJobs((prev) => prev.map((j) => j.id === targetId ? { ...j, completed_chunks: jData.completed_chunks, status: jData.status } : j));
               }).catch(console.error);
             }
           }
-        } catch (e) {
-          console.error(e);
-        }
-      };
-
-      eventSource.onerror = () => {
-        if (eventSource) eventSource.close();
-        setTimeout(connectSSE, 3000);
-      };
-    };
-
-    connectSSE();
+    });
 
     return () => {
-      if (eventSource) eventSource.close();
+      unsubscribe();
     };
   }, []);
 
@@ -259,31 +306,43 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   }, []);
 
   useEffect(() => {
-    loadJobsList();
+    selectedJobIdRef.current = selectedJobId;
+    currentJobIdRef.current = selectedJobId || null;
+    if (selectedJobId) {
+      const targetJob = jobsRef.current.find((candidate) => candidate.id === selectedJobId);
+      if (targetJob && jobRef.current?.id !== selectedJobId) {
+        setJob(targetJob);
+      }
+      const cached = segmentCacheRef.current.get(selectedJobId);
+      if (cached) {
+        setSegments(cached.segments);
+        setSelectedSegIndex(Math.min(cached.selectedSegIndex, Math.max(0, cached.segments.length - 1)));
+      }
+      loadJobDetails(selectedJobId, { preserveCurrent: Boolean(cached) });
+    } else {
+      loadJobsList(true);
+    }
   }, [selectedJobId]);
 
   useEffect(() => {
     setJumpInput(String(selectedSegIndex + 1));
   }, [selectedSegIndex]);
 
-  const loadJobsList = async () => {
+  const loadJobsList = async (selectFallback = false) => {
+    const requestId = ++jobsRequestRef.current;
     try {
       const data = await fetchJobs();
-      if (Array.isArray(data)) {
+      if (requestId === jobsRequestRef.current && Array.isArray(data)) {
+        jobsRef.current = data;
         setJobs(data);
-        if (data.length > 0) {
-          const targetId = selectedJobId && data.some(j => j.id === selectedJobId) ? selectedJobId : data[0].id;
-          const targetJob = data.find(j => j.id === targetId) || data[0];
-          setJob(targetJob);
-          loadJobDetails(targetJob.id);
-          if (!selectedJobId && onSelectJob) {
-            onSelectJob(targetId);
-          }
-        } else {
+        const requestedId = selectedJobIdRef.current;
+        if (data.length === 0) {
           setJob(null);
           setSegments([]);
           setLogs([]);
           if (onSelectJob) onSelectJob(null);
+        } else if (selectFallback && (!requestedId || !data.some((candidate) => candidate.id === requestedId))) {
+          if (onSelectJob) onSelectJob(data[0].id);
         }
       }
     } catch (e) {
@@ -291,12 +350,12 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
       setTimeout(async () => {
         try {
           const data = await fetchJobs();
-          if (Array.isArray(data) && data.length > 0) {
+          if (requestId === jobsRequestRef.current && Array.isArray(data)) {
+            jobsRef.current = data;
             setJobs(data);
-            const targetId = selectedJobId && data.some(j => j.id === selectedJobId) ? selectedJobId : data[0].id;
-            const targetJob = data.find(j => j.id === targetId) || data[0];
-            setJob(targetJob);
-            loadJobDetails(targetJob.id);
+            if (selectFallback && data.length > 0 && !data.some((candidate) => candidate.id === selectedJobIdRef.current)) {
+              if (onSelectJob) onSelectJob(data[0].id);
+            }
           }
         } catch (retryErr) {
           console.error('Retry loadJobsList failed:', retryErr);
@@ -307,30 +366,43 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
   const selectJobOptimistic = (targetJob) => {
     if (!targetJob) return;
-    const isNewJob = !job || job.id !== targetJob.id;
+    if (selectedJobIdRef.current === targetJob.id) return;
+    detailsRequestRef.current += 1;
+    selectedJobIdRef.current = targetJob.id;
+    currentJobIdRef.current = targetJob.id;
     setJob(targetJob);
-    if (isNewJob) {
-      setLogs([]);
+    const cached = segmentCacheRef.current.get(targetJob.id);
+    if (cached) {
+      setSegments(cached.segments);
+      setSelectedSegIndex(Math.min(cached.selectedSegIndex, Math.max(0, cached.segments.length - 1)));
+    } else {
       setSegments([]);
+      setSelectedSegIndex(0);
     }
+    setLogs([]);
     if (onSelectJob) onSelectJob(targetJob.id);
-    loadJobDetails(targetJob.id);
   };
 
-  const loadJobDetails = async (id) => {
-    const isNewJob = !job || job.id !== id;
-    if (isNewJob) {
+  const loadJobDetails = async (id, { preserveCurrent = false } = {}) => {
+    const requestId = ++detailsRequestRef.current;
+    const isNewJob = jobRef.current?.id !== id;
+    if (isNewJob && !preserveCurrent && !segmentCacheRef.current.has(id)) {
       setLogs([]);
       setSegments([]);
     }
     try {
-      const jData = await fetchJobDetail(id);
+      const [jData, sData] = await Promise.all([fetchJobDetail(id), fetchJobSegments(id)]);
+      if (requestId !== detailsRequestRef.current || selectedJobIdRef.current !== id) return;
+      jobRef.current = jData;
       setJob(jData);
-      const sData = await fetchJobSegments(id);
       setSegments(sData);
 
-      // Auto-focus on the latest completed or processing segment on initial load
-      jumpToLatestSegment(sData);
+      const cached = segmentCacheRef.current.get(id);
+      const nextIndex = cached && !autoScrollRef.current
+        ? Math.min(cached.selectedSegIndex, Math.max(0, sData.length - 1))
+        : latestSegmentIndex(sData);
+      setSelectedSegIndex(nextIndex);
+      segmentCacheRef.current.set(id, { segments: sData, selectedSegIndex: nextIndex });
 
       // Restore past completed/failed segment events into logs on load/reload
       if (sData && sData.length > 0) {
@@ -350,15 +422,21 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
       }
     } catch (e) {
       console.error(e);
+      if (selectedJobIdRef.current === id && jobsRef.current.length > 0 && !jobsRef.current.some((candidate) => candidate.id === id)) {
+        if (onSelectJob) onSelectJob(jobsRef.current[0].id);
+      }
     }
   };
 
-  const refreshActiveJob = async () => {
-    const activeId = currentJobIdRef.current || selectedJobId;
+  const refreshActiveJob = async (requestedId = null) => {
+    const activeId = requestedId || selectedJobIdRef.current || currentJobIdRef.current;
     if (activeId) {
       try {
         const jData = await fetchJobDetail(activeId);
-        setJob(jData);
+        if (selectedJobIdRef.current === activeId) {
+          jobRef.current = jData;
+          setJob(jData);
+        }
         setJobs((prev) => prev.map((j) => j.id === activeId ? { ...j, completed_chunks: jData.completed_chunks, status: jData.status } : j));
       } catch (e) {
         console.error(e);
@@ -368,53 +446,58 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
   const handleStartResume = async () => {
     if (!job) return;
+    const jobId = job.id;
     setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
     try {
-      await startJob(job.id, {
+      await startJob(jobId, {
         endpoint: settings.endpoint,
         apiKey: settings.apiKey,
         apiType: settings.apiType,
         model: job.model || settings.model,
         concurrency: job.concurrency || settings.concurrency || 1,
         temperature: job.temperature !== undefined ? job.temperature : settings.temperature,
-        enableProofreading: settings.enableProofreading
+        enableProofreading: settings.enableProofreading,
+        enablePromptCaching: settings.enablePromptCaching
       });
     } catch (err) {
       console.error(err);
     }
-    await refreshActiveJob();
+    await refreshActiveJob(jobId);
   };
 
   const handlePause = async () => {
     if (!job) return;
+    const jobId = job.id;
     setJob((prev) => prev ? { ...prev, status: 'PAUSED' } : null);
     try {
-      await pauseJob(job.id);
+      await pauseJob(jobId);
     } catch (err) {
       console.error(err);
     }
-    await refreshActiveJob();
+    await refreshActiveJob(jobId);
   };
 
   const handleRetryAndStart = async () => {
     if (!job) return;
+    const jobId = job.id;
     setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
-    setSegments((prev) => prev.map((s) => s.status === 'FAILED' ? { ...s, status: 'PENDING', error: null } : s));
+    setSegments((prev) => prev.map((s) => s?.status === 'FAILED' ? { ...s, status: 'PENDING', error: null } : s));
     try {
-      await retryJob(job.id);
-      await startJob(job.id, {
+      await retryJob(jobId);
+      await startJob(jobId, {
         endpoint: settings.endpoint,
         apiKey: settings.apiKey,
         apiType: settings.apiType,
         model: job.model || settings.model,
         concurrency: job.concurrency || settings.concurrency || 1,
         temperature: job.temperature !== undefined ? job.temperature : settings.temperature,
-        enableProofreading: settings.enableProofreading
+        enableProofreading: settings.enableProofreading,
+        enablePromptCaching: settings.enablePromptCaching
       });
     } catch (err) {
       console.error(err);
     }
-    await refreshActiveJob();
+    await refreshActiveJob(jobId);
   };
 
   const handleDeleteJob = async (e, jobId, fileName) => {
@@ -428,12 +511,13 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     }
 
     const remaining = jobs.filter((j) => j.id !== jobId);
+    jobsRef.current = remaining;
     setJobs(remaining);
+    segmentCacheRef.current.delete(jobId);
 
     if (remaining.length > 0) {
       const nextId = remaining[0].id;
       if (onSelectJob) onSelectJob(nextId);
-      loadJobDetails(nextId);
     } else {
       setJob(null);
       setSegments([]);
@@ -445,37 +529,10 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     if (!job || isDownloading) return;
     setIsDownloading(true);
     try {
-      const response = await fetch(`/api/jobs/${job.id}/download?t=${Date.now()}`);
-      if (!response.ok) {
-        throw new Error('Erreur lors du telechargement');
-      }
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-
-      // Extract filename from Content-Disposition header if available
-      const contentDisposition = response.headers.get('content-disposition');
-      let filename = `traduit_${job.file_name}`;
-      if (contentDisposition) {
-        const match = contentDisposition.match(/filename="(.+?)"/);
-        if (match && match[1]) {
-          filename = match[1];
-        }
-      } else {
-        if (job.file_type === 'pdf') {
-          filename = `traduit_${job.file_name}`;
-        }
-      }
-
-      a.download = filename;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      await downloadJob(job.id);
     } catch (err) {
       console.error(err);
-      alert(lang === 'fr' ? 'Echec de la reconstruction ou du telechargement.' : 'Failed to rebuild or download file.');
+      alert(err?.message || (lang === 'fr' ? 'Échec de la reconstruction ou du téléchargement.' : 'Failed to rebuild or download file.'));
     } finally {
       setIsDownloading(false);
     }
@@ -544,14 +601,53 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   const targetTokenCount = currentSegment?.translated_text ? estimateTokens(currentSegment.translated_text) : 0;
   const displayedSourceText = currentSegment ? (showRawSegments ? currentSegment.original_text : readableSegment(currentSegment.original_text)) : '';
   const displayedTargetText = currentSegment?.translated_text ? (showRawSegments ? currentSegment.translated_text : readableSegment(currentSegment.translated_text)) : '';
+  const segmentStatusLabel = currentSegment?.status === 'DONE'
+    ? (job?.job_type === 'proofreading' ? (lang === 'fr' ? 'Relu' : 'Proofread') : (lang === 'fr' ? 'Traduit' : 'Translated'))
+    : currentSegment?.status === 'FAILED'
+      ? t('dashboard.failed', lang)
+      : currentSegment?.status === 'PROCESSING'
+        ? t('dashboard.processing', lang)
+        : (lang === 'fr' ? 'En attente' : 'Pending');
+  const activeJobCount = jobs.filter((item) => item.status === 'PROCESSING').length;
+  const canExport = Boolean(job && (job.status === 'COMPLETED' || job.completed_chunks > 0));
+  const isPartialExport = Boolean(job && job.status !== 'COMPLETED');
+  const exportLabel = isPartialExport
+    ? (lang === 'fr' ? 'Exporter l’aperçu' : 'Export preview')
+    : (lang === 'fr' ? 'Exporter' : 'Export');
+
+  useEffect(() => {
+    if (!job?.id || !currentSegment) return;
+    segmentCacheRef.current.set(job.id, { segments, selectedSegIndex });
+    try {
+      sessionStorage.setItem(INSPECTOR_SNAPSHOT_KEY, JSON.stringify({
+        job,
+        segment: currentSegment,
+        selectedSegIndex,
+        totalSegments: segments.length || job.total_chunks,
+      }));
+    } catch {
+      // A snapshot is only a visual optimization; live API data remains authoritative.
+    }
+  }, [job, currentSegment, segments, selectedSegIndex]);
 
   return (
     <div className="inspector-page space-y-6">
 
-      <header className="page-intro">
-        <p className="page-kicker">{lang === 'fr' ? 'Atelier éditorial' : 'Editorial workspace'}</p>
-        <h1>{lang === 'fr' ? 'Inspection et révision' : 'Inspect and review'}</h1>
-        <p>{lang === 'fr' ? 'Comparez les segments, contrôlez la progression et préparez une traduction prête à publier.' : 'Compare segments, monitor progress, and prepare a translation ready to publish.'}</p>
+      <header className="page-intro page-intro-with-status">
+        <div>
+          <p className="page-kicker">{lang === 'fr' ? 'Atelier éditorial' : 'Editorial workspace'}</p>
+          <h1>{lang === 'fr' ? 'Inspection et révision' : 'Inspect and review'}</h1>
+          <p>{lang === 'fr' ? 'Comparez les segments, contrôlez la progression et préparez une traduction prête à publier.' : 'Compare segments, monitor progress, and prepare a translation ready to publish.'}</p>
+        </div>
+        <div
+          className="connection-pill active-jobs-pill"
+          title={lang === 'fr' ? 'Projets actuellement en cours de traduction' : 'Projects currently translating'}
+        >
+          <span />
+          {activeJobCount} {lang === 'fr'
+            ? (activeJobCount > 1 ? 'projets en cours' : 'projet en cours')
+            : (activeJobCount === 1 ? 'project running' : 'projects running')}
+        </div>
       </header>
       
       {/* Upper Grid Layout: Books List (1 col) + Inspector Details (3 cols) */}
@@ -630,8 +726,16 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     ) : (
                       <button type="button" onClick={handleStartResume} className="primary-action"><Play />{job.completed_chunks > 0 ? t('dashboard.resume', lang) : (lang === 'fr' ? 'Démarrer' : 'Start')}</button>
                     )}
-                    <button type="button" onClick={handleDownload} disabled={isDownloading || !(job.status === 'COMPLETED' || job.completed_chunks > 0)} className="secondary-action">
-                      {isDownloading ? <RefreshCw className="animate-spin" /> : <Download />}{isDownloading ? (lang === 'fr' ? 'Préparation' : 'Preparing') : (lang === 'fr' ? 'Exporter' : 'Export')}
+                    <button
+                      type="button"
+                      onClick={handleDownload}
+                      disabled={isDownloading || !canExport}
+                      className="secondary-action"
+                      title={isPartialExport
+                        ? (lang === 'fr' ? 'Télécharger un instantané avec les segments déjà traduits' : 'Download a snapshot with completed translations')
+                        : (lang === 'fr' ? 'Télécharger la traduction finale' : 'Download final translation')}
+                    >
+                      {isDownloading ? <RefreshCw className="animate-spin" /> : <Download />}{isDownloading ? (lang === 'fr' ? 'Préparation' : 'Preparing') : exportLabel}
                     </button>
                     <button type="button" onClick={() => setIsEditingConfig(!isEditingConfig)} className={`icon-action ${isEditingConfig ? 'is-active' : ''}`} title={lang === 'fr' ? 'Configuration' : 'Settings'}><Sliders /></button>
                   </div>
@@ -903,12 +1007,14 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
                   <button
                     onClick={handleDownload}
-                    disabled={isDownloading || !(job.status === 'COMPLETED' || job.completed_chunks > 0)}
-                    title={lang === 'fr' ? 'Télécharger le fichier' : 'Download file'}
+                    disabled={isDownloading || !canExport}
+                    title={isPartialExport
+                      ? (lang === 'fr' ? 'Télécharger un instantané avec les segments déjà traduits' : 'Download a snapshot with completed translations')
+                      : (lang === 'fr' ? 'Télécharger la traduction finale' : 'Download final translation')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center space-x-1.5 transition-all border ${
                       isDownloading
                         ? 'bg-blue-500/10 text-blue-400 border-blue-500/30 cursor-wait'
-                        : job.status === 'COMPLETED' || job.completed_chunks > 0
+                        : canExport
                         ? 'bg-white/[0.04] text-white border-white/[0.12] hover:bg-white/[0.08] cursor-pointer'
                         : 'bg-white/[0.02] text-zinc-500 border-white/[0.08] opacity-50 cursor-not-allowed pointer-events-none'
                     }`}
@@ -921,7 +1027,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     ) : (
                       <>
                         <Download className="w-3.5 h-3.5" />
-                        <span>{lang === 'fr' ? 'Télécharger' : 'Download'}</span>
+                        <span>{isPartialExport ? (lang === 'fr' ? 'Aperçu' : 'Preview') : (lang === 'fr' ? 'Télécharger' : 'Download')}</span>
                       </>
                     )}
                   </button>
@@ -1047,9 +1153,9 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                           <strong>{targetLanguageName}<small>{job.target_lang.toUpperCase()}</small></strong>
                         </div>
                         <div className="translation-pane-meta">
-                          <span className={`translation-status status-${String(currentSegment.status).toLowerCase()}`}>
+                          <span className={`translation-status status-${String(currentSegment.status).toLowerCase()}`} aria-live="polite">
                             <i />
-                            {currentSegment.status === 'DONE' ? (job.job_type === 'proofreading' ? (lang === 'fr' ? 'Relu' : 'Proofread') : (lang === 'fr' ? 'Traduit' : 'Translated')) : currentSegment.status === 'FAILED' ? t('dashboard.failed', lang) : t('dashboard.processing', lang)}
+                            {segmentStatusLabel}
                           </span>
                           <span className="translation-token-count">{targetTokenCount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens reçus' : 'tokens received'}</span>
                           {currentSegment.translated_text && (
@@ -1064,7 +1170,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                           )}
                         </div>
                       </header>
-                      <div className="document-text">
+                      <div className={`document-text ${currentSegment.translated_text ? '' : 'is-empty'}`}>
                         {currentSegment.translated_text ? displayedTargetText : (
                           <span className="translation-empty">
                             {job.job_type === 'proofreading' ? (lang === 'fr' ? 'En attente de relecture...' : 'Waiting for proofreading...') : (lang === 'fr' ? 'En attente de traduction...' : 'Waiting for translation...')}

@@ -1,4 +1,3 @@
-import os
 from pathlib import Path
 from typing import Optional
 from pydantic import BaseModel, Field
@@ -34,6 +33,23 @@ class Settings(BaseSettings):
         p.mkdir(parents=True, exist_ok=True)
         return p
 
+    @property
+    def JOBS_DIR(self) -> Path:
+        p = self.DATA_DIR / "jobs"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def TEMP_DIR(self) -> Path:
+        p = self.DATA_DIR / "tmp"
+        p.mkdir(parents=True, exist_ok=True)
+        return p
+
+    @property
+    def CREDENTIALS_PATH(self) -> Path:
+        self.DATA_DIR.mkdir(parents=True, exist_ok=True)
+        return self.DATA_DIR / "provider_credentials.json"
+
     # Remote LLM Server Defaults
     LLM_ENDPOINT: str = Field(default="http://localhost:1234/v1")
     LLM_API_KEY: str = Field(default="lm-studio")
@@ -42,16 +58,20 @@ class Settings(BaseSettings):
     
     # Engine Settings
     CONCURRENCY: int = Field(default=1, ge=1, le=32)
-    CHUNK_TOKEN_SIZE: int = Field(default=1000, ge=200, le=4000)
-    MAX_RETRIES: int = Field(default=3)
-    REQUEST_TIMEOUT: float = Field(default=180.0)
-    TEMPERATURE: float = Field(default=0.15)
+    CHUNK_TOKEN_SIZE: int = Field(default=1000, ge=200, le=10000)
+    MAX_RETRIES: int = Field(default=3, ge=1, le=10)
+    REQUEST_TIMEOUT: float = Field(default=180.0, ge=10.0, le=1800.0)
+    TEMPERATURE: float = Field(default=0.15, ge=0.0, le=2.0)
+    MAX_UPLOAD_BYTES: int = Field(default=200 * 1024 * 1024, ge=1024 * 1024)
+    MAX_ARCHIVE_ENTRIES: int = Field(default=20000, ge=100)
+    MAX_ARCHIVE_UNCOMPRESSED_BYTES: int = Field(default=1024 * 1024 * 1024, ge=10 * 1024 * 1024)
     
     ENABLE_PROOFREADING: bool = Field(default=False)
     
     # Security & Auth
     APP_SECRET: Optional[str] = Field(default=None)
-    ALLOWED_ORIGINS: str = Field(default="*")
+    ALLOWED_ORIGINS: str = Field(default="")
+    ALLOWED_LLM_HOSTS: str = Field(default="")
 
     # Translation defaults
     DEFAULT_SOURCE_LANG: str = "en"

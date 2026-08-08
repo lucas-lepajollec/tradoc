@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Menu } from 'lucide-react';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
@@ -7,10 +7,28 @@ import Settings from './components/Settings';
 import GlossaryManager from './components/GlossaryManager';
 import TestSandboxModal from './components/TestSandboxModal';
 import SetupWizard from './components/SetupWizard';
-import { testConnection, updateJobConfig } from './api';
+import { testConnection } from './api';
 import { t } from './i18n/translations';
 
 const DEFAULT_PRESETS = [];
+
+const withoutSecrets = (value) => {
+  if (!value || typeof value !== 'object') return value;
+  const { apiKey, ...safe } = value;
+  return safe;
+};
+
+const parseStoredArray = (key) => {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(key) || '[]');
+    const sanitized = Array.isArray(parsed) ? parsed.map(withoutSecrets) : [];
+    localStorage.setItem(key, JSON.stringify(sanitized));
+    return sanitized;
+  } catch {
+    localStorage.removeItem(key);
+    return [];
+  }
+};
 
 export default function App() {
   const [activeTab, setActiveTab] = useState(() => {
@@ -23,7 +41,12 @@ export default function App() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const [selectedJobId, setSelectedJobId] = useState(null);
+  const [selectedJobId, setSelectedJobId] = useState(() => localStorage.getItem('tradoc_selected_job_id') || null);
+  const handleSelectJob = useCallback((jobId) => {
+    setSelectedJobId(jobId || null);
+    if (jobId) localStorage.setItem('tradoc_selected_job_id', jobId);
+    else localStorage.removeItem('tradoc_selected_job_id');
+  }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // App Language State (Default English)
@@ -39,15 +62,7 @@ export default function App() {
 
   // Presets Management State
   const [presets, setPresets] = useState(() => {
-    const saved = localStorage.getItem('tradoc_presets');
-    if (saved) {
-      try {
-        return JSON.parse(saved);
-      } catch (e) {
-        console.error('Failed to parse presets:', e);
-      }
-    }
-    return DEFAULT_PRESETS;
+    return parseStoredArray('tradoc_presets').length ? parseStoredArray('tradoc_presets') : DEFAULT_PRESETS;
   });
 
   const [activePresetId, setActivePresetId] = useState(() => {
@@ -56,6 +71,7 @@ export default function App() {
   
   const [settings, setSettings] = useState(() => {
     const saved = localStorage.getItem('tradoc_settings');
+    const proofreadingOptInMigrationKey = 'tradoc_proofreading_opt_in_v1';
     const defaults = {
       endpoint: 'https://api.openai.com/v1',
       apiKey: '',
@@ -67,16 +83,26 @@ export default function App() {
       temperature: 0.15,
       chunkSize: 6000,
       systemPrompt: '',
-      enableProofreading: true
+      enableProofreading: false,
+      enablePromptCaching: false
     };
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        return { ...defaults, ...parsed };
+        let safe = withoutSecrets(parsed);
+        // This option used to default to true while the backend ignored it.
+        // It now performs a real second LLM pass, so require an explicit opt-in.
+        if (localStorage.getItem(proofreadingOptInMigrationKey) !== 'done') {
+          safe = { ...safe, enableProofreading: false };
+          localStorage.setItem(proofreadingOptInMigrationKey, 'done');
+        }
+        localStorage.setItem('tradoc_settings', JSON.stringify(safe));
+        return { ...defaults, ...safe, apiKey: '' };
       } catch (e) {
         console.error("Failed to parse saved settings", e);
       }
     }
+    localStorage.setItem(proofreadingOptInMigrationKey, 'done');
     return defaults;
   });
 
@@ -128,7 +154,7 @@ export default function App() {
 
   const updateSettings = (newSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('tradoc_settings', JSON.stringify(newSettings));
+    localStorage.setItem('tradoc_settings', JSON.stringify(withoutSecrets(newSettings)));
 
     testConnection(newSettings.endpoint, newSettings.apiKey, newSettings.apiType)
       .then(res => {
@@ -158,12 +184,12 @@ export default function App() {
       ...settings,
       apiType: target.apiType,
       endpoint: target.endpoint,
-      apiKey: target.apiKey !== undefined ? target.apiKey : settings.apiKey,
       model: target.model,
       concurrency: target.concurrency || 1,
       temperature: target.temperature !== undefined ? target.temperature : 0.15,
       chunkSize: target.chunkSize || 1000,
       enableProofreading: !!target.enableProofreading,
+      enablePromptCaching: !!target.enablePromptCaching,
       systemPrompt: target.systemPrompt || settings.systemPrompt,
     };
     updateSettings(newSettings);
@@ -174,9 +200,9 @@ export default function App() {
     const existingIndex = presets.findIndex(p => p.id === presetObj.id);
     if (existingIndex >= 0) {
       updated = [...presets];
-      updated[existingIndex] = presetObj;
+      updated[existingIndex] = withoutSecrets(presetObj);
     } else {
-      updated = [...presets, presetObj];
+      updated = [...presets, withoutSecrets(presetObj)];
     }
     setPresets(updated);
     localStorage.setItem('tradoc_presets', JSON.stringify(updated));
@@ -210,7 +236,6 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={handleSetActiveTab}
         endpointStatus={endpointStatus}
-        endpointUrl={settings.endpoint}
         isOpen={mobileMenuOpen}
         onClose={() => setMobileMenuOpen(false)}
         lang={lang}
@@ -250,9 +275,10 @@ export default function App() {
 
         {/* Main Body */}
         <main className="workspace w-full max-w-[1380px] mx-auto px-4 sm:px-7 lg:px-9 pt-5 sm:pt-8 lg:pt-12 pb-14 lg:pb-20">
-          <div className={activeTab === 'dashboard' ? 'block' : 'hidden'}>
+          {activeTab === 'dashboard' && (
+          <div>
             <Dashboard
-              onSelectJob={setSelectedJobId}
+              onSelectJob={handleSelectJob}
               settings={settings}
               endpointStatus={endpointStatus}
               availableModels={availableModels}
@@ -261,27 +287,35 @@ export default function App() {
               onSelectModel={handleSelectModel}
             />
           </div>
+          )}
 
-          <div className={activeTab === 'jobs' ? 'block' : 'hidden'}>
+          {activeTab === 'jobs' && (
+          <div>
             <JobsInspector
               selectedJobId={selectedJobId}
-              onSelectJob={setSelectedJobId}
+              onSelectJob={handleSelectJob}
               settings={settings}
               availableModels={availableModels}
               lang={lang}
               onSelectModel={handleSelectModel}
             />
           </div>
+          )}
 
-          <div className={activeTab === 'sandbox' ? 'block' : 'hidden'}>
+          {activeTab === 'sandbox' && (
+          <div>
             <TestSandboxModal settings={settings} availableModels={availableModels} lang={lang} onSelectModel={handleSelectModel} />
           </div>
+          )}
 
-          <div className={activeTab === 'wizard' ? 'block' : 'hidden'}>
+          {activeTab === 'wizard' && (
+          <div>
             <SetupWizard settings={settings} onSaveSettings={updateSettings} setActiveTab={handleSetActiveTab} lang={lang} />
           </div>
+          )}
 
-          <div className={activeTab === 'settings' ? 'block' : 'hidden'}>
+          {activeTab === 'settings' && (
+          <div>
             <Settings
               settings={settings}
               onSaveSettings={updateSettings}
@@ -297,10 +331,13 @@ export default function App() {
               onDeletePreset={handleDeletePreset}
             />
           </div>
+          )}
 
-          <div className={activeTab === 'glossary' ? 'block' : 'hidden'}>
+          {activeTab === 'glossary' && (
+          <div>
             <GlossaryManager lang={lang} />
           </div>
+          )}
         </main>
 
       </div>

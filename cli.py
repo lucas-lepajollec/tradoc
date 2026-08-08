@@ -1,122 +1,128 @@
-import sys
 import asyncio
+import shutil
+import sys
+import uuid
 from pathlib import Path
 from typing import Optional
+
 import typer
 from rich.console import Console
-from rich.progress import Progress, SpinnerColumn, TextColumn, BarColumn, TaskProgressColumn, TimeRemainingColumn
+from rich.progress import BarColumn, Progress, SpinnerColumn, TaskProgressColumn, TextColumn, TimeRemainingColumn
 from rich.table import Table
 
-if hasattr(sys.stdout, 'reconfigure'):
+from core.checkpoint import CheckpointDatabase
+from core.config import settings
+from core.engine import TranslationEngine
+from core.glossary import GlossaryManager
+from core.llm_client import LLMClient
+
+
+if hasattr(sys.stdout, "reconfigure"):
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
+        sys.stdout.reconfigure(encoding="utf-8")
     except Exception:
         pass
 
-from core.config import settings
-from core.checkpoint import CheckpointDatabase
-from core.glossary import GlossaryManager
-from core.llm_client import LLMClient
-from core.engine import TranslationEngine
-
-cli_app = typer.Typer(help="TraDoc CLI - Traducteur Littéraire Haute Performance pour EPUB & PDF")
+cli_app = typer.Typer(help="TraDoc CLI — traduction littéraire de documents")
 console = Console(legacy_windows=False)
-
 db = CheckpointDatabase(settings.DB_PATH)
 glossary_mgr = GlossaryManager(settings.GLOSSARY_DIR)
 engine = TranslationEngine(db, glossary_mgr)
 
+
 @cli_app.command("translate")
 def translate(
-    input_file: Path = typer.Option(..., "--input", "-i", help="Chemin vers le fichier EPUB ou PDF"),
-    model: str = typer.Option(settings.LLM_MODEL, "--model", "-m", help="Modèle LLM distant (ex: qwen3.5-instruct)"),
-    endpoint: str = typer.Option(settings.LLM_ENDPOINT, "--endpoint", "-e", help="URL du serveur LLM distant"),
-    api_key: str = typer.Option(settings.LLM_API_KEY, "--api-key", help="Clé API LLM (si nécessaire)"),
-    concurrent: int = typer.Option(settings.CONCURRENCY, "--concurrent", "-c", help="Nombre de requêtes parallèles (Semaphore)"),
-    source_lang: str = typer.Option("en", "--source", "-s", help="Langue source (ex: en)"),
-    target_lang: str = typer.Option("fr", "--target", "-t", help="Langue cible (ex: fr)"),
-    glossary: Optional[str] = typer.Option(None, "--glossary", "-g", help="Nom du glossaire à injecter"),
+    input_file: Path = typer.Option(..., "--input", "-i", help="Document EPUB, PDF, DOCX, MD ou TXT"),
+    model: str = typer.Option(settings.LLM_MODEL, "--model", "-m"),
+    endpoint: str = typer.Option(settings.LLM_ENDPOINT, "--endpoint", "-e"),
+    api_key: str = typer.Option(settings.LLM_API_KEY, "--api-key", help="Clé API si nécessaire"),
+    api_type: str = typer.Option(settings.API_TYPE, "--api-type", help="openai, lm-studio, ollama, claude…"),
+    concurrent: int = typer.Option(settings.CONCURRENCY, "--concurrent", "-c", min=1, max=32),
+    source_lang: str = typer.Option("en", "--source", "-s"),
+    target_lang: str = typer.Option("fr", "--target", "-t"),
+    glossary: Optional[str] = typer.Option(None, "--glossary", "-g"),
 ):
-    """Lance la traduction d'un ouvrage EPUB ou PDF."""
-    if not input_file.exists():
-        console.print(f"[bold red]Erreur :[/bold red] Le fichier '{input_file}' n'existe pas.")
+    """Lance une traduction et conserve les checkpoints dans data/jobs/."""
+    if not input_file.is_file():
+        console.print(f"[bold red]Document introuvable :[/bold red] {input_file}")
         raise typer.Exit(1)
 
-    console.print(f"[bold cyan]TraDoc[/bold cyan] - Début de pré-traitement pour : [bold yellow]{input_file.name}[/bold yellow]")
-    
-    async def run():
-        client = LLMClient(endpoint=endpoint, api_key=api_key)
-        
-        # Test connection
-        conn_ok, msg = await client.check_connection()
-        if not conn_ok:
-            console.print(f"[bold red]Erreur de connexion au serveur LLM :[/bold red] {msg}")
-            raise typer.Exit(1)
+    async def run() -> None:
+        client = LLMClient(endpoint=endpoint, api_key=api_key, api_type=api_type, timeout=settings.REQUEST_TIMEOUT)
+        job_id = uuid.uuid4().hex[:12]
+        job_dir = settings.JOBS_DIR / job_id
+        stored_input = job_dir / "input" / input_file.name
+        output_file = job_dir / "output" / f"traduit_{input_file.name}"
+        stored_input.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(input_file, stored_input)
+        try:
+            connected, message = await client.check_connection()
+            if not connected:
+                console.print(f"[bold red]Connexion refusée :[/bold red] {message}")
+                shutil.rmtree(job_dir, ignore_errors=True)
+                raise typer.Exit(1)
+            console.print(f"[bold green]Serveur LLM prêt :[/bold green] {message}")
 
-        console.print(f"[bold green]Serveur LLM prêt :[/bold green] {msg}")
+            with console.status("[bold blue]Analyse et découpage du document…[/bold blue]"):
+                job = await engine.prepare_job(
+                    stored_input,
+                    source_lang=source_lang,
+                    target_lang=target_lang,
+                    model=model,
+                    glossary_name=glossary,
+                    job_id=job_id,
+                    output_file=output_file,
+                    api_type=api_type,
+                    endpoint=endpoint,
+                )
 
-        # Prepare Job
-        with console.status("[bold blue]Analyse & découpage du livre en cours...[/bold blue]"):
-            job = await engine.prepare_job(
-                input_file=input_file,
-                source_lang=source_lang,
-                target_lang=target_lang,
-                model=model,
-                glossary_name=glossary
-            )
+            with Progress(
+                SpinnerColumn(),
+                TextColumn("[progress.description]{task.description}"),
+                BarColumn(),
+                TaskProgressColumn(),
+                TimeRemainingColumn(),
+                console=console,
+            ) as progress:
+                task_id = progress.add_task(f"Traduction de {job.file_name}…", total=job.total_chunks)
 
-        console.print(f"[bold green]Job créé avec succès ![/bold green] Job ID: [bold text]{job.id}[/bold text] ({job.total_chunks} segments)")
+                def on_event(event):
+                    if event.get("type") == "segment_completed":
+                        progress.update(task_id, completed=event.get("completed_chunks", 0))
 
-        # Progress bar setup
-        with Progress(
-            SpinnerColumn(),
-            TextColumn("[progress.description]{task.description}"),
-            BarColumn(),
-            TaskProgressColumn(),
-            TimeRemainingColumn(),
-            console=console
-        ) as progress:
-            task = progress.add_task(f"Traduction de {job.file_name}...", total=job.total_chunks)
+                engine.add_listener(on_event)
+                try:
+                    await engine.run_job(job.id, client, concurrency=concurrent)
+                finally:
+                    engine.remove_listener(on_event)
 
-            def on_event(ev):
-                if ev.get("type") == "segment_completed":
-                    progress.update(task, completed=ev.get("completed_chunks", 0))
-
-            engine.add_listener(on_event)
-
-            # Execute translation engine
-            await engine.run_job(job.id, client, concurrency=concurrent)
-
-        final_job = await db.get_job(job.id)
-        if final_job and final_job.status == "COMPLETED":
-            out_file = settings.OUTPUT_DIR / f"traduit_{job.file_name}"
-            console.print(f"\n🎉 [bold green]Traduction terminée avec succès ![/bold green]")
-            console.print(f"📖 Fichier traduit disponible : [bold yellow]{out_file}[/bold yellow]")
-        else:
-            console.print(f"\n⚠️ [bold red]La traduction s'est terminée avec des erreurs.[/bold red]")
+            final_job = await db.get_job(job.id)
+            if final_job and final_job.status == "COMPLETED":
+                console.print(f"[bold green]Traduction terminée :[/bold green] {settings.DATA_DIR / final_job.output_path}")
+            else:
+                console.print("[bold red]La traduction s'est terminée avec des erreurs.[/bold red]")
+                raise typer.Exit(1)
+        finally:
+            await client.aclose()
 
     asyncio.run(run())
+
 
 @cli_app.command("status")
 def status():
-    """Affiche la liste des jobs de traduction et leur statut."""
-    async def run():
+    """Affiche les projets et leur progression."""
+
+    async def run() -> None:
         jobs = await db.list_jobs()
-        table = Table(title="TraDoc - Suivi des Jobs de Traduction")
-        table.add_column("ID", style="cyan")
-        table.add_column("Fichier", style="yellow")
-        table.add_column("Modèle", style="magenta")
-        table.add_column("Statut", style="green")
-        table.add_column("Progression", style="blue")
-        table.add_column("Créé le", style="dim")
-
-        for j in jobs:
-            prog = f"{j.completed_chunks}/{j.total_chunks}"
-            table.add_row(j.id, j.file_name, j.model, j.status, prog, j.created_at[:19])
-
+        table = Table(title="TraDoc — projets")
+        for label, style in (("ID", "cyan"), ("Fichier", "yellow"), ("Modèle", "magenta"), ("Statut", "green"), ("Progression", "blue"), ("Créé le", "dim")):
+            table.add_column(label, style=style)
+        for job in jobs:
+            table.add_row(job.id, job.file_name, job.model, job.status, f"{job.completed_chunks}/{job.total_chunks}", job.created_at[:19])
         console.print(table)
 
     asyncio.run(run())
+
 
 if __name__ == "__main__":
     cli_app()

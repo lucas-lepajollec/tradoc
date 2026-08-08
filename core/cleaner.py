@@ -1,6 +1,15 @@
 import re
 from bs4 import BeautifulSoup
 
+
+BLOCK_TAGS = ("p", "h1", "h2", "h3", "h4", "h5", "h6", "li", "blockquote", "caption", "figcaption")
+INLINE_TAGS = {"a", "b", "strong", "i", "em", "u", "s", "span", "br", "sup", "sub", "code"}
+ALLOWED_TAGS = set(BLOCK_TAGS) | INLINE_TAGS
+
+
+class StructureValidationError(ValueError):
+    """Raised when a model response cannot map safely back to source nodes."""
+
 def simplify_html_for_prompt(raw_html: str) -> str:
     """
     Strips bloated HTML attributes (href, class, id, style) from prompt string before sending to LLM.
@@ -19,6 +28,7 @@ def simplify_html_for_prompt(raw_html: str) -> str:
         # Regex fallback to remove class, href, id attributes
         clean = re.sub(r'\s+(?:class|href|id|style|data-[a-z0-9-]+)="[^"]*"', '', raw_html, flags=re.IGNORECASE)
         return clean
+
 
 def clean_llm_response(raw_text: str) -> str:
     """
@@ -155,13 +165,57 @@ def verify_and_repair_html(original_html: str, translated_text: str) -> str:
     Also handles paragraph deduplication.
     """
     cleaned = clean_llm_response(translated_text)
-    deduped = deduplicate_consecutive_paragraphs(cleaned)
-    
-    if "<" not in original_html and ">" not in original_html:
-        return deduped
+    if not cleaned:
+        raise StructureValidationError("La réponse du modèle est vide.")
 
-    try:
-        soup = BeautifulSoup(deduped, "html.parser")
-        return str(soup)
-    except Exception:
-        return deduped
+    if "<" not in original_html and ">" not in original_html:
+        return cleaned
+
+    source_blocks = extract_html_blocks(original_html)
+    translated_blocks = extract_html_blocks(cleaned)
+    if len(source_blocks) != len(translated_blocks):
+        raise StructureValidationError(
+            f"Structure invalide: {len(source_blocks)} bloc(s) source, "
+            f"{len(translated_blocks)} bloc(s) reçu(s)."
+        )
+
+    repaired: list[str] = []
+    for index, (source_block, translated_block) in enumerate(zip(source_blocks, translated_blocks), start=1):
+        source_tag = BeautifulSoup(source_block, "html.parser").find(BLOCK_TAGS)
+        translated_tag = BeautifulSoup(translated_block, "html.parser").find(BLOCK_TAGS)
+        if not source_tag or not translated_tag or source_tag.name != translated_tag.name:
+            actual = translated_tag.name if translated_tag else "aucun"
+            expected = source_tag.name if source_tag else "inconnu"
+            raise StructureValidationError(
+                f"Structure invalide au bloc {index}: balise <{expected}> attendue, <{actual}> reçue."
+            )
+        source_inline = [tag.name for tag in source_tag.find_all(INLINE_TAGS)]
+        translated_inline = [tag.name for tag in translated_tag.find_all(INLINE_TAGS)]
+        if source_inline != translated_inline:
+            raise StructureValidationError(
+                f"Structure inline invalide au bloc {index}: {source_inline} attendu, {translated_inline} reçu."
+            )
+
+        # The source document owns attributes. Model-generated attributes, scripts and
+        # event handlers must never be injected into EPUB/DOCX output.
+        translated_tag.attrs = {}
+        for tag in list(translated_tag.find_all(True)):
+            if tag.name not in ALLOWED_TAGS:
+                tag.unwrap()
+                continue
+            tag.attrs = {}
+        repaired.append(str(translated_tag))
+
+    return "\n".join(repaired)
+
+
+def extract_html_blocks(html_text: str) -> list[str]:
+    """Return only top-level translatable blocks, excluding nested duplicates."""
+    soup = BeautifulSoup(html_text or "", "html.parser")
+    for dangerous in soup.find_all(["script", "style", "iframe", "object", "embed"]):
+        dangerous.decompose()
+    blocks = []
+    for tag in soup.find_all(BLOCK_TAGS):
+        if tag.find_parent(BLOCK_TAGS) is None:
+            blocks.append(str(tag))
+    return blocks

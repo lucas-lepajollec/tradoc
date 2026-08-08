@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, BookOpen, Play, Pause, RefreshCw, Download, Trash2, ChevronRight, AlertCircle, Cpu, ArrowRight, TestTube, Layers, Globe, ArrowLeftRight } from 'lucide-react';
-import { uploadBook, startJob, pauseJob, retryJob, deleteJob, fetchJobs, fetchGlossaries, cloneJobForProofread } from '../api';
+import { uploadBook, startJob, pauseJob, retryJob, deleteJob, fetchJobs, fetchGlossaries, cloneJobForProofread, downloadJob, subscribeToEvents } from '../api';
 import { t, AVAILABLE_LANGUAGES } from '../i18n/translations';
 
 const PROVIDER_NAMES = {
@@ -48,23 +48,17 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
     loadJobs();
     loadGlossariesList();
 
-    const eventSource = new EventSource('/api/events');
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === 'job_started' || data.type === 'job_paused' || data.type === 'job_auto_paused' || data.type === 'job_completed' || data.type === 'job_created') {
-          loadJobs();
-        }
-      } catch (e) {
-        console.error(e);
+    const unsubscribe = subscribeToEvents((data) => {
+      if (['job_started', 'job_paused', 'job_auto_paused', 'job_completed', 'job_created', 'job_failed'].includes(data.type)) {
+        loadJobs();
       }
-    };
+    });
 
     const timer = setInterval(() => {
       loadJobs();
     }, 3500);
     return () => {
-      eventSource.close();
+      unsubscribe();
       clearInterval(timer);
     };
   }, []);
@@ -99,11 +93,11 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
     e.preventDefault();
     if (e.dataTransfer.files && e.dataTransfer.files[0]) {
       const f = e.dataTransfer.files[0];
-      if (f.name.endsWith('.epub') || f.name.endsWith('.pdf')) {
+      if (/\.(epub|pdf|docx|md|txt)$/i.test(f.name)) {
         setFile(f);
         setError(null);
       } else {
-        setError('Seuls les fichiers .epub et .pdf sont acceptés.');
+        setError('Formats acceptés : EPUB, PDF, DOCX, MD et TXT.');
       }
     }
   };
@@ -140,6 +134,10 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
         formData.append('temperature', jobMode === 'proofreading' ? 0.15 : (settings.temperature !== undefined ? settings.temperature : 0.15));
         formData.append('concurrency', settings.concurrency || 1);
         formData.append('job_type', jobMode);
+        formData.append('api_type', settings.apiType);
+        if (settings.endpoint) formData.append('endpoint', settings.endpoint);
+        formData.append('enable_proofreading', !!settings.enableProofreading);
+        formData.append('enable_prompt_caching', !!settings.enablePromptCaching);
         if (settings.systemPrompt) {
           formData.append('system_prompt', settings.systemPrompt);
         }
@@ -156,7 +154,9 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           apiType: settings.apiType,
           model: chosenModel,
           concurrency: settings.concurrency || 1,
-          temperature: jobMode === 'proofreading' ? 0.15 : settings.temperature
+          temperature: jobMode === 'proofreading' ? 0.15 : settings.temperature,
+          enableProofreading: settings.enableProofreading,
+          enablePromptCaching: settings.enablePromptCaching
         });
       }
 
@@ -182,7 +182,8 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
         model: settings.model,
         concurrency: settings.concurrency,
         temperature: settings.temperature,
-        enableProofreading: settings.enableProofreading
+        enableProofreading: settings.enableProofreading,
+        enablePromptCaching: settings.enablePromptCaching
       });
     } catch (err) {
       console.error(err);
@@ -209,8 +210,12 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
       await startJob(jobId, {
         endpoint: settings.endpoint,
         apiKey: settings.apiKey,
+        apiType: settings.apiType,
+        model: settings.model,
         concurrency: settings.concurrency,
-        temperature: settings.temperature
+        temperature: settings.temperature,
+        enableProofreading: settings.enableProofreading,
+        enablePromptCaching: settings.enablePromptCaching
       });
     } catch (err) {
       console.error(err);
@@ -225,6 +230,17 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
     deleteJob(jobId).catch(console.error);
   };
 
+  const handleDownload = async (e, jobId) => {
+    e.stopPropagation();
+    try {
+      await downloadJob(jobId);
+    } catch (err) {
+      setError(err.message);
+    }
+  };
+
+  const activeJobCount = jobs.filter((item) => item.status === 'PROCESSING').length;
+
   return (
     <div className="dashboard-page space-y-8">
 
@@ -234,9 +250,15 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           <h1>{lang === 'fr' ? 'Vos documents, fidèlement traduits.' : 'Your documents, faithfully translated.'}</h1>
           <p>{lang === 'fr' ? 'Importez un ouvrage, choisissez vos langues et suivez chaque étape jusqu’à l’export.' : 'Import a document, choose your languages, and follow every step through export.'}</p>
         </div>
-        <div className={`connection-pill ${endpointStatus ? 'is-online' : 'is-offline'}`}>
-          <span />
-          {endpointStatus ? (lang === 'fr' ? 'Service prêt' : 'Service ready') : (lang === 'fr' ? 'Service hors ligne' : 'Service offline')}
+        <div className="page-status-stack">
+          <div className="connection-pill active-jobs-pill" title={lang === 'fr' ? `${activeJobCount} projet(s) actuellement en cours` : `${activeJobCount} project(s) currently running`}>
+            <span />
+            {activeJobCount} {lang === 'fr' ? (activeJobCount > 1 ? 'projets actifs' : 'projet actif') : (activeJobCount === 1 ? 'active project' : 'active projects')}
+          </div>
+          <div className={`connection-pill ${endpointStatus ? 'is-online' : 'is-offline'}`}>
+            <span />
+            {endpointStatus ? (lang === 'fr' ? 'Service prêt' : 'Service ready') : (lang === 'fr' ? 'Service hors ligne' : 'Service offline')}
+          </div>
         </div>
       </header>
       
@@ -554,6 +576,8 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
             {jobs.map((j) => {
               const percent = j.total_chunks > 0 ? Math.round((j.completed_chunks / j.total_chunks) * 100) : 0;
               const truncatedName = j.file_name.length > 32 ? j.file_name.slice(0, 32) + '...' : j.file_name;
+              const canExport = j.status === 'COMPLETED' || j.completed_chunks > 0;
+              const isPartialExport = j.status !== 'COMPLETED';
               
               return (
                 <div
@@ -628,21 +652,22 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                         </button>
                       )}
 
-                      <a
-                        href={`/api/jobs/${j.id}/download?t=${Date.now()}`}
-                        onClick={(e) => e.stopPropagation()}
-                        target="_blank"
-                        rel="noreferrer"
+                      <button
+                        type="button"
+                        onClick={(e) => handleDownload(e, j.id)}
+                        disabled={!canExport}
                         className={`px-2.5 py-1 rounded-md text-[10px] font-medium flex items-center space-x-1 transition-all ${
-                          j.status === 'COMPLETED' || j.completed_chunks > 0
+                          canExport
                             ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.08]'
-                            : 'opacity-20 pointer-events-none'
+                            : 'opacity-20 cursor-not-allowed'
                         }`}
-                        title={t('dashboard.downloadEpub', lang)}
+                        title={isPartialExport
+                          ? (lang === 'fr' ? 'Télécharger un aperçu partiel' : 'Download partial preview')
+                          : (lang === 'fr' ? 'Télécharger la traduction finale' : 'Download final translation')}
                       >
                         <Download className="w-3 h-3" />
-                        <span>EPUB</span>
-                      </a>
+                        <span>{isPartialExport ? (lang === 'fr' ? 'Aperçu' : 'Preview') : (lang === 'fr' ? 'Exporter' : 'Export')}</span>
+                      </button>
                     </div>
 
                     <span className="text-[#666] group-hover:text-white flex items-center space-x-1 text-[10px] font-medium transition-colors">

@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   tradoc:
     build:
@@ -12,18 +10,20 @@ services:
     environment:
       - ENV=production
       - DATA_DIR=/app/data
-      - APP_SECRET=  # Optionnel: définissez un mot de passe pour sécuriser l'accès à l'API
-      - ALLOWED_ORIGINS=*  # Ex: http://localhost:2507,http://192.168.1.50:2507
-      - LLM_ENDPOINT=http://localhost:1234/v1
+      - APP_SECRET=${APP_SECRET:?Définissez APP_SECRET dans le fichier .env}
+      - ALLOWED_ORIGINS=
+      - LLM_ENDPOINT=http://host.docker.internal:1234/v1
       - LLM_API_KEY=lm-studio
       - LLM_MODEL=qwen3.5-instruct
-      - API_TYPE=openai
+      - API_TYPE=lm-studio
       - CHUNK_TOKEN_SIZE=1000
       - TEMPERATURE=0.15
     volumes:
       - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/models"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3

@@ -1,8 +1,8 @@
 # Stage 1: Build React UI Frontend
 FROM node:22-alpine AS ui-builder
 WORKDIR /app/web
-COPY web/package.json web/package-lock.json* ./
-RUN npm install
+COPY web/package.json web/package-lock.json ./
+RUN npm ci
 COPY web/ ./
 RUN npm run build
 
@@ -18,10 +18,8 @@ WORKDIR /app
 
 # Install system dependencies
 RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
     curl \
-    libxml2-dev \
-    libxslt-dev \
+    fonts-dejavu-core \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Python requirements
@@ -37,7 +35,7 @@ COPY --from=ui-builder /app/web/dist /app/web/dist
 # Create non-root user and persistent data directories
 RUN groupadd -g 1000 tradocgroup && \
     useradd -u 1000 -g tradocgroup -s /bin/bash -m tradocuser && \
-    mkdir -p /app/data/input /app/data/output /app/data/glossaries && \
+    mkdir -p /app/data/input /app/data/output /app/data/glossaries /app/data/jobs /app/data/tmp && \
     chown -R tradocuser:tradocgroup /app
 
 USER tradocuser

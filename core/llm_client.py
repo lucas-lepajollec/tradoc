@@ -1,127 +1,183 @@
 import asyncio
+import logging
 import random
-import time
+import re
+from typing import Awaitable, Callable, List, Optional, Tuple
+
 import httpx
-from typing import List, Dict, Any, Optional, Tuple
+
 from core.cleaner import clean_llm_response
 
+
+logger = logging.getLogger("tradoc.llm")
+
+DEFAULT_ENDPOINTS = {
+    "openai": "https://api.openai.com/v1",
+    "deepseek": "https://api.deepseek.com/v1",
+    "openrouter": "https://openrouter.ai/api/v1",
+    "minimax": "https://api.minimax.chat/v1",
+    "kimi": "https://api.moonshot.cn/v1",
+    "glm": "https://open.bigmodel.cn/api/paas/v4",
+    "gemini": "https://generativelanguage.googleapis.com/v1beta/openai/v1",
+    "claude": "https://api.anthropic.com",
+    "anthropic": "https://api.anthropic.com",
+    "lm-studio": "http://127.0.0.1:1234/v1",
+    "ollama": "http://127.0.0.1:11434",
+}
+
+
 class ProviderDownError(RuntimeError):
-    """Raised when the remote LLM server is unreachable, connection refused, or timed out."""
-    pass
+    """Raised when a provider is unreachable or temporarily unavailable."""
 
-def pad_system_prompt_for_cache(prompt: str, target_tokens: int) -> str:
-    """
-    Appends a static, harmless but highly relevant guideline padding block to system prompt
-    to guarantee it meets the minimum token threshold (e.g. 1024 or 2048 tokens) required 
-    by cloud APIs to trigger Prompt Caching. Since the padding is 100% static across all segments,
-    it caches immediately and reduces input pricing by up to 90%.
-    """
-    # 1 token is approx. 3.2 characters in French/English mix
-    current_est = int(len(prompt) / 3.2)
-    if current_est >= target_tokens:
-        return prompt
 
-    padding_guidelines = (
-        "\n\n[PROMPT_CACHE_ENFORCEMENT_GUIDELINES_START]\n"
-        "To ensure stylistic consistency, fluid formatting, and structural integrity:\n"
-        "1. Strictly enforce French typographic conventions: non-breaking spaces before colons, semi-colons, question/exclamation marks.\n"
-        "2. Keep character names, pronouns, and locations completely consistent throughout the entire book. Never change names.\n"
-        "3. Keep dialog markers uniform (use standard French dialogue dashes '-' instead of English quote marks where appropriate).\n"
-        "4. Avoid raw literalism: translate idioms into natural French equivalents. Use professional literary publishing registers.\n"
-        "5. Retain all HTML inline nodes (<p>, <i>, <em>, <b>, <strong>) in their exact corresponding positions.\n"
-        "6. Do not split, merge, or omit paragraphs. Every single sentence in the source must have a corresponding translated output.\n"
-        "7. Never output any system comments, meta-explanations, or thoughts. Output ONLY the translated text.\n"
-        "8. Double check gender agreement for adjectives and participles based on the surrounding book context.\n"
-        "9. Make sure formatting is clean and invalid HTML entities are resolved.\n"
-        "[PROMPT_CACHE_ENFORCEMENT_GUIDELINES_END]"
-    )
+class LLMResponseError(RuntimeError):
+    def __init__(self, status_code: int, message: str):
+        super().__init__(message)
+        self.status_code = status_code
 
-    # Repeat padding block if needed to safely cross the threshold
-    result = prompt
-    while int(len(result) / 3.2) < target_tokens:
-        result += padding_guidelines
-
-    return result
 
 class LLMClient:
-    def __init__(self, endpoint: str, api_key: str = "lm-studio", api_type: str = "openai", timeout: float = 180.0):
-        self.endpoint = endpoint.rstrip("/")
-        self.api_key = api_key
-        self.api_type = api_type.lower()
+    def __init__(
+        self,
+        endpoint: Optional[str],
+        api_key: str = "",
+        api_type: str = "openai",
+        timeout: float = 180.0,
+        enable_prompt_caching: bool = False,
+    ):
+        self.api_type = (api_type or "openai").strip().lower()
+        # A user-provided compatible endpoint always wins, including when api_type
+        # is "openai". Provider defaults are only a fallback.
+        resolved = (endpoint or "").strip() or DEFAULT_ENDPOINTS.get(self.api_type, "")
+        if not resolved:
+            raise ValueError("Aucun endpoint LLM configuré.")
+        self.endpoint = resolved.rstrip("/")
+        self.api_key = (api_key or "").strip()
         self.timeout = timeout
+        self.enable_prompt_caching = enable_prompt_caching
+        self._client = httpx.AsyncClient(
+            timeout=httpx.Timeout(timeout, connect=min(timeout, 20.0)),
+            follow_redirects=False,
+            limits=httpx.Limits(max_connections=50, max_keepalive_connections=20),
+        )
+
+    async def aclose(self) -> None:
+        await self._client.aclose()
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, tb):
+        await self.aclose()
+
+    def _auth_headers(self) -> dict[str, str]:
+        headers = {"Content-Type": "application/json"}
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
+        if self.api_type == "openrouter":
+            headers["HTTP-Referer"] = "https://github.com/lucas-lepajollec/tradoc"
+            headers["X-Title"] = "TraDoc"
+        return headers
+
+    def _uses_local_reasoning_prefill(self, model: str) -> bool:
+        """Keep local reasoning models from spending the output budget on hidden thought."""
+        if self.api_type not in {"lm-studio", "ollama"}:
+            return False
+        normalized = (model or "").lower()
+        return any(marker in normalized for marker in ("qwen", "deepseek", "r1", "think"))
+
+    def _reasoning_overrides(self, model: str) -> dict[str, object]:
+        """Return only reasoning controls documented by the selected provider."""
+        normalized = (model or "").lower()
+        if self.api_type == "deepseek":
+            return {"thinking": {"type": "disabled"}}
+        if self.api_type == "openrouter":
+            return {"reasoning": {"effort": "none", "exclude": True}}
+        if self.api_type == "gemini":
+            if "gemini-2.5-flash" in normalized and "pro" not in normalized:
+                return {"reasoning_effort": "none"}
+            if "gemini-3" in normalized:
+                # Gemini 3 cannot be fully disabled; minimal is its lowest supported level.
+                return {"reasoning_effort": "minimal"}
+        if self.api_type == "openai" and "pro" not in normalized:
+            match = re.search(r"gpt-(\d+)(?:\.(\d+))?", normalized)
+            if match and (int(match.group(1)), int(match.group(2) or 0)) >= (5, 1):
+                return {"reasoning_effort": "none"}
+        return {}
+
+    @staticmethod
+    def _safe_error(response: httpx.Response) -> str:
+        try:
+            payload = response.json()
+            if isinstance(payload, dict):
+                error = payload.get("error")
+                if isinstance(error, dict):
+                    return str(error.get("message") or error.get("type") or "Erreur fournisseur")[:500]
+                if error:
+                    return str(error)[:500]
+                return str(payload.get("message") or "Erreur fournisseur")[:500]
+        except ValueError:
+            pass
+        return f"Le fournisseur a répondu avec le statut HTTP {response.status_code}."
 
     async def fetch_models(self) -> List[str]:
-        """Queries endpoint dynamically for available installed models."""
-        t = self.api_type.lower()
-        
-        # Hardcoded fallback list for providers that don't support dynamic listing or for offline safety
-        if t in ["claude", "anthropic"]:
-            return ["claude-3-5-sonnet-20241022", "claude-3-5-haiku-20241022", "claude-3-opus-20240229"]
-        if t == "glm":
-            return ["glm-4", "glm-4-flash", "glm-4v", "glm-3-turbo"]
-
-        # Resolve target base URL
-        base_url = self.endpoint.rstrip("/")
-        local_markers = ["localhost", "127.0.0.1", "192.168.", "10.", "172.16.", "::1", "0.0.0.0"]
-        is_local_endpoint = any(m in base_url.lower() for m in local_markers) or t in ["lm-studio", "ollama"]
-
-        if t == "openai" and not is_local_endpoint:
-            base_url = "https://api.openai.com/v1"
-        elif t == "deepseek":
-            base_url = "https://api.deepseek.com/v1"
-        elif t == "openrouter":
-            base_url = "https://openrouter.ai/api/v1"
-        elif t == "minimax":
-            base_url = "https://api.minimax.chat/v1"
-        elif t == "kimi":
-            base_url = "https://api.moonshot.cn/v1"
-        elif t == "gemini":
-            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/v1"
-
-        candidate_urls = []
-        if base_url.endswith("/v1"):
-            candidate_urls = [f"{base_url}/models", f"{base_url[:-3]}/models", f"{base_url[:-3]}/api/tags"]
+        if self.api_type == "ollama" and not self.endpoint.endswith("/v1"):
+            candidates = [f"{self.endpoint}/api/tags"]
+        elif self.api_type in {"claude", "anthropic"}:
+            candidates = [f"{self.endpoint.removesuffix('/v1')}/v1/models"]
+        elif self.endpoint.endswith("/v1") or self.endpoint.endswith("/v4"):
+            candidates = [f"{self.endpoint}/models"]
         else:
-            candidate_urls = [f"{base_url}/v1/models", f"{base_url}/models", f"{base_url}/api/tags"]
+            candidates = [f"{self.endpoint}/v1/models", f"{self.endpoint}/models"]
 
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            for url in candidate_urls:
-                try:
-                    headers = {}
-                    if self.api_key and self.api_key.strip():
-                        headers["Authorization"] = f"Bearer {self.api_key.strip()}"
-                    
-                    resp = await client.get(url, headers=headers)
-                    if resp.status_code == 200:
-                        data = resp.json()
-                        if isinstance(data, dict):
-                            if "data" in data and isinstance(data["data"], list):
-                                models = [m.get("id") for m in data["data"] if isinstance(m, dict) and m.get("id")]
-                                if models:
-                                    return sorted(models)
-                            elif "models" in data and isinstance(data["models"], list):
-                                models = [m.get("name") or m.get("id") for m in data["models"] if isinstance(m, dict) and (m.get("name") or m.get("id"))]
-                                if models:
-                                    return sorted(models)
-                except Exception:
-                    pass
+        headers = self._auth_headers()
+        if self.api_type in {"claude", "anthropic"}:
+            headers.pop("Authorization", None)
+            if self.api_key:
+                headers["x-api-key"] = self.api_key
+            headers["anthropic-version"] = "2023-06-01"
 
+        last_status: Optional[int] = None
+        for url in candidates:
+            try:
+                response = await self._client.get(url, headers=headers, timeout=15.0)
+            except httpx.RequestError:
+                continue
+            last_status = response.status_code
+            if response.status_code != 200:
+                continue
+            try:
+                payload = response.json()
+            except ValueError:
+                continue
+            raw_models = (payload.get("data") or payload.get("models") or []) if isinstance(payload, dict) else []
+            models = []
+            for item in raw_models:
+                if isinstance(item, dict):
+                    identifier = item.get("id") or item.get("name") or item.get("model")
+                    if identifier:
+                        models.append(str(identifier).removeprefix("models/"))
+            if models:
+                return sorted(set(models))
+
+        if last_status in {401, 403}:
+            raise LLMResponseError(last_status, "Clé API refusée par le fournisseur.")
         return []
 
     async def check_connection(self) -> Tuple[bool, str]:
-        """Tests connection to remote endpoint and returns status."""
         try:
             models = await self.fetch_models()
-            if models:
-                return True, f"Connecté ! Modèles détectés ({len(models)}): {', '.join(models[:3])}"
-            
-            async with httpx.AsyncClient(timeout=5.0) as client:
-                resp = await client.get(self.endpoint)
-                if resp.status_code < 500:
-                    return True, "Serveur joignable."
-            return False, "Le serveur n'a pas renvoyé de réponse valide."
-        except Exception as e:
-            return False, f"Erreur de connexion : {str(e)}"
+            if not models:
+                return False, "Endpoint joignable, mais aucun modèle exploitable n'a été détecté."
+            preview = ", ".join(models[:3])
+            return True, f"Connexion validée — {len(models)} modèle(s) détecté(s) : {preview}"
+        except LLMResponseError as exc:
+            return False, str(exc)
+        except httpx.RequestError:
+            return False, "Impossible de joindre le serveur LLM."
+        except Exception:
+            logger.exception("Unexpected provider connection test failure")
+            return False, "La vérification du fournisseur a échoué."
 
     async def translate_chunk(
         self,
@@ -130,258 +186,161 @@ class LLMClient:
         model: str,
         temperature: float = 0.3,
         max_retries: int = 3,
-        check_cancelled = None
+        check_cancelled: Optional[Callable[[], Awaitable[None]]] = None,
     ) -> str:
-        """
-        Sends a single translation chunk request with exponential backoff retries.
-        """
-        last_exception = None
-        
-        # Dynamic output limit based on input length and endpoint type
-        input_est_tokens = len(text_chunk) // 3
-        is_local = self.api_type.lower() in ["lm-studio", "ollama"] or any(m in self.endpoint.lower() for m in ["localhost", "127.0.0.1", "192.168.", "10.", "172.16."])
-        
+        input_est_tokens = max(1, len(text_chunk) // 3)
+        is_local = self.api_type in {"lm-studio", "ollama"}
         if is_local:
-            # For local GPU servers (LM Studio / Ollama), keep max_tokens realistic so prompt_tokens + max_tokens <= n_ctx
-            max_output_tokens = min(3000, max(1200, int(input_est_tokens * 1.35)))
+            # Parser v4 normalizes converter-generated Markdown before chunking,
+            # so the completion budget can follow the real input size again.
+            # Keeping this adaptive matters for LM Studio, which may preallocate
+            # for the announced ceiling even when the model stops much earlier.
+            local_floor = 3000 if "gpt-oss" in model.lower() else 1200
+            max_output_tokens = min(6000, max(local_floor, int(input_est_tokens * 1.5)))
         else:
-            # Ensure a high minimum of 4500 tokens for Cloud APIs to avoid truncation on dense/list chunks
-            max_output_tokens = min(8192, max(4500, int(input_est_tokens * 1.5)))
+            # Cloud reasoning can be mandatory for some models. Keep the pre-audit
+            # safety floor so internal reasoning cannot starve the translated text.
+            max_output_tokens = min(16384, max(4500, int(input_est_tokens * 1.6)))
+        last_error: Optional[Exception] = None
 
         for attempt in range(1, max_retries + 1):
             if check_cancelled:
                 await check_cancelled()
             try:
-                t = self.api_type.lower()
-                if t == "ollama" and not self.endpoint.endswith("/v1"):
-                    translated = await self._call_ollama_native(system_prompt, text_chunk, model, temperature, max_output_tokens)
-                elif t in ["claude", "anthropic"]:
-                    translated = await self._call_claude_native(system_prompt, text_chunk, model, temperature, max_output_tokens)
+                if self.api_type == "ollama" and not self.endpoint.endswith("/v1"):
+                    raw = await self._call_ollama_native(system_prompt, text_chunk, model, temperature, max_output_tokens)
+                elif self.api_type in {"claude", "anthropic"}:
+                    raw = await self._call_claude_native(system_prompt, text_chunk, model, temperature, max_output_tokens)
                 else:
-                    translated = await self._call_openai_spec(system_prompt, text_chunk, model, temperature, max_output_tokens)
-                
-                cleaned = clean_llm_response(translated)
-                if cleaned:
-                    return cleaned
-                
-                # Debug output to help identify why the cleaning returned an empty string
-                print(f"[TraDoc LLM Debug] ⚠️ Réponse vide après nettoyage. Sortie brute (1000 premiers caractères): {repr(translated[:1000])}")
-                raise ValueError("Réponse LLM vide après nettoyage.")
-            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError, httpx.RemoteProtocolError) as e:
-                raise ProviderDownError(f"Le serveur LLM n'est plus accessible ({self.endpoint}): {str(e)}")
-            except Exception as e:
-                last_exception = e
-                err_str = str(e)
-                if "502" in err_str or "503" in err_str or "504" in err_str or "Connection refused" in err_str:
-                    raise ProviderDownError(f"Le serveur LLM distant s'est déconnecté: {err_str}")
+                    raw = await self._call_openai_spec(system_prompt, text_chunk, model, temperature, max_output_tokens)
+                cleaned = clean_llm_response(raw)
+                if not cleaned:
+                    raise ValueError("Le modèle a renvoyé une réponse vide.")
+                return cleaned
+            except (httpx.ConnectError, httpx.ConnectTimeout, httpx.NetworkError, httpx.RemoteProtocolError) as exc:
+                raise ProviderDownError("Le serveur LLM n'est plus accessible.") from exc
+            except LLMResponseError as exc:
+                last_error = exc
+                if exc.status_code in {502, 503, 504}:
+                    raise ProviderDownError("Le fournisseur LLM est temporairement indisponible.") from exc
+                if exc.status_code not in {408, 409, 429} and exc.status_code < 500:
+                    raise
+            except Exception as exc:
+                last_error = exc
 
-                if "insufficient system resources" in err_str:
-                    raise RuntimeError(err_str)
+            if attempt < max_retries:
+                if check_cancelled:
+                    await check_cancelled()
+                await asyncio.sleep((2 ** (attempt - 1)) + random.uniform(0.1, 0.8))
 
-                if attempt < max_retries:
-                    if check_cancelled:
-                        await check_cancelled()
-                    sleep_time = (2 ** attempt) + random.uniform(0.5, 1.5)
-                    await asyncio.sleep(sleep_time)
+        raise RuntimeError(f"Échec après {max_retries} essais: {last_error}")
 
-        raise RuntimeError(f"Échec de la traduction après {max_retries} essais: {str(last_exception)}")
-
-    async def _call_openai_spec(self, system_prompt: str, user_text: str, model: str, temperature: float, max_tokens: int) -> str:
-        t = self.api_type.lower()
-        base_url = self.endpoint
-
-        if t == "openai":
-            base_url = "https://api.openai.com/v1"
-        elif t == "deepseek":
-            base_url = "https://api.deepseek.com/v1"
-        elif t == "openrouter":
-            base_url = "https://openrouter.ai/api/v1"
-        elif t == "minimax":
-            base_url = "https://api.minimax.chat/v1"
-        elif t == "kimi":
-            base_url = "https://api.moonshot.cn/v1"
-        elif t == "glm":
-            base_url = "https://open.bigmodel.cn/api/paas/v4"
-        elif t == "gemini":
-            base_url = "https://generativelanguage.googleapis.com/v1beta/openai/v1"
-
-        url = base_url
-        if not url.endswith("/chat/completions"):
-            url = f"{url}/chat/completions"
-
-        headers = {
-            "Content-Type": "application/json",
-            "Authorization": f"Bearer {self.api_key}"
-        }
-
-        # Extra headers for OpenRouter (SOTA 2026 specs)
-        if t == "openrouter":
-            headers["HTTP-Referer"] = "https://github.com/lucas-lepajollec/tradoc"
-            headers["X-Title"] = "TraDoc"
-
-        # Enforce Prompt Caching by padding system prompt for Cloud endpoints to guarantee cache hits (ignored for local servers to save context/VRAM)
-        local_markers = ["localhost", "127.0.0.1", "192.168.", "10.", "172.16.", "172.31.", "::1", "0.0.0.0"]
-        is_local = any(marker in base_url.lower() for marker in local_markers) or t in ["lm-studio", "ollama"]
-        
-        # Disabled temporarily to test empty response issue
-        # if not is_local:
-        #     system_prompt = pad_system_prompt_for_cache(system_prompt, target_tokens=1050)
-
+    async def _call_openai_spec(
+        self, system_prompt: str, user_text: str, model: str, temperature: float, max_tokens: int
+    ) -> str:
+        url = self.endpoint if self.endpoint.endswith("/chat/completions") else f"{self.endpoint}/chat/completions"
+        headers = self._auth_headers()
         messages = [
             {"role": "system", "content": system_prompt},
-            {"role": "user", "content": f"Voici le texte à traduire :\n\n{user_text}"}
+            {"role": "user", "content": f"Voici le texte à traduire :\n\n{user_text}"},
         ]
-        
-        # Only inject think pre-fill for local models or OpenRouter reasoning models
-        if any(k in model.lower() for k in ["qwen", "deepseek", "r1", "think"]):
-            if t not in ["deepseek", "openrouter", "openai", "gemini", "kimi", "glm", "minimax"]:
-                messages.append({"role": "assistant", "content": "<think>\n</think>\n"})
-
-        payload_standard = {
+        disable_local_thinking = self._uses_local_reasoning_prefill(model)
+        if disable_local_thinking:
+            # This continuation prefill was used by TraDoc before the backend audit
+            # and is understood by Qwen/DeepSeek templates exposed by LM Studio.
+            messages.append({"role": "assistant", "content": "<think>\n</think>\n"})
+        payload = {
             "model": model,
             "messages": messages,
-            "temperature": max(0.05, temperature),
+            "temperature": max(0.0, temperature),
             "max_tokens": max_tokens,
-            "stream": False
+            "stream": False,
         }
-        
-        # Disable R1/reasoning model thinking mode to speed up translations and save tokens (for DeepSeek and OpenRouter)
-        is_reasoning_provider = t in ["deepseek", "openrouter"] or any(term in base_url.lower() for term in ["deepseek.com", "openrouter.ai"])
-        if is_reasoning_provider:
-            payload_standard["thinking"] = {"type": "disabled"}
+        reasoning_overrides = self._reasoning_overrides(model)
+        payload.update(reasoning_overrides)
+        response = await self._client.post(url, json=payload, headers=headers)
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.post(url, json=payload_standard, headers=headers)
-            
-            # 2. If Jinja template rejects system role, retry with single combined user message
-            if resp.status_code != 200 and ("Jinja template" in resp.text or "Conversations must start" in resp.text):
-                user_messages = [
-                    {"role": "user", "content": f"{system_prompt}\n\nVoici le texte à traduire :\n\n{user_text}"}
-                ]
-                if any(k in model.lower() for k in ["qwen", "deepseek", "r1", "think"]):
-                    user_messages.append({"role": "assistant", "content": "<think>\n</think>\n"})
+        # Some routed models make reasoning mandatory or do not implement the
+        # provider-level switch. Retry without only that optional control instead
+        # of turning a compatible translation request into a hard failure.
+        body_preview = response.text[:1000] if response.status_code >= 400 else ""
+        if response.status_code == 400 and reasoning_overrides and any(
+            marker in body_preview.lower()
+            for marker in ("reasoning", "thinking", "effort", "mandatory", "unsupported")
+        ):
+            for key in reasoning_overrides:
+                payload.pop(key, None)
+            response = await self._client.post(url, json=payload, headers=headers)
 
-                payload_user = {
-                    "model": model,
-                    "messages": user_messages,
-                    "temperature": max(0.05, temperature),
-                    "max_tokens": max_tokens,
-                    "stream": False
-                }
-                if is_reasoning_provider:
-                    payload_user["thinking"] = {"type": "disabled"}
-                resp = await client.post(url, json=payload_user, headers=headers)
+        # Some local templates reject a system role. Retry once with a combined user message.
+        body_preview = response.text[:1000] if response.status_code >= 400 else ""
+        if response.status_code >= 400 and (
+            "jinja" in body_preview.lower() or "conversations must start" in body_preview.lower()
+        ):
+            combined_messages = [
+                {"role": "user", "content": f"{system_prompt}\n\nVoici le texte à traduire :\n\n{user_text}"}
+            ]
+            if disable_local_thinking:
+                combined_messages.append({"role": "assistant", "content": "<think>\n</think>\n"})
+            payload["messages"] = combined_messages
+            response = await self._client.post(url, json=payload, headers=headers)
 
-            # 3. If Jinja template STILL fails (TranslateGemma / Gemma 2 raw prompt models), fallback to /v1/completions
-            if resp.status_code != 200 and ("Jinja template" in resp.text or "jinja" in resp.text.lower()):
-                raw_url = url.replace("/chat/completions", "/completions")
-                raw_prompt = f"<start_of_turn>user\n{system_prompt}\n\nVoici le texte à traduire :\n\n{user_text}<end_of_turn>\n<start_of_turn>model\n"
-                payload_raw = {
-                    "model": model,
-                    "prompt": raw_prompt,
-                    "temperature": temperature,
-                    "max_tokens": max_tokens,
-                    "frequency_penalty": 0.15,
-                    "repetition_penalty": 1.15,
-                    "stream": False
-                }
-                resp = await client.post(raw_url, json=payload_raw, headers=headers)
-                if resp.status_code == 200:
-                    data = resp.json()
-                    return data["choices"][0]["text"]
+        if response.status_code != 200:
+            raise LLMResponseError(response.status_code, self._safe_error(response))
+        try:
+            payload = response.json()
+            return payload["choices"][0]["message"]["content"] or ""
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            raise ValueError("Réponse LLM invalide ou incomplète.") from exc
 
-            if resp.status_code != 200:
-                err_detail = ""
-                try:
-                    err_json = resp.json()
-                    if isinstance(err_json, dict):
-                        err_detail = err_json.get("error", {}).get("message") or err_json.get("error") or str(err_json)
-                except Exception:
-                    err_detail = resp.text
-
-                raise RuntimeError(f"LM Studio API Error ({resp.status_code}): {err_detail or 'Bad Request'}")
-
-            data = resp.json()
-            try:
-                choice = data["choices"][0]
-                content = choice["message"].get("content")
-                if not content:
-                    print(f"[TraDoc LLM Debug] ⚠️ L'API a renvoyé un contenu vide. Réponse complète: {data}")
-                return content or ""
-            except Exception as e:
-                print(f"[TraDoc LLM Debug] ⚠️ Erreur lors de l'analyse de la réponse: {e}. Réponse complète: {data}")
-                raise e
-
-    async def _call_ollama_native(self, system_prompt: str, user_text: str, model: str, temperature: float, max_tokens: int) -> str:
-        base_url = self.endpoint.replace("/v1", "")
-        url = f"{base_url}/api/chat"
-
+    async def _call_ollama_native(
+        self, system_prompt: str, user_text: str, model: str, temperature: float, max_tokens: int
+    ) -> str:
+        url = f"{self.endpoint.removesuffix('/v1')}/api/chat"
         payload = {
             "model": model,
             "messages": [
                 {"role": "system", "content": system_prompt},
-                {"role": "user", "content": f"Voici le texte à traduire :\n\n{user_text}"}
+                {"role": "user", "content": f"Voici le texte à traduire :\n\n{user_text}"},
             ],
-            "options": {
-                "temperature": temperature,
-                "num_predict": max_tokens
-            },
-            "stream": False
+            "options": {"temperature": temperature, "num_predict": max_tokens},
+            "stream": False,
         }
+        payload["think"] = "low" if "gpt-oss" in model.lower() else False
+        response = await self._client.post(url, json=payload)
+        if response.status_code != 200:
+            raise LLMResponseError(response.status_code, self._safe_error(response))
+        try:
+            return response.json()["message"]["content"]
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValueError("Réponse Ollama invalide.") from exc
 
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.post(url, json=payload)
-            if resp.status_code != 200:
-                err_detail = ""
-                try:
-                    err_json = resp.json()
-                    err_detail = err_json.get("error") or str(err_json)
-                except Exception:
-                    err_detail = resp.text
-                raise RuntimeError(f"Ollama API Error ({resp.status_code}): {err_detail or 'Bad Request'}")
-
-            data = resp.json()
-            return data["message"]["content"]
-
-    async def _call_claude_native(self, system_prompt: str, user_text: str, model: str, temperature: float, max_tokens: int) -> str:
-        url = "https://api.anthropic.com/v1/messages"
+    async def _call_claude_native(
+        self, system_prompt: str, user_text: str, model: str, temperature: float, max_tokens: int
+    ) -> str:
+        base = self.endpoint.removesuffix("/v1")
+        url = f"{base}/v1/messages"
         headers = {
             "x-api-key": self.api_key,
             "anthropic-version": "2023-06-01",
-            "anthropic-beta": "prompt-caching-2024-07-31",
-            "content-type": "application/json"
+            "content-type": "application/json",
         }
-        
-        # Enforce Prompt Caching by padding system prompt based on Claude model class
-        target_tokens = 2050 if "haiku" in model.lower() else 1050
-        padded_system = pad_system_prompt_for_cache(system_prompt, target_tokens=target_tokens)
-
+        system: object = system_prompt
+        if self.enable_prompt_caching:
+            headers["anthropic-beta"] = "prompt-caching-2024-07-31"
+            system = [{"type": "text", "text": system_prompt, "cache_control": {"type": "ephemeral"}}]
         payload = {
             "model": model,
-            "messages": [
-                {"role": "user", "content": f"Voici le texte à traduire :\n\n{user_text}"}
-            ],
-            "system": [
-                {
-                    "type": "text",
-                    "text": system_prompt,
-                    "cache_control": {"type": "ephemeral"}
-                }
-            ],
-            "max_tokens": min(max_tokens, 4096),  # Anthropic enforces a strict max of 4096 for standard output
-            "temperature": max(0.0, temperature)
+            "messages": [{"role": "user", "content": f"Voici le texte à traduire :\n\n{user_text}"}],
+            "system": system,
+            "max_tokens": max_tokens,
+            "temperature": max(0.0, temperature),
         }
-
-        async with httpx.AsyncClient(timeout=self.timeout) as client:
-            resp = await client.post(url, json=payload, headers=headers)
-            if resp.status_code != 200:
-                err_detail = ""
-                try:
-                    err_json = resp.json()
-                    err_detail = err_json.get("error", {}).get("message") or str(err_json)
-                except Exception:
-                    err_detail = resp.text
-                raise RuntimeError(f"Anthropic Claude API Error ({resp.status_code}): {err_detail or 'Bad Request'}")
-
-            data = resp.json()
-            return data["content"][0]["text"]
+        response = await self._client.post(url, json=payload, headers=headers)
+        if response.status_code != 200:
+            raise LLMResponseError(response.status_code, self._safe_error(response))
+        try:
+            payload = response.json()
+            return "".join(block.get("text", "") for block in payload["content"] if block.get("type") == "text")
+        except (ValueError, KeyError, TypeError) as exc:
+            raise ValueError("Réponse Anthropic invalide.") from exc

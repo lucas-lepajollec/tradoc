@@ -22,9 +22,10 @@
 
 ## ✨ Features Principalement Supportées
 
-- 📚 **Moteur Universel Multi-Formats (.epub, .pdf, .docx, .md, .txt)** : Support natif de l'extraction et de la reconstruction préservant la mise en page HTML/CSS, la typographie, les titres et les images.
+- 📚 **Moteur Universel Multi-Formats (.epub, .pdf, .docx, .md, .txt)** : Support natif de l'extraction et de la reconstruction structurée des titres, paragraphes, styles et illustrations.
+- 📖 **PDF Livre repaginé** : les PDF littéraires sont reconstruits dans un gabarit éditorial 6×9, avec une police Unicode embarquée, des chapitres paginés naturellement, un sommaire PDF et la conservation des pages illustrées.
 - 📱 **Export EPUB Réajustable pour PDF** : Conversion intelligente des documents PDF à mise en page fixe vers un format livre numérique EPUB fluide et lisible sur n'importe quelle liseuse ou tablette.
-- ⚙️ **Gestionnaire de Providers avec Mémoire Indépendante** : Mémorisation séparée des clés d'API, des endpoints et des modèles pour chaque provider (OpenAI, DeepSeek, Claude, Gemini, LM Studio, Ollama, Minimax, Kimi, GLM).
+- ⚙️ **Gestionnaire de Providers avec Mémoire Indépendante** : clés API conservées côté serveur dans le volume privé, avec endpoints et modèles séparés pour chaque fournisseur (OpenAI, DeepSeek, Claude, Gemini, LM Studio, Ollama, Minimax, Kimi, GLM).
 - 🔒 **Isolation des Modèles par Projet & Traduction Parallèle** : Chaque livre conserve son propre modèle dédié (`job.model`) en base de données. Possibilité de traduire plusieurs livres simultanément avec des modèles différents sans aucune interférence.
 - 🛠️ **Inspecteur & Édition Inline de Config** : Ajustement à la volée des paramètres d'un projet en pause avec un bouton d'action rapide `⚡ Appliquer la config active du Dashboard`.
 - ⚡ **Orchestration Asynchrone Parallèle & Auto-Pause** : Découpage sémantique par fenêtres de tokens avec concurrence paramétrable. Mise en pause automatique sans perte de données en cas de déconnexion réseau ou GPU.
@@ -70,8 +71,13 @@ cp .env.example .env
 #### 2. Lancer le Backend FastAPI (Terminal 1) :
 ```powershell
 # Windows PowerShell (utilisation directe du venv recommandé) :
-.\.venv\Scripts\python main.py serve --host 0.0.0.0 --port 8000 --reload
+.\.venv\Scripts\python.exe main.py serve --host 127.0.0.1 --port 8000 --reload
 ```
+
+Le backend reste ainsi privé sur la machine. Vite peut malgré tout afficher et
+servir l'interface sur le réseau local grâce à son proxy. Pour exposer aussi
+l'API directement sur le LAN avec `--host 0.0.0.0`, configurez d'abord
+`APP_SECRET` et `ALLOWED_ORIGINS` dans `.env`.
 
 #### 3. Lancer le Frontend React (Terminal 2) :
 ```bash
@@ -92,8 +98,6 @@ Vous pouvez déployer TraDoc facilement sur votre NAS ou serveur en utilisant l'
 Créez un fichier `docker-compose.yml` (ou collez ce bloc dans Portainer) :
 
 ```yaml
-version: '3.8'
-
 services:
   tradoc:
     image: ghcr.io/lucas-lepajollec/tradoc:latest
@@ -104,18 +108,18 @@ services:
     environment:
       - ENV=production
       - DATA_DIR=/app/data
-      - APP_SECRET=  # Optionnel: définissez un jeton d'accès pour sécuriser l'API
-      - ALLOWED_ORIGINS=*  # Domaines autorisés pour CORS (ex: http://localhost:2507,http://192.168.1.50:2507)
+      - APP_SECRET=${APP_SECRET:?Définissez APP_SECRET dans le fichier .env}
+      - ALLOWED_ORIGINS=  # Laissez vide lorsque le front est servi par TraDoc
       - LLM_ENDPOINT=http://192.168.x.x:1234/v1  # IP de votre serveur GPU local
       - LLM_API_KEY=lm-studio
       - LLM_MODEL=qwen3.5-instruct
-      - API_TYPE=openai
+      - API_TYPE=lm-studio
       - CHUNK_TOKEN_SIZE=1000
       - TEMPERATURE=0.15
     volumes:
       - ./data:/app/data
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/models"]
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
@@ -134,7 +138,8 @@ docker compose up -d
 > [!WARNING]
 > **Réseau & Exposition Portainer** : Ne jamais exposer directement le port de votre serveur d'inférence GPU ni l'instance TraDoc au web public sans authentification préalable ou reverse proxy sécurisé (Nginx, Traefik, Caddy avec SSL/TLS).
 
-- **Permissions du volume Docker** : Si vous rencontrez une erreur `PermissionDenied` lors de l'envoi d'un livre, attribuez les droits d'écriture au volume sur votre serveur hôte : `sudo chmod -R 777 ./data` ou `sudo chown -R 1000:1000 ./data`.
+- **Permissions du volume Docker** : Si vous rencontrez une erreur `PermissionDenied`, attribuez le volume à l'utilisateur non privilégié du conteneur : `sudo chown -R 1000:1000 ./data`. Évitez `chmod 777`.
+- **TLS** : Pour un accès hors du réseau local, placez TraDoc derrière un reverse proxy HTTPS (Caddy, Traefik ou Nginx), gardez `APP_SECRET` obligatoire et n'exposez jamais directement l'endpoint LLM.
 - **Persistance des Données** : Assurez-vous d'inclure le volume `./data` dans vos sauvegardes régulières (contient la base SQLite `tradoc.db` et vos livres traduits).
 - **Inférence Parallèle LM Studio** : Pour activer la vraie concurrence parallèle avec 4 requêtes simultanées, assurez-vous d'augmenter le réglage `Max Concurrent Requests` dans l'onglet **Local Server** de LM Studio.
 
@@ -150,7 +155,8 @@ tradoc/
 ├── core/                     # Moteur backend de traduction & parsers
 │   ├── config.py             # Configuration Pydantic & variables d'environnement
 │   ├── parser_epub.py        # Extracteur/Reconstructeur EPUB conservant HTML/CSS
-│   ├── parser_pdf.py         # Parseur PDF & convertisseur EPUB
+│   ├── parser_pdf.py         # Extraction PDF, repagination Livre & export EPUB
+│   ├── pdf_templates.py      # Gabarits éditoriaux PDF déterministes
 │   ├── chunker.py            # Chunker sémantique par fenêtre de tokens
 │   ├── cleaner.py            # Nettoyeur générique de balises <think>
 │   ├── checkpoint.py         # Moteur SQLite WAL de suivi d'état des jobs

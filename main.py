@@ -13,7 +13,7 @@ app = typer.Typer(help="TraDoc - Service de Traduction Littéraire Haute Perform
 
 @app.command("serve")
 def serve(
-    host: str = typer.Option("0.0.0.0", "--host", "-h", help="Adresse IP d'écoute"),
+    host: str = typer.Option("127.0.0.1", "--host", "-h", help="Adresse IP d'écoute"),
     port: int = typer.Option(8000, "--port", "-p", help="Port du serveur web"),
     reload: bool = typer.Option(False, "--reload", help="Activer le hot-reload en développement")
 ):

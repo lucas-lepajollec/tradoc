@@ -1,18 +1,26 @@
 import json
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 class GlossaryItem(BaseModel):
-    source: str
-    target: str
-    category: str = Field(default="general")  # name, location, term, untranslatable, honorific
-    note: Optional[str] = None
+    source: str = Field(min_length=1, max_length=500)
+    target: str = Field(default="", max_length=500)
+    category: str = Field(default="general", max_length=50)
+    note: Optional[str] = Field(default=None, max_length=2000)
 
 class Glossary(BaseModel):
-    name: str
-    description: Optional[str] = ""
-    items: List[GlossaryItem] = Field(default_factory=list)
+    name: str = Field(min_length=1, max_length=100)
+    description: Optional[str] = Field(default="", max_length=5000)
+    items: List[GlossaryItem] = Field(default_factory=list, max_length=50_000)
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        if not any(character.isalnum() for character in value):
+            raise ValueError("Le nom du glossaire doit contenir au moins un caractère alphanumérique.")
+        return value.strip()
 
     def to_prompt_text(self) -> str:
         """Formats the glossary terms into a strict instruction section for system prompt."""
@@ -37,13 +45,18 @@ class GlossaryManager:
 
     def get_path(self, name: str) -> Path:
         safe_name = "".join(c for c in name if c.isalnum() or c in ("-", "_")).lower()
+        if not safe_name:
+            raise ValueError("Nom de glossaire invalide")
         return self.glossary_dir / f"{safe_name}.json"
 
     def list_glossaries(self) -> List[str]:
         return [p.stem for p in self.glossary_dir.glob("*.json")]
 
     def load_glossary(self, name: str) -> Optional[Glossary]:
-        path = self.get_path(name)
+        try:
+            path = self.get_path(name)
+        except ValueError:
+            return None
         if not path.exists():
             return None
         try:
@@ -56,14 +69,21 @@ class GlossaryManager:
     def save_glossary(self, glossary: Glossary) -> bool:
         path = self.get_path(glossary.name)
         try:
-            with open(path, "w", encoding="utf-8") as f:
+            temp_path = path.with_suffix(".tmp")
+            with open(temp_path, "w", encoding="utf-8") as f:
                 json.dump(glossary.model_dump(), f, ensure_ascii=False, indent=2)
+                f.flush()
+                os.fsync(f.fileno())
+            temp_path.replace(path)
             return True
         except Exception:
             return False
 
     def delete_glossary(self, name: str) -> bool:
-        path = self.get_path(name)
+        try:
+            path = self.get_path(name)
+        except ValueError:
+            return False
         if path.exists():
             path.unlink()
             return True

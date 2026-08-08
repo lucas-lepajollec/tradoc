@@ -24,12 +24,14 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
   const wordsCount = pages * 275;
   const totalTokens = Math.round(wordsCount * 1.35);
   const totalRequests = Math.max(1, Math.ceil(totalTokens / chunkSize));
-  const promptPrefixPerChunk = 4500;
+  const promptPrefixPerChunk = Math.max(150, Math.ceil((settings?.systemPrompt?.length || 2200) / 3.8));
   const baseInputTokens = (totalRequests * promptPrefixPerChunk) + totalTokens;
   const rawInputCost = (baseInputTokens / 1000000) * inputPrice;
   let computedInputCost = rawInputCost;
 
-  if (enableCaching && mode === 'cloud' && totalRequests > 1) {
+  const cachingSupported = ['claude', 'anthropic'].includes(settings?.apiType);
+  const cachingEligible = cachingSupported && promptPrefixPerChunk >= 1024;
+  if (enableCaching && cachingEligible && mode === 'cloud' && totalRequests > 1) {
     const firstChunkContent = totalTokens / totalRequests;
     const firstRequestCost = ((promptPrefixPerChunk + firstChunkContent) / 1000000) * inputPrice;
     const remainingContentCost = ((totalTokens - firstChunkContent) / 1000000) * inputPrice;
@@ -43,7 +45,12 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
   const cachingSavings = Math.max(0, rawInputCost + computedOutputCost - totalCostNumber).toFixed(2);
 
   const handleApplySettings = () => {
-    if (onSaveSettings && settings) onSaveSettings({ ...settings, chunkSize: Number(chunkSize), concurrency: Number(concurrency) });
+    if (onSaveSettings && settings) onSaveSettings({
+      ...settings,
+      chunkSize: Math.max(200, Math.min(10000, Number(chunkSize))),
+      concurrency: Number(concurrency),
+      enablePromptCaching: mode === 'cloud' && enableCaching && cachingSupported,
+    });
     if (setActiveTab) setActiveTab('dashboard');
   };
 
@@ -99,14 +106,14 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
           <section className="form-section">
             <div className="section-heading"><span>03</span><div><h2>{t('wizard.fineTuningTitle', lang)}</h2><p>{lang === 'fr' ? 'Ajustez uniquement si vous connaissez les limites de votre modèle.' : 'Adjust only if you know your model limits.'}</p></div></div>
             <div className="field-grid">
-              <label><span>{t('wizard.chunkSize', lang)}</span><input type="number" step="250" value={chunkSize} onChange={(e) => setChunkSize(parseInt(e.target.value, 10) || 1000)} /></label>
+              <label><span>{t('wizard.chunkSize', lang)}</span><input type="number" min="200" max="10000" step="250" value={chunkSize} onChange={(e) => setChunkSize(Math.max(200, Math.min(10000, parseInt(e.target.value, 10) || 1000)))} /></label>
               <label><span>{t('wizard.concurrencySlots', lang)}</span><input type="number" min="1" max="16" value={concurrency} onChange={(e) => setConcurrency(parseInt(e.target.value, 10) || 1)} /></label>
               {mode === 'cloud' && <>
                 <label><span>{t('wizard.inputPrice', lang)}</span><input type="number" step="0.05" value={inputPrice} onChange={(e) => setInputPrice(parseFloat(e.target.value) || 0)} /></label>
                 <label><span>{t('wizard.outputPrice', lang)}</span><input type="number" step="0.05" value={outputPrice} onChange={(e) => setOutputPrice(parseFloat(e.target.value) || 0)} /></label>
                 <button type="button" role="switch" aria-checked={enableCaching} className={`cache-toggle-card ${enableCaching ? 'is-active' : ''}`} onClick={() => setEnableCaching(!enableCaching)}>
                   <span className="cache-icon"><Sparkles /></span>
-                  <span className="cache-copy"><strong>{lang === 'fr' ? 'Prompt Caching' : 'Prompt Caching'}</strong><small>{t('wizard.enableCaching', lang)} · {lang === 'fr' ? 'jusqu’à 90 % d’économie sur les prompts répétés' : 'up to 90% savings on repeated prompts'}</small></span>
+                  <span className="cache-copy"><strong>Prompt Caching</strong><small>{cachingEligible ? (lang === 'fr' ? 'Cache explicite Anthropic sur le prompt système répété' : 'Explicit Anthropic caching for the repeated system prompt') : cachingSupported ? (lang === 'fr' ? 'Prompt trop court pour garantir une mise en cache' : 'Prompt too short to guarantee a cache hit') : (lang === 'fr' ? 'Disponible avec un fournisseur Anthropic' : 'Available with an Anthropic provider')}</small></span>
                   <span className="cache-switch"><i /></span>
                 </button>
               </>}
@@ -123,7 +130,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
             <div><dt>{t('wizard.chunksUnit', lang)}</dt><dd>{totalRequests}</dd></div>
             <div><dt>{lang === 'fr' ? 'Exécution' : 'Execution'}</dt><dd>{mode === 'local' ? t('wizard.localServer', lang) : t('wizard.cloudApi', lang)}</dd></div>
           </dl>
-          {mode === 'cloud' && enableCaching && parseFloat(cachingSavings) > 0 && <div className="saving-note"><TrendingDown />{lang === 'fr' ? 'Économie estimée' : 'Estimated savings'}: {cachingSavings}$</div>}
+          {mode === 'cloud' && enableCaching && cachingEligible && parseFloat(cachingSavings) > 0 && <div className="saving-note"><TrendingDown />{lang === 'fr' ? 'Économie estimée' : 'Estimated savings'}: {cachingSavings}$</div>}
           <p className="receipt-note">{t('wizard.disclaimer', lang)}</p>
           <button type="button" onClick={handleApplySettings} className="primary-button">{t('wizard.applySettings', lang)}<ArrowRight /></button>
         </aside>

@@ -32,6 +32,8 @@ env/
 web/node_modules/
 web/dist/
 web/.vite/
+web/test-results/
+web/playwright-report/
 .npm
 
 # Environment & Secrets
@@ -52,11 +54,16 @@ scratch/
 data/checkpoint.db
 data/input/*
 data/output/*
+data/jobs/
+data/tmp/
+data/provider_credentials.json
+data/provider_credentials.tmp
 !data/input/.gitkeep
 !data/output/.gitkeep
 !data/glossaries/.gitkeep
 *.epub
 *.pdf
+*.docx
 
 # Personal / Private Developer Docs
 COMMANDS.md

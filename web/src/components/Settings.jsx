@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Cpu, Sliders, CheckCircle2, AlertCircle, RefreshCw, Save, Trash2, Plus, Key, Link, Search, Globe, Bookmark, Check, ShieldCheck, ArrowLeftRight, Eye, EyeOff, Lock } from 'lucide-react';
-import { testConnection } from '../api';
+import { testConnection, saveProviderCredentials, setAppSecret } from '../api';
 import { t, AVAILABLE_LANGUAGES } from '../i18n/translations';
 
 const DEFAULT_LITERARY_PROMPT = `Tu es un traducteur littéraire professionnel expert en Anglais-Français. 
@@ -106,7 +106,7 @@ export default function Settings({
   const [endpoint, setEndpoint] = useState(settings.endpoint);
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
   const [showApiKey, setShowApiKey] = useState(false);
-  const [appSecret, setAppSecret] = useState(() => localStorage.getItem('tradoc_app_secret') || '');
+  const [appSecret, setAppSecretValue] = useState(() => sessionStorage.getItem('tradoc_app_secret') || localStorage.getItem('tradoc_app_secret') || '');
   const [model, setModel] = useState(settings.model);
   const [sourceLang, setSourceLang] = useState(settings.sourceLang || 'en');
   const [targetLang, setTargetLang] = useState(settings.targetLang || 'fr');
@@ -122,23 +122,29 @@ export default function Settings({
   const [fetchingModels, setFetchingModels] = useState(false);
 
   const [customPromptPresets, setCustomPromptPresets] = useState(() => {
-    const saved = localStorage.getItem('tradoc_custom_presets');
-    return saved ? JSON.parse(saved) : {};
+    try {
+      const parsed = JSON.parse(localStorage.getItem('tradoc_custom_presets') || '{}');
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? parsed : {};
+    } catch {
+      localStorage.removeItem('tradoc_custom_presets');
+      return {};
+    }
   });
   
   const [providerConfigs, setProviderConfigs] = useState(() => {
-    const saved = localStorage.getItem('tradoc_provider_configs');
-    const parsed = saved ? JSON.parse(saved) : {};
-    if (settings?.apiType && settings?.apiKey && !parsed[settings.apiType]) {
-      parsed[settings.apiType] = {
-        endpoint: settings.endpoint,
-        apiKey: settings.apiKey,
-        model: settings.model,
-        concurrency: settings.concurrency,
-        chunkSize: settings.chunkSize
-      };
+    try {
+      const parsed = JSON.parse(localStorage.getItem('tradoc_provider_configs') || '{}');
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
+      const sanitized = Object.fromEntries(Object.entries(parsed).map(([key, value]) => {
+        const { apiKey: _removed, ...safe } = value || {};
+        return [key, safe];
+      }));
+      localStorage.setItem('tradoc_provider_configs', JSON.stringify(sanitized));
+      return sanitized;
+    } catch {
+      localStorage.removeItem('tradoc_provider_configs');
+      return {};
     }
-    return parsed;
   });
 
   const [selectedPromptKey, setSelectedPromptKey] = useState('literary');
@@ -180,12 +186,6 @@ export default function Settings({
 
   // Trigger auto-detect when apiKey/endpoint changes
   useEffect(() => {
-    const isLocalProvider = ['lm-studio', 'ollama'].includes(apiType);
-    if (!isLocalProvider && apiKey.length < 6) {
-      setFetchedModels([]);
-      return;
-    }
-
     setFetchingModels(true);
     const timer = setTimeout(async () => {
       try {
@@ -212,23 +212,11 @@ export default function Settings({
       ...providerConfigs,
       [apiType]: {
         endpoint,
-        apiKey,
         model,
         concurrency,
         chunkSize
       }
     };
-
-    // If active settings had an API key for target provider, preserve it
-    if (settings?.apiType === prov.id && settings?.apiKey && !updatedConfigs[prov.id]?.apiKey) {
-      updatedConfigs[prov.id] = {
-        endpoint: settings.endpoint || prov.defaultUrl,
-        apiKey: settings.apiKey,
-        model: settings.model || prov.defaultModel,
-        concurrency: settings.concurrency || 4,
-        chunkSize: settings.chunkSize || 1000
-      };
-    }
 
     setProviderConfigs(updatedConfigs);
     localStorage.setItem('tradoc_provider_configs', JSON.stringify(updatedConfigs));
@@ -242,7 +230,7 @@ export default function Settings({
     setApiType(prov.id);
     if (targetConfig) {
       setEndpoint(targetConfig.endpoint || prov.defaultUrl);
-      setApiKey(targetConfig.apiKey !== undefined ? targetConfig.apiKey : '');
+      setApiKey('');
       setModel(targetConfig.model || prov.defaultModel);
       setConcurrency(targetConfig.concurrency !== undefined ? targetConfig.concurrency : (['lm-studio', 'ollama'].includes(prov.id) ? 1 : 4));
       setChunkSize(Math.max(targetChunkMin, Math.min(targetChunkMax, targetConfig.chunkSize || targetChunkRecommended)));
@@ -304,7 +292,6 @@ export default function Settings({
       name: newPresetNameInput.trim(),
       apiType,
       endpoint,
-      apiKey,
       model,
       sourceLang,
       targetLang,
@@ -313,24 +300,27 @@ export default function Settings({
       chunkSize,
       systemPrompt,
       enableProofreading,
+      enablePromptCaching: !!settings.enablePromptCaching,
     };
     if (onSavePreset) onSavePreset(presetObj);
     setNewPresetNameInput('');
   };
 
-  const handleSaveAll = (e) => {
+  const handleSaveAll = async (e) => {
     if (e) e.preventDefault();
-    if (appSecret.trim()) {
-      localStorage.setItem('tradoc_app_secret', appSecret.trim());
-    } else {
-      localStorage.removeItem('tradoc_app_secret');
+    setAppSecret(appSecret);
+
+    try {
+      await saveProviderCredentials(apiType, apiKey.trim() || undefined, endpoint);
+    } catch (error) {
+      alert(error.message);
+      return;
     }
 
     const updatedConfigs = {
       ...providerConfigs,
       [apiType]: {
         endpoint,
-        apiKey,
         model,
         concurrency,
         chunkSize
@@ -341,7 +331,7 @@ export default function Settings({
 
     onSaveSettings({
       endpoint,
-      apiKey,
+      apiKey: '',
       apiType,
       model,
       sourceLang,
@@ -351,6 +341,7 @@ export default function Settings({
       chunkSize,
       systemPrompt,
       enableProofreading,
+      enablePromptCaching: !!settings.enablePromptCaching,
     });
     alert(t('settings.saveAllSuccess', lang));
   };
@@ -530,6 +521,7 @@ export default function Settings({
                       {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
+                  {!isLocal && <p className="mt-1.5 text-[10px] text-[#666]">{lang === 'fr' ? 'Laissez vide pour réutiliser la clé déjà stockée côté serveur.' : 'Leave blank to reuse the key already stored on the server.'}</p>}
                 </div>
 
                 {/* Endpoint URL */}
@@ -707,7 +699,7 @@ export default function Settings({
               <button type="button" role="switch" aria-checked={enableProofreading} className={`proofreading-toggle-compact ${enableProofreading ? 'is-active' : ''}`} onClick={() => setEnableProofreading(!enableProofreading)}>
                 <span className="proofreading-toggle-copy">
                   <strong>{lang === 'fr' ? 'Relecture éditoriale' : 'Editorial proofreading'}</strong>
-                  <small>{lang === 'fr' ? 'Deuxième passe automatique après la traduction' : 'Automatic second pass after translation'}</small>
+                  <small>{lang === 'fr' ? 'Deuxième passe automatique (2 appels par segment)' : 'Automatic second pass (2 calls per segment)'}</small>
                 </span>
                 <span className="proofreading-toggle-status">{enableProofreading ? (lang === 'fr' ? 'Activée' : 'Enabled') : (lang === 'fr' ? 'Désactivée' : 'Disabled')}</span>
                 <span className="proofreading-switch"><i /></span>
@@ -815,7 +807,7 @@ export default function Settings({
                 </div>
                 <label className="secret-field">
                   <span>{lang === 'fr' ? 'Clé secrète' : 'Secret token'} <small>X-App-Secret</small></span>
-                  <input type="password" value={appSecret} onChange={(e) => setAppSecret(e.target.value)} placeholder={lang === 'fr' ? 'Saisissez votre jeton' : 'Enter your token'} className="input-chill font-mono" />
+                  <input type="password" value={appSecret} onChange={(e) => setAppSecretValue(e.target.value)} placeholder={lang === 'fr' ? 'Saisissez votre jeton' : 'Enter your token'} className="input-chill font-mono" />
                   <p>{lang === 'fr' ? 'Stocké localement puis envoyé avec chaque requête adressée à TraDoc.' : 'Stored locally and sent with every request made to TraDoc.'}</p>
                 </label>
               </section>
