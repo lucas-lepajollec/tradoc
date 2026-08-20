@@ -10,12 +10,17 @@ class TextParser:
         text_path: Path,
         legacy: bool = False,
         normalize_fenced_headings: bool = True,
+        strip_converter_fences: bool = False,
     ):
         self.text_path = text_path
         self.raw_content = text_path.read_text(encoding="utf-8", errors="replace")
         self.is_markdown = text_path.suffix.lower() == ".md"
         self.legacy = legacy
         self.normalize_fenced_headings = normalize_fenced_headings
+        self.strip_converter_fences = strip_converter_fences
+        self.converter_fence_mode = (
+            strip_converter_fences and self._looks_like_converter_markdown()
+        )
 
     @staticmethod
     def _inline_markdown_to_html(value: str) -> str:
@@ -57,6 +62,24 @@ class TextParser:
                 current.append(line)
         flush()
         return blocks
+
+    def _looks_like_converter_markdown(self) -> bool:
+        """Detect documents where a converter wrapped ordinary prose in fences."""
+        if not self.is_markdown:
+            return False
+        blocks = self._split_blocks()
+        if len(blocks) < 8:
+            return False
+        unlabelled_fences = 0
+        for block in blocks:
+            lines = block.splitlines()
+            if (
+                len(lines) >= 3
+                and re.fullmatch(r"\s*(`{3,}|~{3,})\s*", lines[0])
+                and re.fullmatch(rf"\s*{re.escape(lines[0].strip())}\s*", lines[-1])
+            ):
+                unlabelled_fences += 1
+        return unlabelled_fences >= 8 and unlabelled_fences / len(blocks) >= 0.35
 
     def _extract_legacy_nodes(self) -> Tuple[List[Dict[str, Any]], List[str]]:
         node_meta: List[Dict[str, Any]] = []
@@ -133,6 +156,7 @@ class TextParser:
                             "fence_group": block_idx,
                             "fence_pos": line_pos,
                             "fence_count": len(chapter_lines),
+                            "suppress_fence": self.converter_fence_mode,
                         })
                         node_texts.append(html_node)
                     continue
@@ -154,6 +178,10 @@ class TextParser:
                     "fence_open": lines[0].strip(),
                     "fence_close": lines[-1].strip(),
                     "fence_info": fence_info,
+                    "suppress_fence": (
+                        self.converter_fence_mode
+                        and not fence_info
+                    ),
                 })
             else:
                 heading = re.match(r"^(#{1,6})\s+(.+)$", block, flags=re.DOTALL) if self.is_markdown else None
@@ -194,9 +222,11 @@ class TextParser:
     @staticmethod
     def _translated_text(trans_html: str) -> str:
         soup = BeautifulSoup(trans_html, "html.parser")
+        for line_break in soup.find_all("br"):
+            line_break.replace_with("\n")
         for code in soup.find_all("code"):
             code.replace_with(f"`{code.get_text()}`")
-        return soup.get_text("\n").strip()
+        return soup.get_text("").strip()
 
     def reconstruct_text(self, node_meta: List[Dict[str, Any]], translated_nodes: List[str], output_path: Path):
         """
@@ -215,14 +245,22 @@ class TextParser:
             wrapper = meta.get("code_wrapper", "")
             rendered_text = f"{wrapper}{text_val}{wrapper}"
             if self.is_markdown and kind == "fence_heading_line":
-                if meta.get("fence_pos") == 0:
+                if meta.get("suppress_fence"):
+                    output_blocks.append(rendered_text)
+                elif meta.get("fence_pos") == 0:
                     output_blocks.append(f"{meta.get('fence_open', '```')}\n{rendered_text}")
                 else:
                     output_blocks[-1] += f"\n{rendered_text}"
-                if meta.get("fence_pos") == meta.get("fence_count", 1) - 1:
+                if (
+                    not meta.get("suppress_fence")
+                    and meta.get("fence_pos") == meta.get("fence_count", 1) - 1
+                ):
                     output_blocks[-1] += f"\n{meta.get('fence_close', '```')}"
             elif self.is_markdown and kind == "fence":
-                output_blocks.append(f"{meta.get('fence_open', '```')}\n{text_val}\n{meta.get('fence_close', '```')}")
+                if meta.get("suppress_fence"):
+                    output_blocks.append(text_val)
+                else:
+                    output_blocks.append(f"{meta.get('fence_open', '```')}\n{text_val}\n{meta.get('fence_close', '```')}")
             elif self.is_markdown and kind == "list_item":
                 output_blocks.append(f"{meta.get('marker', '- ')}{rendered_text}")
             elif self.is_markdown and kind == "blockquote":

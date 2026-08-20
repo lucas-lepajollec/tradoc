@@ -26,11 +26,15 @@
 }
 
 @layer base {
-  html { background: var(--canvas); }
+  html {
+    min-height: 100%;
+    background: var(--canvas) !important;
+  }
 
   body {
+    min-height: 100%;
     margin: 0;
-    background: var(--canvas);
+    background: var(--canvas) !important;
     color: var(--text);
     font-family: 'DM Sans', ui-sans-serif, system-ui, sans-serif;
     overflow-x: hidden;
@@ -99,6 +103,7 @@
 }
 
 .app-shell {
+  min-height: 100dvh;
   background:
     radial-gradient(900px 420px at 72% -10%, rgba(70, 103, 158, .08), transparent 68%),
     var(--canvas);
@@ -289,8 +294,10 @@
 .file-badge, .mode-badge { flex: 0 0 auto; padding: 4px 7px; border: 1px solid var(--border); border-radius: 6px; color: var(--muted); font: 600 8px 'JetBrains Mono'; text-transform: uppercase; letter-spacing: .07em; }
 .mode-badge { color: var(--accent); border-color: rgba(121,169,248,.24); background: var(--accent-soft); }
 .project-subline { display: flex; flex-wrap: wrap; align-items: center; gap: 7px 0; margin-top: 5px; color: var(--faint); font-size: 9px; }
+.project-summary-meta, .project-detail-meta { display: flex; flex-wrap: wrap; align-items: center; }
 .project-subline span { display: inline-flex; align-items: center; gap: 5px; }
-.project-subline span + span::before { content: '·'; margin: 0 9px; color: #4f545e; }
+.project-summary-meta span + span::before, .project-detail-meta span::before { content: '·'; margin: 0 9px; color: #4f545e; }
+.project-detail-meta small { display: none; }
 .project-subline svg { width: 11px; }
 .project-more { display: inline-flex; align-items: center; align-self: center; min-height: 0 !important; margin-left: 20px; padding: 0; color: var(--accent); background: transparent; border: 0; font-size: 9px; line-height: 1; font-weight: 600; }
 .project-more::before { content: ''; width: 1px; height: 10px; margin-right: 14px; background: var(--border-strong); }
@@ -625,9 +632,11 @@
 .settings-content form > div > div:first-child h2 { font-size: 15px; }
 .settings-content form > div > div:first-child p { max-width: 640px; margin-top: 5px; line-height: 1.5; }
 .settings-content .grid-cols-2.sm\:grid-cols-5 { grid-template-columns: repeat(5, minmax(0,1fr)); gap: 8px; }
-.settings-content .grid-cols-2.sm\:grid-cols-5 > button { min-height: 82px; padding: 12px !important; background: #171a20 !important; border-color: var(--border) !important; border-radius: 10px !important; }
-.settings-content .grid-cols-2.sm\:grid-cols-5 > button:hover { background: #1d2128 !important; border-color: var(--border-strong) !important; }
-.settings-content .grid-cols-2.sm\:grid-cols-5 > button.bg-white\/\[0\.08\] { background: var(--accent-soft) !important; border-color: rgba(121,169,248,.3) !important; }
+.provider-grid { display: grid; grid-template-columns: repeat(5, minmax(0,1fr)); gap: 12px; }
+.settings-content .provider-card { display: flex; min-width: 0; min-height: 82px; padding: 12px !important; align-items: center; justify-content: center; flex-direction: column; gap: 8px; color: var(--muted); text-align: center; background: #171a20 !important; border-color: var(--border) !important; border-radius: 10px !important; }
+.settings-content .provider-card:hover { color: var(--text); background: #1d2128 !important; border-color: var(--border-strong) !important; }
+.settings-content .provider-card.bg-white\/\[0\.08\] { color: var(--text); background: var(--accent-soft) !important; border-color: rgba(121,169,248,.3) !important; }
+.provider-name { overflow: hidden; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
 .settings-content .p-4.rounded-xl.bg-black\/40 { background: #171a20 !important; border-color: var(--border) !important; }
 .settings-content input, .settings-content select, .settings-content textarea { background-color: #16191f !important; }
 .settings-global-panel, .settings-presets-panel { display: flex; flex-direction: column; gap: 18px; }
@@ -808,8 +817,17 @@ button { letter-spacing: -.005em; }
   .preset-row { grid-template-columns: 1fr 1fr; }
   .project-title-line { align-items: flex-start; flex-wrap: wrap; }
   .project-title-line h2 { flex-basis: 100%; white-space: normal; }
-  .overview-actions { flex-wrap: wrap; }
-  .overview-actions .primary-action, .overview-actions .secondary-action { min-width: calc(50% - 4px); }
+  .project-subline { display: block; margin-top: 10px; }
+  .project-summary-meta { gap: 8px 0; }
+  .project-detail-meta { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 8px 10px; margin-top: 13px; padding-top: 12px; border-top: 1px solid var(--border); }
+  .project-detail-meta span { align-items: flex-start; flex-direction: column; min-width: 0; gap: 3px; overflow-wrap: anywhere; color: var(--muted); font: 9px 'JetBrains Mono'; }
+  .project-detail-meta span::before { display: none; }
+  .project-detail-meta small { display: block; color: var(--faint); font: 700 7px Inter, sans-serif; text-transform: uppercase; letter-spacing: .09em; }
+  .project-more { margin: 13px 0 0; }
+  .project-more::before { display: none; }
+  .overview-actions { display: grid; grid-template-columns: minmax(0,.9fr) minmax(0,1.25fr) 40px; gap: 7px; }
+  .overview-actions .primary-action, .overview-actions .secondary-action { width: 100%; min-width: 0; padding-right: 8px; padding-left: 8px; }
+  .overview-actions .icon-action { width: 40px; }
   .overview-progress { grid-template-columns: 1fr auto; padding: 14px 18px; }
   .project-config-card { padding: 17px 18px; }
   .project-config-card-heading { align-items: flex-start; flex-direction: column; gap: 9px; }
@@ -845,6 +863,9 @@ button { letter-spacing: -.005em; }
   .term-row input:nth-child(3) { grid-column: 1 / 3; }
   .term-row button { grid-column: 3; grid-row: 1; }
   .settings-tabs { grid-template-columns: 1fr 1fr; }
+  .settings-content .provider-grid { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; }
+  .settings-content .provider-card { min-height: 94px; padding: 12px 10px !important; }
+  .settings-content .provider-name { display: flex; min-height: 2.5em; align-items: center; justify-content: center; overflow: hidden; line-height: 1.25; text-align: center; text-wrap: balance; white-space: normal; }
   .proofreading-source-choices { grid-template-columns: 1fr; }
   .existing-project-field { grid-template-columns: 1fr; gap: 7px; }
   .proofreading-source-compact { grid-template-columns: 1fr; }

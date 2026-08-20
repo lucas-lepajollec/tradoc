@@ -13,11 +13,14 @@ from core.config import settings
 class ApiSecurityTests(unittest.TestCase):
     def setUp(self):
         self.previous_secret = settings.APP_SECRET
+        self.previous_trusted_lan_proxy = settings.TRUSTED_LAN_PROXY
         settings.APP_SECRET = "unit-test-secret"
+        settings.TRUSTED_LAN_PROXY = False
         self.client = TestClient(app)
 
     def tearDown(self):
         settings.APP_SECRET = self.previous_secret
+        settings.TRUSTED_LAN_PROXY = self.previous_trusted_lan_proxy
 
     def test_health_is_public(self):
         response = self.client.get("/health")
@@ -50,6 +53,18 @@ class ApiSecurityTests(unittest.TestCase):
             },
         )
         self.assertEqual(response.status_code, 403)
+
+    def test_explicit_trusted_lan_proxy_accepts_phone_origin(self):
+        settings.APP_SECRET = ""
+        settings.TRUSTED_LAN_PROXY = True
+        response = self.client.post(
+            "/api/settings/test-connection",
+            headers={
+                "Origin": "http://192.168.0.201:2499",
+                "Host": "127.0.0.1:8000",
+            },
+        )
+        self.assertEqual(response.status_code, 422)
 
     def test_connection_fetches_models_only_once(self):
         class FakeClient:

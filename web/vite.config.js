@@ -5,16 +5,21 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   server: {
-    host: '0.0.0.0', // Accessible on local network for mobile testing
-    port: 2499,      // Port 2499
+    host: '127.0.0.1',
+    port: 2499,
     strictPort: true,
     proxy: {
       '/api': {
-        target: 'http://127.0.0.1:8000',
+        target: `http://127.0.0.1:${process.env.TRADOC_API_PORT || '8000'}`,
         changeOrigin: true,
         ws: true
       }
     }
+  },
+  preview: {
+    host: '127.0.0.1',
+    port: 2499,
+    strictPort: true
   },
   build: {
     outDir: 'dist',

@@ -706,16 +706,20 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       <h2 title={job.file_name}>{overviewTitle}</h2>
                     </div>
                     <div className="project-subline">
-                      <span>{job.file_type.toUpperCase()}</span>
-                      <span>{job.job_type === 'proofreading' ? t('inspector.modeProofread', lang) : t('inspector.modeTranslation', lang)}</span>
-                      <span>{job.model}</span>
-                      <span>{job.source_lang.toUpperCase()} <ArrowRight /> {job.target_lang.toUpperCase()}</span>
-                      {showDetails && <>
-                        <span>ID {job.id}</span>
-                        <span>{lang === 'fr' ? 'Glossaire' : 'Glossary'}: {job.glossary_name || (lang === 'fr' ? 'Aucun' : 'None')}</span>
-                        <span>{job.chunk_size || 1000} tokens</span>
-                        <span>{new Date(job.created_at).toLocaleDateString()}</span>
-                      </>}
+                      <div className="project-summary-meta">
+                        <span>{job.file_type.toUpperCase()}</span>
+                        <span>{job.job_type === 'proofreading' ? t('inspector.modeProofread', lang) : t('inspector.modeTranslation', lang)}</span>
+                        <span>{job.model}</span>
+                        <span>{job.source_lang.toUpperCase()} <ArrowRight /> {job.target_lang.toUpperCase()}</span>
+                      </div>
+                      {showDetails && (
+                        <div className="project-detail-meta">
+                          <span><small>ID</small>{job.id}</span>
+                          <span><small>{lang === 'fr' ? 'Glossaire' : 'Glossary'}</small>{job.glossary_name || (lang === 'fr' ? 'Aucun' : 'None')}</span>
+                          <span><small>{lang === 'fr' ? 'Segment' : 'Chunk'}</small>{job.chunk_size || 1000} tokens</span>
+                          <span><small>{lang === 'fr' ? 'Créé le' : 'Created'}</small>{new Date(job.created_at).toLocaleDateString()}</span>
+                        </div>
+                      )}
                       <button type="button" className="project-more" onClick={() => setShowDetails(!showDetails)}>{showDetails ? (lang === 'fr' ? 'Réduire' : 'Show less') : (lang === 'fr' ? 'Voir plus' : 'Show more')}</button>
                     </div>
                   </div>

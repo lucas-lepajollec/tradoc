@@ -59,7 +59,8 @@ async def verify_app_secret(
         local_dev_proxy = _is_loopback_hostname(origin_url.hostname) and _is_loopback_hostname(
             request_host.hostname
         )
-        if not same_host and not local_dev_proxy and origin.rstrip("/") not in allowed:
+        trusted_lan_proxy = settings.TRUSTED_LAN_PROXY and _is_loopback_hostname(request_host.hostname)
+        if not same_host and not local_dev_proxy and not trusted_lan_proxy and origin.rstrip("/") not in allowed:
             raise HTTPException(status_code=403, detail="Origine non autorisée.")
 
 

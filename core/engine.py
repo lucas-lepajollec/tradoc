@@ -68,7 +68,7 @@ class TranslationEngine:
         return resolved
 
     @staticmethod
-    def _parser_for(file_type: str, path: Path, parser_version: int = 4):
+    def _parser_for(file_type: str, path: Path, parser_version: int = 5):
         if file_type == "epub":
             return EpubParser(path, legacy=parser_version < 2)
         if file_type == "pdf":
@@ -80,6 +80,7 @@ class TranslationEngine:
                 path,
                 legacy=parser_version < 3,
                 normalize_fenced_headings=parser_version >= 4,
+                strip_converter_fences=parser_version >= 5,
             )
         raise ValueError(f"Parser non trouvé pour {file_type}")
 
@@ -98,7 +99,7 @@ class TranslationEngine:
         job_type: str = "translation",
         job_id: Optional[str] = None,
         output_file: Optional[Path] = None,
-        parser_version: int = 4,
+        parser_version: int = 5,
         api_type: str = "openai",
         endpoint: Optional[str] = None,
         enable_proofreading: bool = False,

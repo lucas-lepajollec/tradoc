@@ -12,6 +12,7 @@ from fastapi.staticfiles import StaticFiles
 
 from api.routes import active_tasks, router as api_router
 from core.config import settings
+from core import __version__
 
 
 logger = logging.getLogger("tradoc.app")
@@ -19,7 +20,11 @@ logger = logging.getLogger("tradoc.app")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if settings.ENV.lower() == "production" and not (settings.APP_SECRET or "").strip():
+    if (
+        settings.ENV.lower() == "production"
+        and not settings.TRUSTED_LAN_PROXY
+        and not (settings.APP_SECRET or "").strip()
+    ):
         logger.warning("APP_SECRET is empty: keep TraDoc bound to localhost or configure authentication before LAN exposure")
     yield
     tasks = [task for task in active_tasks.values() if not task.done()]
@@ -33,7 +38,7 @@ is_production = settings.ENV.lower() == "production"
 app = FastAPI(
     title=settings.APP_NAME,
     description="TraDoc - Literary Book Translator Service",
-    version="1.1.0",
+    version=__version__,
     docs_url=None if is_production else "/docs",
     redoc_url=None if is_production else "/redoc",
     lifespan=lifespan,

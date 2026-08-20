@@ -72,6 +72,7 @@ class Settings(BaseSettings):
     APP_SECRET: Optional[str] = Field(default=None)
     ALLOWED_ORIGINS: str = Field(default="")
     ALLOWED_LLM_HOSTS: str = Field(default="")
+    TRUSTED_LAN_PROXY: bool = Field(default=False)
 
     # Translation defaults
     DEFAULT_SOURCE_LANG: str = "en"

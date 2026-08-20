@@ -88,6 +88,7 @@ const PROVIDERS = [
 ];
 
 export default function Settings({
+  initialSubTab = 'providers',
   settings,
   onSaveSettings,
   availableModels = [],
@@ -100,7 +101,7 @@ export default function Settings({
   onSavePreset,
   onDeletePreset
 }) {
-  const [activeSubTab, setActiveSubTab] = useState('providers'); // 'providers', 'translation', 'global', 'presets'
+  const [activeSubTab, setActiveSubTab] = useState(initialSubTab); // 'providers', 'translation', 'global', 'presets'
 
   const [apiType, setApiType] = useState(settings.apiType || 'openai');
   const [endpoint, setEndpoint] = useState(settings.endpoint);
@@ -409,7 +410,7 @@ export default function Settings({
               </div>
 
               {/* Grid of Providers */}
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+              <div className="provider-grid">
                 {PROVIDERS.map((prov) => {
                   const isSelected = apiType === prov.id;
                   const Icon = prov.icon;
@@ -418,7 +419,7 @@ export default function Settings({
                       key={prov.id}
                       type="button"
                       onClick={() => handleProviderSelect(prov)}
-                      className={`p-3.5 rounded-xl border text-center flex flex-col items-center justify-center space-y-2 transition-colors duration-100 outline-none focus:outline-none focus:ring-0 ${
+                      className={`provider-card rounded-xl border transition-colors duration-100 outline-none focus:outline-none focus:ring-0 ${
                         isSelected
                           ? 'bg-white/[0.08] border-white/[0.18] text-white font-semibold'
                           : 'bg-black/30 border-white/[0.08] text-[#888] hover:text-[#ededed] hover:bg-white/[0.02]'
@@ -431,7 +432,7 @@ export default function Settings({
                           <Icon />
                         )}
                       </div>
-                      <span className="text-[11px] font-semibold tracking-tight truncate w-full">{prov.name}</span>
+                      <span className="provider-name text-[11px] font-semibold tracking-tight w-full">{prov.name}</span>
                     </button>
                   );
                 })}

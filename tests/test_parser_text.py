@@ -41,6 +41,77 @@ class TextParserTests(unittest.TestCase):
 
             self.assertEqual(nodes, ["<p>A long sentence wrapped by a converter onto another physical line.</p>"])
 
+    def test_converter_fences_are_removed_from_new_exports(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "converted-book.md"
+            output = Path(directory) / "translated.md"
+            source.write_text(
+                "\n\n".join(f"```\nParagraph number {index}.\n```" for index in range(8)) + "\n",
+                encoding="utf-8",
+            )
+
+            parser = TextParser(source, strip_converter_fences=True)
+            metadata, nodes = parser.extract_nodes()
+            parser.reconstruct_text(metadata, nodes, output)
+
+            rebuilt = output.read_text(encoding="utf-8")
+            self.assertNotIn("```", rebuilt)
+            self.assertIn("Paragraph number 0.", rebuilt)
+            self.assertIn("Paragraph number 7.", rebuilt)
+
+    def test_labelled_code_fence_is_kept_in_converter_document(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "converted-book.md"
+            output = Path(directory) / "translated.md"
+            prose = [f"```\nParagraph number {index}.\n```" for index in range(8)]
+            source.write_text(
+                "\n\n".join([*prose, "```python\nprint('hello')\n```"]) + "\n",
+                encoding="utf-8",
+            )
+
+            parser = TextParser(source, strip_converter_fences=True)
+            metadata, nodes = parser.extract_nodes()
+            parser.reconstruct_text(metadata, nodes, output)
+
+            self.assertIn("```python\nprint('hello')\n```", output.read_text(encoding="utf-8"))
+
+    def test_converter_fences_around_chapter_titles_are_removed(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "converted-book.md"
+            output = Path(directory) / "translated.md"
+            prose = [f"```\nParagraph number {index}.\n```" for index in range(8)]
+            source.write_text(
+                "\n\n".join([
+                    *prose,
+                    "```\nCHAPTER 89: A SIMPLE MISSION\nCHAPTER 90: FINDINGS BY SIGHT\n```",
+                ]) + "\n",
+                encoding="utf-8",
+            )
+
+            parser = TextParser(source, strip_converter_fences=True)
+            metadata, nodes = parser.extract_nodes()
+            parser.reconstruct_text(metadata, nodes, output)
+
+            rebuilt = output.read_text(encoding="utf-8")
+            self.assertNotIn("```", rebuilt)
+            self.assertIn("CHAPTER 89: A SIMPLE MISSION", rebuilt)
+            self.assertIn("CHAPTER 90: FINDINGS BY SIGHT", rebuilt)
+
+    def test_inline_code_stays_on_the_same_line(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = Path(directory) / "book.md"
+            output = Path(directory) / "translated.md"
+            source.write_text("Text with `inline code` followed by punctuation.\n", encoding="utf-8")
+
+            parser = TextParser(source)
+            metadata, nodes = parser.extract_nodes()
+            parser.reconstruct_text(metadata, nodes, output)
+
+            self.assertEqual(
+                output.read_text(encoding="utf-8"),
+                "Text with `inline code` followed by punctuation.\n",
+            )
+
     def test_converter_fence_with_multiple_chapter_titles_is_normalized_and_rebuilt(self):
         with tempfile.TemporaryDirectory() as directory:
             source = Path(directory) / "book.md"

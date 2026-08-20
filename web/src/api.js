@@ -1,5 +1,9 @@
 const API_BASE = '/api';
 
+function notifyAuthenticationRequired() {
+  window.dispatchEvent(new CustomEvent('tradoc:auth-required'));
+}
+
 function getAppSecret() {
   const current = sessionStorage.getItem('tradoc_app_secret');
   if (current) return current;
@@ -27,6 +31,7 @@ async function request(path, options = {}) {
     ...options,
     headers: getAuthHeaders(options.headers || {}),
   });
+  if (response.status === 401) notifyAuthenticationRequired();
   if (!response.ok) {
     let message = `Erreur HTTP ${response.status}`;
     try {
@@ -165,6 +170,11 @@ export function subscribeToEvents(onEvent, onError = () => {}) {
           headers: getAuthHeaders({ Accept: 'text/event-stream' }),
           signal: controller.signal,
         });
+        if (response.status === 401) {
+          notifyAuthenticationRequired();
+          onError(new Error('SSE HTTP 401'));
+          return;
+        }
         if (!response.ok || !response.body) throw new Error(`SSE HTTP ${response.status}`);
         const reader = response.body.getReader();
         const decoder = new TextDecoder();

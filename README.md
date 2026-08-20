@@ -2,13 +2,13 @@
   <img src="web/public/logo.svg" alt="TraDoc Logo" width="110" />
   
   <h1>📚 TraDoc</h1>
-  <p><strong>High-Performance, Self-Hosted AI Literary eBook (EPUB & PDF) Translation Suite</strong></p>
+  <p><strong>Self-Hosted AI Translation Suite for EPUB, PDF, DOCX, Markdown and TXT</strong></p>
   
   <p>
-    <a href="https://github.com/lucas-lepajollec/tradoc"><img src="https://img.shields.io/badge/Version-1.0.0-orange.svg?style=for-the-badge" alt="Version" /></a>
+    <a href="https://github.com/lucas-lepajollec/tradoc"><img src="https://img.shields.io/badge/Version-1.2.0-orange.svg?style=for-the-badge" alt="Version" /></a>
     <a href="https://python.org/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" /></a>
     <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" /></a>
-    <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.110-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
+    <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.140-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
     <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2CA5E0?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
     <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" /></a>
   </p>
@@ -32,7 +32,7 @@
 - 🏷️ **Gestionnaire de Glossaires Littéraires** : Glossaires personnalisés (noms propres, lieux, univers, suffixes `-san`/`-kun`) injectés dynamiquement dans les prompts.
 - 🧹 **Nettoyage Générique des Balises Réflexives (`<think>`)** : Élimination automatique des blocs de raisonnement interne des modèles récents (Qwen 3.5, DeepSeek R1, Gemma 4).
 - 🛡️ **Calcul Dynamique de Context Tokens** : Gestion automatique et proportionnelle des tokens de sortie pour éviter l'erreur `Context size has been exceeded` (LM Studio HTTP 400).
-- 📱 **Interface Web Glassmorphic & Tiroir Burger Mobile** : UI moderne avec état optimiste (0 ms), visualiseur de segments côte à côte, système de presets dynamique et suivi SSE en direct.
+- 📱 **Interface Web éditoriale & Tiroir Burger Mobile** : UI moderne avec état optimiste (0 ms), visualiseur de segments côte à côte, système de presets dynamique et suivi SSE en direct.
 
 ---
 
@@ -68,24 +68,52 @@ cd tradoc
 cp .env.example .env
 ```
 
-#### 2. Lancer le Backend FastAPI (Terminal 1) :
+#### 2. Installer les dépendances :
 ```powershell
-# Windows PowerShell (utilisation directe du venv recommandé) :
-.\.venv\Scripts\python.exe main.py serve --host 127.0.0.1 --port 8000 --reload
-```
+python -m venv .venv
+# Windows
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+# macOS / Linux
+./.venv/bin/python -m pip install -r requirements.txt
 
-Le backend reste ainsi privé sur la machine. Vite peut malgré tout afficher et
-servir l'interface sur le réseau local grâce à son proxy. Pour exposer aussi
-l'API directement sur le LAN avec `--host 0.0.0.0`, configurez d'abord
-`APP_SECRET` et `ALLOWED_ORIGINS` dans `.env`.
-
-#### 3. Lancer le Frontend React (Terminal 2) :
-```bash
 cd web
-npm install
-npm run dev
+npm ci
+cd ..
 ```
-*L'interface web est immédiatement accessible sur `http://localhost:2499/`.*
+
+#### 3. Démarrer TraDoc avec une seule commande :
+```powershell
+# Windows
+.\.venv\Scripts\python.exe main.py dev
+# macOS / Linux
+./.venv/bin/python main.py dev
+```
+
+L'interface est accessible sur `http://127.0.0.1:2499/`. La commande démarre
+FastAPI et Vite ensemble et `Ctrl+C` arrête uniquement ces deux processus.
+
+Pour tester rapidement depuis un téléphone sur un réseau local de confiance :
+
+```powershell
+.\.venv\Scripts\python.exe main.py dev --lan
+```
+
+Ce mode ne demande aucun jeton : tout appareil présent sur le même réseau peut
+cependant accéder à TraDoc tant que la commande tourne. Sur un réseau partagé,
+utilisez plutôt `--lan-secure`, avec un `APP_SECRET` d'au moins 24 caractères
+dans `.env`.
+
+Sous PowerShell, copiez alors le secret sans l'afficher et collez-le dans
+**Paramètres > Général > Jeton d'application** :
+
+```powershell
+(Get-Content .env | Select-String '^APP_SECRET=').Line.Split('=', 2)[1] | Set-Clipboard
+.\.venv\Scripts\python.exe main.py dev --lan-secure
+```
+
+Le backend reste lié à `127.0.0.1` ; seul le frontend et son proxy sont exposés.
+`--api-port`, `--web-port` et `--reload` permettent d'adapter le lancement.
+N'utilisez jamais `--lan` sans authentification sur un réseau non fiable.
 
 ---
 
@@ -166,7 +194,7 @@ tradoc/
 ├── api/                      # Serveur Web FastAPI & API REST
 │   ├── app.py                # Serveur FastAPI & routage SPA React static
 │   └── routes.py             # Endpoints REST (jobs, settings, SSE, models, config)
-├── web/                      # Interface Web React + Vite (Design Glassmorphic Dark)
+├── web/                      # Interface Web React + Vite (design éditorial sombre)
 │   ├── src/                  # Composants React (Dashboard, Inspector, Settings, Glossary)
 │   └── public/               # Logos vectoriels & favicon SVG
 ├── cli.py                    # Interface ligne de commande (Rich & Typer)
