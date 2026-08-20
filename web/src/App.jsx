@@ -7,7 +7,7 @@ import Settings from './components/Settings';
 import GlossaryManager from './components/GlossaryManager';
 import TestSandboxModal from './components/TestSandboxModal';
 import SetupWizard from './components/SetupWizard';
-import { testConnection } from './api';
+import { isDemoMode, testConnection } from './api';
 import { t } from './i18n/translations';
 
 const DEFAULT_PRESETS = [];
@@ -283,6 +283,26 @@ export default function App() {
             <Menu className="w-5 h-5" />
           </button>
         </div>
+
+        {isDemoMode && (
+          <div className="mx-4 sm:mx-7 lg:mx-9 mt-5 rounded-2xl border border-blue-400/25 bg-blue-500/[0.08] px-4 py-3 text-xs text-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <strong className="text-white">{lang === 'fr' ? 'Démonstration interactive' : 'Interactive demo'}</strong>
+              <span className="block mt-0.5 text-blue-100/70">
+                {lang === 'fr'
+                  ? 'Données fictives, actions simulées dans ce navigateur, aucun serveur IA ni fichier envoyé.'
+                  : 'Fictional data, browser-only simulated actions, no AI server and no uploaded file leaves this device.'}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              className="btn-chill px-3 py-2 text-[11px] whitespace-nowrap"
+            >
+              {lang === 'fr' ? 'Réinitialiser la démo' : 'Reset demo'}
+            </button>
+          </div>
+        )}
 
         {/* Main Body */}
         <main className="workspace w-full max-w-[1380px] mx-auto px-4 sm:px-7 lg:px-9 pt-5 sm:pt-8 lg:pt-12 pb-14 lg:pb-20">

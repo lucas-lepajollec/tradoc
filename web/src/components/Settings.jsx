@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Cpu, Sliders, CheckCircle2, AlertCircle, RefreshCw, Save, Trash2, Plus, Key, Link, Search, Globe, Bookmark, Check, ShieldCheck, ArrowLeftRight, Eye, EyeOff, Lock } from 'lucide-react';
-import { testConnection, saveProviderCredentials, setAppSecret } from '../api';
+import { isDemoMode, testConnection, saveProviderCredentials, setAppSecret } from '../api';
 import { t, AVAILABLE_LANGUAGES } from '../i18n/translations';
 
 const DEFAULT_LITERARY_PROMPT = `Tu es un traducteur littéraire professionnel expert en Anglais-Français. 
@@ -509,8 +509,8 @@ export default function Settings({
                       type={showApiKey ? 'text' : 'password'}
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      placeholder={isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang)}
-                      disabled={isLocal && apiType !== 'lm-studio'}
+                      placeholder={isDemoMode ? (lang === 'fr' ? 'Désactivée dans la démo' : 'Disabled in demo') : (isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang))}
+                      disabled={isDemoMode || (isLocal && apiType !== 'lm-studio')}
                       className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-40 pr-9"
                     />
                     <button
@@ -535,7 +535,7 @@ export default function Settings({
                     type="text"
                     value={endpoint}
                     onChange={(e) => setEndpoint(e.target.value)}
-                    disabled={!isLocal}
+                    disabled={isDemoMode || !isLocal}
                     className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-50"
                   />
                 </div>
@@ -797,7 +797,7 @@ export default function Settings({
                 </div>
               </section>
 
-              <section className="global-settings-section security-settings-section">
+              {!isDemoMode && <section className="global-settings-section security-settings-section">
                 <div className="global-section-copy">
                   <span className="global-section-icon"><Lock /></span>
                   <div>
@@ -811,7 +811,7 @@ export default function Settings({
                   <input type="password" value={appSecret} onChange={(e) => setAppSecretValue(e.target.value)} placeholder={lang === 'fr' ? 'Saisissez votre jeton' : 'Enter your token'} className="input-chill font-mono" />
                   <p>{lang === 'fr' ? 'Stocké localement puis envoyé avec chaque requête adressée à TraDoc.' : 'Stored locally and sent with every request made to TraDoc.'}</p>
                 </label>
-              </section>
+              </section>}
             </div>
 
             {/* TAB 4: CONFIG PRESETS MANAGER */}

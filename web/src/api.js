@@ -1,4 +1,7 @@
+import * as demoApi from './demo/api';
+
 const API_BASE = '/api';
+export const isDemoMode = import.meta.env.MODE === 'demo';
 
 function notifyAuthenticationRequired() {
   window.dispatchEvent(new CustomEvent('tradoc:auth-required'));
@@ -27,6 +30,7 @@ function getAuthHeaders(extraHeaders = {}) {
 }
 
 async function request(path, options = {}) {
+  if (isDemoMode) return demoApi.request(path, options);
   const response = await fetch(`${API_BASE}${path}`, {
     ...options,
     headers: getAuthHeaders(options.headers || {}),
@@ -133,6 +137,7 @@ export function extractSandboxSample(formData) {
 }
 
 export async function downloadJob(jobId) {
+  if (isDemoMode) return demoApi.downloadJob(jobId);
   const response = await fetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}/download`, {
     headers: getAuthHeaders(),
   });
@@ -161,6 +166,7 @@ export async function downloadJob(jobId) {
 }
 
 export function subscribeToEvents(onEvent, onError = () => {}) {
+  if (isDemoMode) return demoApi.subscribeToEvents(onEvent);
   const controller = new AbortController();
 
   async function connect() {
