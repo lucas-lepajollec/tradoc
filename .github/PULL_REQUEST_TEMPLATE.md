@@ -1,23 +1,28 @@
-## 📌 Résumé des modifications
+## Summary
 
-Veuillez inclure un résumé des changements apportés et le problème ou la fonctionnalité correspondante.
+<!-- What changed, and what user or maintainer problem does it solve? -->
 
-- Fixes #(issue)
-- Feature #(issue)
+## Change type
 
-## 🛠️ Type de changement
+- [ ] Fix
+- [ ] Feature or provider support
+- [ ] Documentation
+- [ ] Security, privacy, or hardening
+- [ ] Maintenance or refactor
+- [ ] Breaking change
 
-- [ ] 🐛 Correction de bug (`fix:`)
-- [ ] ✨ Nouvelle fonctionnalité (`feat:`)
-- [ ] 📝 Documentation (`docs:`)
-- [ ] ⚡ Amélioration des performances (`perf:`)
-- [ ] 🧹 Refactorisation / Nettoyage (`refactor:`)
-- [ ] 🔧 Maintenance / Config (`chore:`)
+## Validation
 
-## 🧪 Checklist de Validation
+- [ ] I ran the backend tests and relevant frontend build/browser tests described in `CONTRIBUTING.md`.
+- [ ] I added or updated tests when behavior changed.
+- [ ] I verified document and provider-data handling when relevant.
+- [ ] I updated documentation and `CHANGELOG.md` when users or operators are affected.
+- [ ] I did not include documents, provider keys, private endpoints, generated state, or unrelated dependency churn.
 
-- [ ] Mon code respecte les règles de style et de nommage du projet.
-- [ ] J'ai effectué un auto-examen de mon code avant de soumettre.
-- [ ] J'ai vérifié qu'aucun secret, clé d'API ou adresse IP personnelle n'est hardcodé.
-- [ ] Le code se compile et s'exécute proprement sans avertissements ou erreurs.
-- [ ] J'ai mis à jour la documentation (README / API) si nécessaire.
+## Compatibility and migration
+
+<!-- Describe providers, formats, stored data, breaking behavior, migration and rollback. Write "None" when not applicable. -->
+
+## Visual evidence
+
+<!-- Add before/after screenshots or recordings for visible changes. Remove this section when not applicable. -->
