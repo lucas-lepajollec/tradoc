@@ -1,5 +1,5 @@
 # Stage 1: Build React UI Frontend
-FROM node:22-alpine AS ui-builder
+FROM node:26-alpine AS ui-builder
 WORKDIR /app/web
 COPY web/package.json web/package-lock.json ./
 RUN npm ci
@@ -7,7 +7,7 @@ COPY web/ ./
 RUN npm run build
 
 # Stage 2: Python Backend & Runtime Service
-FROM python:3.11-slim
+FROM python:3.14-slim
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1 \
