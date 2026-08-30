@@ -8,7 +8,7 @@ beautifulsoup4==4.15.0
 lxml==6.1.1
 pymupdf==1.28.0
 pymupdf-fonts==1.0.5
-typer==0.27.0
+typer==0.27.1
 rich==15.0.0
 python-multipart==0.0.32
 aiofiles==25.1.0
