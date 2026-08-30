@@ -165,7 +165,9 @@ The [public demo](https://demo.tradoc.lucas-homelab.fr) uses fictional projects 
 
 - [Documentation](https://docs.tradoc.lucas-homelab.fr)
 - [Contributing guide](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
 - [Code of Conduct](CODE_OF_CONDUCT.md)
+- [Security policy](SECURITY.md)
 - [MIT License](LICENSE)
 
 Third-party libraries, model providers, and source documents retain their own licenses and terms.

@@ -19,15 +19,15 @@ cd tradoc
 
 # 2. Créer l'environnement virtuel Python
 python -m venv .venv
-.\.venv\Scripts\Activate.ps1   # Sur Windows
-# source .venv/bin/activate    # Sur Linux/macOS
+source .venv/bin/activate      # Linux/macOS
+# .\.venv\Scripts\Activate.ps1  # Windows PowerShell
 
 # 3. Installer les dépendances Python
 pip install -r requirements.txt
 
 # 4. Installer les dépendances Frontend React
 cd web
-npm install
+npm ci
 cd ..
 ```
 
@@ -58,7 +58,7 @@ Nous appliquons la norme **Conventional Commits** pour maintenir un historique G
 
 1. **Forker** le dépôt et créer une branche thématique (`git checkout -b feat/ma-fonctionnalite`).
 2. Vérifier qu'aucun secret, jeton d'API ou adresse IP privée (`192.168.x.x`) n'est présent dans le code.
-3. S'assurer que le frontend compile sans erreurs (`cd web && npm run build`).
+3. Exécuter les tests backend (`python -m unittest discover -s tests -v`) et s'assurer que le frontend compile sans erreurs (`cd web && npm run build`).
 4. Commiter vos modifications en suivant les règles **Conventional Commits**.
 5. Soumettre une **Pull Request** vers la branche `main`.
 
@@ -66,3 +66,7 @@ Nous appliquons la norme **Conventional Commits** pour maintenir un historique G
 
 ## 📄 Code de Conduite
 En participant à ce projet, vous acceptez de respecter notre [Code de Conduite](CODE_OF_CONDUCT.md).
+
+## Maintainer release process
+
+Releases are deliberate milestones, not snapshots of every merge. Prepare a release pull request that updates the declared version sources, moves completed entries out of `Unreleased` in [CHANGELOG.md](CHANGELOG.md), and documents provider compatibility, migrations, and rollback when relevant. After all required checks pass, tag the exact accepted `main` commit with an annotated `vMAJOR.MINOR.PATCH` tag and push it through the authoritative Forgejo remote. Verify that the identical tag reaches GitHub and that the versioned container finishes successfully before publishing a draft GitHub release. Never move or reuse a published version tag.
