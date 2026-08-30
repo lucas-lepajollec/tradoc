@@ -1,218 +1,166 @@
 <div align="center">
-  <img src="web/public/logo.svg" alt="TraDoc Logo" width="110" />
-  
-  <h1>📚 TraDoc</h1>
-  <p><strong>Self-Hosted AI Translation Suite for EPUB, PDF, DOCX, Markdown and TXT</strong></p>
-  
+  <img src="web/public/logo.svg" alt="TraDoc logo" width="104" />
+  <h1>TraDoc</h1>
+  <p><strong>A self-hosted workflow for translating long documents without losing structure, context, or control.</strong></p>
+
   <p>
-    <a href="https://github.com/lucas-lepajollec/tradoc"><img src="https://img.shields.io/badge/Version-1.2.0-orange.svg?style=for-the-badge" alt="Version" /></a>
-    <a href="https://python.org/"><img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=for-the-badge&logo=python&logoColor=white" alt="Python" /></a>
-    <a href="https://react.dev/"><img src="https://img.shields.io/badge/React-18.2-61DAFB?style=for-the-badge&logo=react&logoColor=black" alt="React" /></a>
-    <a href="https://fastapi.tiangolo.com/"><img src="https://img.shields.io/badge/FastAPI-0.140-009688?style=for-the-badge&logo=fastapi&logoColor=white" alt="FastAPI" /></a>
-    <a href="https://www.docker.com/"><img src="https://img.shields.io/badge/Docker-Ready-2CA5E0?style=for-the-badge&logo=docker&logoColor=white" alt="Docker" /></a>
-    <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-green.svg?style=for-the-badge" alt="License" /></a>
+    <a href="https://tradoc.lucas-homelab.fr"><strong>Website</strong></a> ·
+    <a href="https://demo.tradoc.lucas-homelab.fr"><strong>Live demo</strong></a> ·
+    <a href="https://docs.tradoc.lucas-homelab.fr"><strong>Documentation</strong></a>
   </p>
+
+  <p>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-MIT-6d7cff" alt="MIT license" /></a>
+    <img src="https://img.shields.io/badge/self--hosted-111827" alt="Self-hosted" />
+    <img src="https://img.shields.io/badge/providers-controllable-111827" alt="Controllable providers" />
+  </p>
+
+  <img src="docs/assets/screenshots/tradoc-demo-dashboard.png" alt="TraDoc document translation dashboard" width="1200" />
 </div>
 
----
+TraDoc is built for complete books and long-form documents rather than isolated text prompts. It extracts structured content, splits it into context-aware segments, coordinates local or remote language models, preserves progress in SQLite, and reconstructs an export that can be inspected before publication.
 
-**TraDoc** est une suite logicielle complète, moderne et autonome de traduction littéraire de livres et documents (**EPUB, PDF, DOCX, Markdown, TXT**). Conçue pour un déploiement local ou serveur (NAS Synology/QNAP, Docker, Portainer) relié à un serveur d'inférence LLM local ou distant (LM Studio, Ollama, vLLM, DeepSeek, OpenAI, Claude, Gemini, etc.).
+EPUB, PDF, DOCX, Markdown, and plain text workflows share one project model with checkpoints, glossaries, provider control, parallel jobs, and a side-by-side segment inspector.
 
----
+## From document to controlled translation
 
-## ✨ Features Principalement Supportées
+| Translation workspace | Editorial inspection |
+| --- | --- |
+| Import a document, choose the source and target languages, select a provider/model, and start or prepare the project. | Review source and translated segments, monitor progress, resume jobs, retry failures, and export the result. |
+| <img src="docs/assets/screenshots/tradoc-demo-dashboard.png" alt="TraDoc translation workspace" width="640" /> | <img src="docs/assets/screenshots/tradoc-demo-inspector.png" alt="TraDoc segment inspector and progress tracking" width="640" /> |
 
-- 📚 **Moteur Universel Multi-Formats (.epub, .pdf, .docx, .md, .txt)** : Support natif de l'extraction et de la reconstruction structurée des titres, paragraphes, styles et illustrations.
-- 📖 **PDF Livre repaginé** : les PDF littéraires sont reconstruits dans un gabarit éditorial 6×9, avec une police Unicode embarquée, des chapitres paginés naturellement, un sommaire PDF et la conservation des pages illustrées.
-- 📱 **Export EPUB Réajustable pour PDF** : Conversion intelligente des documents PDF à mise en page fixe vers un format livre numérique EPUB fluide et lisible sur n'importe quelle liseuse ou tablette.
-- ⚙️ **Gestionnaire de Providers avec Mémoire Indépendante** : clés API conservées côté serveur dans le volume privé, avec endpoints et modèles séparés pour chaque fournisseur (OpenAI, DeepSeek, Claude, Gemini, LM Studio, Ollama, Minimax, Kimi, GLM).
-- 🔒 **Isolation des Modèles par Projet & Traduction Parallèle** : Chaque livre conserve son propre modèle dédié (`job.model`) en base de données. Possibilité de traduire plusieurs livres simultanément avec des modèles différents sans aucune interférence.
-- 🛠️ **Inspecteur & Édition Inline de Config** : Ajustement à la volée des paramètres d'un projet en pause avec un bouton d'action rapide `⚡ Appliquer la config active du Dashboard`.
-- ⚡ **Orchestration Asynchrone Parallèle & Auto-Pause** : Découpage sémantique par fenêtres de tokens avec concurrence paramétrable. Mise en pause automatique sans perte de données en cas de déconnexion réseau ou GPU.
-- 🏷️ **Gestionnaire de Glossaires Littéraires** : Glossaires personnalisés (noms propres, lieux, univers, suffixes `-san`/`-kun`) injectés dynamiquement dans les prompts.
-- 🧹 **Nettoyage Générique des Balises Réflexives (`<think>`)** : Élimination automatique des blocs de raisonnement interne des modèles récents (Qwen 3.5, DeepSeek R1, Gemma 4).
-- 🛡️ **Calcul Dynamique de Context Tokens** : Gestion automatique et proportionnelle des tokens de sortie pour éviter l'erreur `Context size has been exceeded` (LM Studio HTTP 400).
-- 📱 **Interface Web éditoriale & Tiroir Burger Mobile** : UI moderne avec état optimiste (0 ms), visualiseur de segments côte à côte, système de presets dynamique et suivi SSE en direct.
+## Highlights
 
----
+- Structured extraction and reconstruction for EPUB, PDF, DOCX, Markdown, and TXT.
+- Semantic chunking with configurable context windows and output-token budgeting.
+- Project-level model isolation so concurrent documents can use different models safely.
+- Checkpointed, resumable jobs with automatic pause behavior when a provider becomes unavailable.
+- Glossaries for names, places, terminology, and project-specific translation rules.
+- Side-by-side segment inspection, inline project configuration, progress tracking, and SSE updates.
+- Provider profiles for local and remote OpenAI-compatible workflows.
+- Reflowable EPUB export and an editorial 6×9 PDF reconstruction path for book-like documents.
+- Self-hosted FastAPI, React, and SQLite architecture suitable for a workstation, server, or NAS.
 
-## 🛠️ Tech Stack
+TraDoc can preserve workflow state and document structure; it cannot guarantee literary quality. Output quality still depends on the source document, parser limitations, model, prompt, glossary, context window, and human review.
 
-| Catégorie | Technologies Utilisées |
-| :--- | :--- |
-| **Frontend** | React 18, Vite, Tailwind CSS, Lucide Icons |
-| **Backend** | FastAPI, Uvicorn, Python 3.11+ |
-| **Inférence LLM** | HTTP Async Client (httpx) compatible OpenAI API / Ollama / LM Studio |
-| **Base de Données** | SQLite3 (Mode WAL multi-lecteurs/écrivains) |
-| **Parsers** | EbookLib, PyMuPDF, BeautifulSoup4, Lxml |
-| **Conteneurisation** | Docker Multi-Stage (Alpine Node + Slim Python) |
+## Quick start
 
----
+### Requirements
 
-## 🚀 Getting Started
+- Python 3.11 or newer.
+- Node.js 18 or newer.
+- A local or remote language-model endpoint.
 
-### Prerequisites
-
-- [Python 3.11+](https://www.python.org/) & [Node.js 18+](https://nodejs.org/) (pour l'exécution en local)
-- [Docker](https://docs.docker.com/get-docker/) & [Docker Compose](https://docs.docker.com/compose/install/) (pour le déploiement NAS/Serveur)
-- Un serveur d'inférence LLM local ou distant ([LM Studio](https://lmstudio.ai/), [Ollama](https://ollama.com/), vLLM, etc.)
-
----
-
-### 💻 Mode Développement Local (Windows / Mac / Linux)
-
-#### 1. Cloner le dépôt et configurer l'environnement :
 ```bash
 git clone https://github.com/lucas-lepajollec/tradoc.git
 cd tradoc
 cp .env.example .env
-```
-
-#### 2. Installer les dépendances :
-```powershell
 python -m venv .venv
-# Windows
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-# macOS / Linux
-./.venv/bin/python -m pip install -r requirements.txt
-
-cd web
-npm ci
-cd ..
 ```
 
-#### 3. Démarrer TraDoc avec une seule commande :
-```powershell
-# Windows
-.\.venv\Scripts\python.exe main.py dev
-# macOS / Linux
+Install the backend and frontend dependencies:
+
+```bash
+./.venv/bin/python -m pip install -r requirements.txt
+npm --prefix web ci
+```
+
+On Windows, use `.\.venv\Scripts\python.exe` instead of `./.venv/bin/python`.
+
+Start both FastAPI and Vite:
+
+```bash
 ./.venv/bin/python main.py dev
 ```
 
-L'interface est accessible sur `http://127.0.0.1:2499/`. La commande démarre
-FastAPI et Vite ensemble et `Ctrl+C` arrête uniquement ces deux processus.
+Open `http://127.0.0.1:2499`. The command owns only the TraDoc development processes and stops them together with `Ctrl+C`.
 
-Pour tester rapidement depuis un téléphone sur un réseau local de confiance :
+### Testing from another device
 
-```powershell
-.\.venv\Scripts\python.exe main.py dev --lan
+`main.py dev --lan` exposes the development interface without an application token. Use it only on a trusted local network. On a shared network, set an `APP_SECRET` of at least 24 characters and use:
+
+```bash
+./.venv/bin/python main.py dev --lan-secure
 ```
 
-Ce mode ne demande aucun jeton : tout appareil présent sur le même réseau peut
-cependant accéder à TraDoc tant que la commande tourne. Sur un réseau partagé,
-utilisez plutôt `--lan-secure`, avec un `APP_SECRET` d'au moins 24 caractères
-dans `.env`.
+The backend remains bound to localhost while the frontend proxy handles deliberate LAN access.
 
-Sous PowerShell, copiez alors le secret sans l'afficher et collez-le dans
-**Paramètres > Général > Jeton d'application** :
+## Docker deployment
 
-```powershell
-(Get-Content .env | Select-String '^APP_SECRET=').Line.Split('=', 2)[1] | Set-Clipboard
-.\.venv\Scripts\python.exe main.py dev --lan-secure
-```
-
-Le backend reste lié à `127.0.0.1` ; seul le frontend et son proxy sont exposés.
-`--api-port`, `--web-port` et `--reload` permettent d'adapter le lancement.
-N'utilisez jamais `--lan` sans authentification sur un réseau non fiable.
-
----
-
-## 🐳 Déploiement Docker (NAS Synology, QNAP, Portainer & Linux)
-
-Vous pouvez déployer TraDoc facilement sur votre NAS ou serveur en utilisant l'image officielle hébergée sur GitHub Container Registry (`ghcr.io`).
-
-### Option A : Déploiement via Image Officielle (Recommandé)
-
-Créez un fichier `docker-compose.yml` (ou collez ce bloc dans Portainer) :
+The recommended production path uses the published GHCR image and a persistent data directory:
 
 ```yaml
 services:
   tradoc:
     image: ghcr.io/lucas-lepajollec/tradoc:latest
-    container_name: tradoc-server
+    container_name: tradoc
     restart: unless-stopped
     ports:
-      - "2507:8000"
+      - "127.0.0.1:2507:8000"
     environment:
-      - ENV=production
-      - DATA_DIR=/app/data
-      - APP_SECRET=${APP_SECRET:?Définissez APP_SECRET dans le fichier .env}
-      - ALLOWED_ORIGINS=  # Laissez vide lorsque le front est servi par TraDoc
-      - LLM_ENDPOINT=http://192.168.x.x:1234/v1  # IP de votre serveur GPU local
-      - LLM_API_KEY=lm-studio
-      - LLM_MODEL=qwen3.5-instruct
-      - API_TYPE=lm-studio
-      - CHUNK_TOKEN_SIZE=1000
-      - TEMPERATURE=0.15
+      ENV: production
+      DATA_DIR: /app/data
+      APP_SECRET: ${APP_SECRET:?Define APP_SECRET in .env}
+      LLM_ENDPOINT: ${LLM_ENDPOINT}
+      LLM_API_KEY: ${LLM_API_KEY}
+      LLM_MODEL: ${LLM_MODEL}
     volumes:
       - ./data:/app/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
 ```
 
-Lancez la stack :
 ```bash
 docker compose up -d
 ```
-*L'application est accessible sur : `http://<IP_DE_VOTRE_NAS>:2507`.*
 
----
+Open `http://127.0.0.1:2507`, or place the service behind an authenticated HTTPS reverse proxy for controlled network access.
 
-## 🔒 Sécurité & Bonnes Pratiques
+## Providers and project isolation
+
+TraDoc supports configurable local and remote provider profiles, including OpenAI-compatible endpoints such as LM Studio, Ollama, vLLM, and hosted APIs. Availability does not imply equal behavior or verified end-to-end quality across every provider.
+
+Each translation job records its own model and configuration. Changing the active dashboard provider does not silently rewrite an existing project's model. Provider credentials are server-side secrets stored in the private persistent volume and must never be committed.
+
+## Security and operations
 
 > [!WARNING]
-> **Réseau & Exposition Portainer** : Ne jamais exposer directement le port de votre serveur d'inférence GPU ni l'instance TraDoc au web public sans authentification préalable ou reverse proxy sécurisé (Nginx, Traefik, Caddy avec SSL/TLS).
+> Do not expose TraDoc or a local inference endpoint directly to the public internet. Use a strong `APP_SECRET`, HTTPS, an authenticated reverse proxy, and firewall rules appropriate to the deployment.
 
-- **Permissions du volume Docker** : Si vous rencontrez une erreur `PermissionDenied`, attribuez le volume à l'utilisateur non privilégié du conteneur : `sudo chown -R 1000:1000 ./data`. Évitez `chmod 777`.
-- **TLS** : Pour un accès hors du réseau local, placez TraDoc derrière un reverse proxy HTTPS (Caddy, Traefik ou Nginx), gardez `APP_SECRET` obligatoire et n'exposez jamais directement l'endpoint LLM.
-- **Persistance des Données** : Assurez-vous d'inclure le volume `./data` dans vos sauvegardes régulières (contient la base SQLite `tradoc.db` et vos livres traduits).
-- **Inférence Parallèle LM Studio** : Pour activer la vraie concurrence parallèle avec 4 requêtes simultanées, assurez-vous d'augmenter le réglage `Max Concurrent Requests` dans l'onglet **Local Server** de LM Studio.
+- Keep provider keys, source documents, translated outputs, and `tradoc.db` inside the protected data volume.
+- Back up the complete data directory before upgrades.
+- Never solve permission errors with `chmod 777`; align the host directory with the non-root container user instead.
+- Keep `ALLOWED_ORIGINS` narrow when the frontend and API are served from different origins.
+- Validate model concurrency against the provider. Configuring four TraDoc workers does not force an inference server to accept four concurrent requests.
+- Treat translated output as editorial material requiring review, especially for legal, medical, technical, or publication-sensitive documents.
 
----
+## Architecture
 
-## 📂 Project Structure
+| Layer | Technology |
+| --- | --- |
+| Frontend | React 18, Vite, Tailwind CSS |
+| API | FastAPI, Uvicorn, Python 3.11+ |
+| Persistence | SQLite in WAL mode |
+| Parsing | EbookLib, PyMuPDF, Beautiful Soup, lxml |
+| Model access | Async HTTP client for local and remote providers |
+| Deployment | Multi-stage Docker image |
 
 ```text
 tradoc/
-├── .github/                  # Templates d'issues, PR & GitHub Actions CI/CD
-│   ├── ISSUE_TEMPLATE/       # Templates bug_report.md & feature_request.md
-│   └── workflows/            # Workflow d'intégration continue Docker ghcr.io
-├── core/                     # Moteur backend de traduction & parsers
-│   ├── config.py             # Configuration Pydantic & variables d'environnement
-│   ├── parser_epub.py        # Extracteur/Reconstructeur EPUB conservant HTML/CSS
-│   ├── parser_pdf.py         # Extraction PDF, repagination Livre & export EPUB
-│   ├── pdf_templates.py      # Gabarits éditoriaux PDF déterministes
-│   ├── chunker.py            # Chunker sémantique par fenêtre de tokens
-│   ├── cleaner.py            # Nettoyeur générique de balises <think>
-│   ├── checkpoint.py         # Moteur SQLite WAL de suivi d'état des jobs
-│   ├── llm_client.py         # Client HTTP async avec gestion ProviderDownError
-│   ├── glossary.py           # Gestionnaire de glossaires & injection de termes
-│   └── engine.py             # Orchestrateur parallèle asynchrone avec Sémaphore
-├── api/                      # Serveur Web FastAPI & API REST
-│   ├── app.py                # Serveur FastAPI & routage SPA React static
-│   └── routes.py             # Endpoints REST (jobs, settings, SSE, models, config)
-├── web/                      # Interface Web React + Vite (design éditorial sombre)
-│   ├── src/                  # Composants React (Dashboard, Inspector, Settings, Glossary)
-│   └── public/               # Logos vectoriels & favicon SVG
-├── cli.py                    # Interface ligne de commande (Rich & Typer)
-├── main.py                   # Entrypoint CLI & Serveur Web
-├── Dockerfile                # Dockerfile multi-stage (Node 22 + Python 3.11)
-├── docker-compose.yml        # Orchestration Docker de production
-├── .env.example              # Modèle de variables d'environnement
-└── requirements.txt          # Dépendances Python
+├── core/              # Parsers, chunking, checkpoints, glossary, and engine
+├── api/               # FastAPI application and REST/SSE routes
+├── web/               # React interface and public demo
+├── cli.py             # Command-line interface
+├── main.py            # Development and server entry point
+├── Dockerfile
+├── docker-compose.yml
+└── requirements.txt
 ```
 
----
+## Public demo
 
-## 🤝 Contributing
+The [public demo](https://demo.tradoc.lucas-homelab.fr) uses fictional projects and browser-only simulated actions. It connects to no AI server, stores no durable project, and sends no uploaded document to a backend. It is a product walkthrough, not evidence of provider availability or translation quality.
 
-Les contributions sont les bienvenues ! Consultez notre [Guide de Contribution](CONTRIBUTING.md) pour en savoir plus sur les règles de dev et le format des commits, ainsi que notre [Code de Conduite](CODE_OF_CONDUCT.md).
+## Contributing and license
 
----
+Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before opening a pull request.
 
-<div align="center">
-  Développé avec ❤️ par <a href="https://github.com/lucas-lepajollec">Lucas Lepajollec</a>
-</div>
+TraDoc is distributed under the [MIT License](LICENSE). Third-party libraries, model providers, and source documents retain their own licenses and terms.
