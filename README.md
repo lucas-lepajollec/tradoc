@@ -18,76 +18,44 @@
   <img src="docs/assets/screenshots/tradoc-demo-dashboard.png" alt="TraDoc document translation dashboard" width="1200" />
 </div>
 
-TraDoc is built for complete books and long-form documents rather than isolated text prompts. It extracts structured content, splits it into context-aware segments, coordinates local or remote language models, preserves progress in SQLite, and reconstructs an export that can be inspected before publication.
+## Overview
 
-EPUB, PDF, DOCX, Markdown, and plain text workflows share one project model with checkpoints, glossaries, provider control, parallel jobs, and a side-by-side segment inspector.
+TraDoc is built for complete books and long-form documents rather than isolated text prompts. It extracts structured content, divides it into context-aware segments, coordinates local or remote language models, preserves progress in SQLite, and reconstructs an export that can be inspected before publication.
 
-## From document to controlled translation
+EPUB, PDF, DOCX, Markdown, and plain text share one project workflow with checkpoints, glossaries, provider control, parallel jobs, and a side-by-side segment inspector.
+
+## Product preview
 
 | Translation workspace | Editorial inspection |
 | --- | --- |
-| Import a document, choose the source and target languages, select a provider/model, and start or prepare the project. | Review source and translated segments, monitor progress, resume jobs, retry failures, and export the result. |
+| Import a document, choose languages, select a provider/model, and prepare or start the project. | Review source and translated segments, monitor progress, resume jobs, retry failures, and export. |
 | <img src="docs/assets/screenshots/tradoc-demo-dashboard.png" alt="TraDoc translation workspace" width="640" /> | <img src="docs/assets/screenshots/tradoc-demo-inspector.png" alt="TraDoc segment inspector and progress tracking" width="640" /> |
 
 ## Highlights
 
 - Structured extraction and reconstruction for EPUB, PDF, DOCX, Markdown, and TXT.
 - Semantic chunking with configurable context windows and output-token budgeting.
-- Project-level model isolation so concurrent documents can use different models safely.
-- Checkpointed, resumable jobs with automatic pause behavior when a provider becomes unavailable.
-- Glossaries for names, places, terminology, and project-specific translation rules.
-- Side-by-side segment inspection, inline project configuration, progress tracking, and SSE updates.
+- Project-level model isolation for concurrent documents.
+- Checkpointed, resumable jobs with automatic pause behavior when a provider fails.
+- Glossaries for names, places, terminology, and project-specific rules.
+- Side-by-side inspection, inline project configuration, progress tracking, and SSE updates.
 - Provider profiles for local and remote OpenAI-compatible workflows.
-- Reflowable EPUB export and an editorial 6×9 PDF reconstruction path for book-like documents.
-- Self-hosted FastAPI, React, and SQLite architecture suitable for a workstation, server, or NAS.
-
-TraDoc can preserve workflow state and document structure; it cannot guarantee literary quality. Output quality still depends on the source document, parser limitations, model, prompt, glossary, context window, and human review.
+- Reflowable EPUB export and an editorial 6×9 PDF reconstruction path.
 
 ## Quick start
 
-### Requirements
+### Docker Compose
 
-- Python 3.11 or newer.
-- Node.js 18 or newer.
-- A local or remote language-model endpoint.
+Create `.env`:
 
-```bash
-git clone https://github.com/lucas-lepajollec/tradoc.git
-cd tradoc
-cp .env.example .env
-python -m venv .venv
+```dotenv
+APP_SECRET=replace-with-a-long-random-secret
+LLM_ENDPOINT=http://host.docker.internal:1234/v1
+LLM_API_KEY=replace-with-your-provider-key
+LLM_MODEL=replace-with-your-model
 ```
 
-Install the backend and frontend dependencies:
-
-```bash
-./.venv/bin/python -m pip install -r requirements.txt
-npm --prefix web ci
-```
-
-On Windows, use `.\.venv\Scripts\python.exe` instead of `./.venv/bin/python`.
-
-Start both FastAPI and Vite:
-
-```bash
-./.venv/bin/python main.py dev
-```
-
-Open `http://127.0.0.1:2499`. The command owns only the TraDoc development processes and stops them together with `Ctrl+C`.
-
-### Testing from another device
-
-`main.py dev --lan` exposes the development interface without an application token. Use it only on a trusted local network. On a shared network, set an `APP_SECRET` of at least 24 characters and use:
-
-```bash
-./.venv/bin/python main.py dev --lan-secure
-```
-
-The backend remains bound to localhost while the frontend proxy handles deliberate LAN access.
-
-## Docker deployment
-
-The recommended production path uses the published GHCR image and a persistent data directory:
+Create `docker-compose.yml`:
 
 ```yaml
 services:
@@ -106,31 +74,58 @@ services:
       LLM_MODEL: ${LLM_MODEL}
     volumes:
       - ./data:/app/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
 ```
 
 ```bash
 docker compose up -d
 ```
 
-Open `http://127.0.0.1:2507`, or place the service behind an authenticated HTTPS reverse proxy for controlled network access.
+Open `http://127.0.0.1:2507`. The repository's Compose file builds the current checkout; the example above uses the published GHCR image.
 
-## Providers and project isolation
+### Local development
 
-TraDoc supports configurable local and remote provider profiles, including OpenAI-compatible endpoints such as LM Studio, Ollama, vLLM, and hosted APIs. Availability does not imply equal behavior or verified end-to-end quality across every provider.
+Requirements: Python 3.11+, Node.js 18+, and a local or remote model endpoint.
 
-Each translation job records its own model and configuration. Changing the active dashboard provider does not silently rewrite an existing project's model. Provider credentials are server-side secrets stored in the private persistent volume and must never be committed.
+```bash
+git clone https://github.com/lucas-lepajollec/tradoc.git
+cd tradoc
+cp .env.example .env
+python -m venv .venv
+./.venv/bin/python -m pip install -r requirements.txt
+npm --prefix web ci
+./.venv/bin/python main.py dev
+```
 
-## Security and operations
+On Windows, use `.\.venv\Scripts\python.exe` instead. Open `http://127.0.0.1:2499`.
+
+Use `main.py dev --lan` only on a trusted network. On a shared network, configure an `APP_SECRET` of at least 24 characters and use `main.py dev --lan-secure`.
+
+## Configuration and persistence
+
+- `DATA_DIR` contains `tradoc.db`, provider configuration, checkpoints, source material, and generated exports.
+- Back up the complete data directory before upgrades.
+- Each project records its own model and configuration; changing the active dashboard preset does not silently rewrite existing projects.
+- Provider credentials are server-side secrets stored in the private persistent volume and must never be committed.
+- Local and remote provider profiles can target LM Studio, Ollama, vLLM, and other OpenAI-compatible endpoints.
+
+Provider availability does not imply equal behavior or verified end-to-end translation quality.
+
+## Security, privacy, and limitations
 
 > [!WARNING]
-> Do not expose TraDoc or a local inference endpoint directly to the public internet. Use a strong `APP_SECRET`, HTTPS, an authenticated reverse proxy, and firewall rules appropriate to the deployment.
+> Do not expose TraDoc or a local inference endpoint directly to the public internet.
 
-- Keep provider keys, source documents, translated outputs, and `tradoc.db` inside the protected data volume.
-- Back up the complete data directory before upgrades.
-- Never solve permission errors with `chmod 777`; align the host directory with the non-root container user instead.
-- Keep `ALLOWED_ORIGINS` narrow when the frontend and API are served from different origins.
-- Validate model concurrency against the provider. Configuring four TraDoc workers does not force an inference server to accept four concurrent requests.
-- Treat translated output as editorial material requiring review, especially for legal, medical, technical, or publication-sensitive documents.
+- Use a strong `APP_SECRET`, HTTPS, an authenticated reverse proxy, and appropriate firewall rules.
+- Keep provider keys, source documents, outputs, and the SQLite database inside the protected volume.
+- Keep `ALLOWED_ORIGINS` narrow when the frontend and API use different origins.
+- Never solve permission errors with `chmod 777`; align ownership with the non-root container user.
+- Validate concurrency against the provider; TraDoc cannot force an inference server to accept parallel requests.
+- Structure preservation is a workflow guarantee, not a guarantee of literary quality.
+- Legal, medical, technical, or publication-sensitive output requires human review.
+
+Quality depends on the source document, parser behavior, model, prompt, glossary, context window, and editorial validation.
 
 ## Architecture
 
@@ -144,23 +139,33 @@ Each translation job records its own model and configuration. Changing the activ
 | Deployment | Multi-stage Docker image |
 
 ```text
-tradoc/
-├── core/              # Parsers, chunking, checkpoints, glossary, and engine
-├── api/               # FastAPI application and REST/SSE routes
-├── web/               # React interface and public demo
-├── cli.py             # Command-line interface
-├── main.py            # Development and server entry point
-├── Dockerfile
-├── docker-compose.yml
-└── requirements.txt
+core/     # Parsers, chunking, checkpoints, glossary, and engine
+api/      # FastAPI application and REST/SSE routes
+web/      # React interface and isolated public demo
+tests/    # Backend and security regression tests
+main.py   # Development and server entry point
 ```
+
+## Development and quality
+
+| Command | Purpose |
+| --- | --- |
+| `python -m unittest discover -s tests` | Run backend, parser, checkpoint, engine, and security tests. |
+| `npm --prefix web run build` | Build the production frontend. |
+| `npm --prefix web run test:e2e` | Run the Playwright browser suite. |
+| `npm --prefix web run check:demo` | Validate and build the isolated demo. |
+
+The GitHub workflow runs backend tests, audits frontend dependencies, builds the UI, runs browser tests, and publishes the container only after validation.
 
 ## Public demo
 
-The [public demo](https://demo.tradoc.lucas-homelab.fr) uses fictional projects and browser-only simulated actions. It connects to no AI server, stores no durable project, and sends no uploaded document to a backend. It is a product walkthrough, not evidence of provider availability or translation quality.
+The [public demo](https://demo.tradoc.lucas-homelab.fr) uses fictional projects and browser-only simulated actions. It connects to no AI server, stores no durable project, and sends no uploaded document to a backend. It demonstrates the workflow, not provider availability or translation quality.
 
-## Contributing and license
+## Documentation and community
 
-Contributions are welcome. Read [CONTRIBUTING.md](CONTRIBUTING.md) and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) before opening a pull request.
+- [Documentation](https://docs.tradoc.lucas-homelab.fr)
+- [Contributing guide](CONTRIBUTING.md)
+- [Code of Conduct](CODE_OF_CONDUCT.md)
+- [MIT License](LICENSE)
 
-TraDoc is distributed under the [MIT License](LICENSE). Third-party libraries, model providers, and source documents retain their own licenses and terms.
+Third-party libraries, model providers, and source documents retain their own licenses and terms.
