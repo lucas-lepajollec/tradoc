@@ -6,7 +6,7 @@ pydantic-settings==2.14.2
 EbookLib==0.20
 beautifulsoup4==4.15.0
 lxml==6.1.1
-pymupdf==1.28.0
+pymupdf==1.28.2
 pymupdf-fonts==1.0.5
 typer==0.27.0
 rich==15.0.0
