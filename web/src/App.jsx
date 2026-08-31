@@ -264,7 +264,7 @@ export default function App() {
         {/* Mobile Header Bar (Sans démarcation) */}
         <div className="mobile-header lg:hidden flex items-center justify-between px-5 py-4 sticky top-0 z-30">
           <div className="flex items-center space-x-2.5">
-            <img src="/logo.svg" alt="TraDoc Logo" className="w-7 h-7 rounded-lg border border-white/[0.08]" />
+            <img src="/logo.svg" alt="TraDoc Logo" className="w-7 h-7" />
             <span className="font-semibold text-sm text-white tracking-tight">
               {activeTab === 'dashboard' && t('nav.projects', lang)}
               {activeTab === 'jobs' && t('nav.inspector', lang)}

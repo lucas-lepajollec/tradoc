@@ -119,7 +119,7 @@
   backdrop-filter: blur(18px);
 }
 
-.brand-mark { border: 1px solid var(--border-strong); box-shadow: 0 8px 22px rgba(0,0,0,.20); }
+.brand-mark { display: block; object-fit: contain; }
 .edition-badge { color: #a9c9ff; background: var(--accent-soft); border: 1px solid rgba(121,169,248,.18); }
 .nav-eyebrow { color: #626771; }
 .nav-item { position: relative; border: 1px solid transparent; }

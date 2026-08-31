@@ -51,7 +51,7 @@ export default function Sidebar({
         {/* Brand Logo */}
         <div className="flex items-center justify-between px-2 pt-2">
           <div className="flex items-center space-x-2.5 cursor-pointer" onClick={() => handleNavClick('dashboard')}>
-            <img src="/logo.svg" alt="TraDoc Logo" className="brand-mark w-10 h-10 rounded-xl" />
+            <img src="/logo.svg" alt="TraDoc Logo" className="brand-mark w-10 h-10" />
             <div>
               <div className="flex items-center space-x-1.5">
                 <span className="font-semibold text-[15px] text-white tracking-tight">{t('nav.appName', lang)}</span>
