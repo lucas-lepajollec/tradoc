@@ -69,6 +69,8 @@ data/provider_credentials.tmp
 commandes.md
 context.md
 roadmap.md
+AGENTS.override.md
+.project-local/
 
 # IDEs & System
 .vscode/
