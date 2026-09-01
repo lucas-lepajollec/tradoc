@@ -3,12 +3,12 @@
 
 services:
   tradoc:
-    image: ghcr.io/lucas-lepajollec/tradoc:latest
+    image: ${TRADOC_IMAGE:-ghcr.io/lucas-lepajollec/tradoc:latest}
     container_name: tradoc-server
     restart: unless-stopped
     ports:
       # Port exposé sur la machine hôte : port interne de l'application
-      - "2507:8000"
+      - "${TRADOC_BIND_ADDRESS:-127.0.0.1}:2507:8000"
     environment:
       - ENV=production
       - DATA_DIR=/app/data
@@ -23,8 +23,17 @@ services:
     volumes:
       # Stockage persistant de la base SQLite et des fichiers traduits
       - ./data:/app/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,uid=1000,gid=1000,mode=1770
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
       interval: 30s
       timeout: 10s
       retries: 3
+      start_period: 20s

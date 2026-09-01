@@ -60,11 +60,11 @@ Create `docker-compose.yml`:
 ```yaml
 services:
   tradoc:
-    image: ghcr.io/lucas-lepajollec/tradoc:latest
+    image: ${TRADOC_IMAGE:-ghcr.io/lucas-lepajollec/tradoc:latest}
     container_name: tradoc
     restart: unless-stopped
     ports:
-      - "127.0.0.1:2507:8000"
+      - "${TRADOC_BIND_ADDRESS:-127.0.0.1}:2507:8000"
     environment:
       ENV: production
       DATA_DIR: /app/data
@@ -76,6 +76,14 @@ services:
       - ./data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,uid=1000,gid=1000,mode=1770
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    init: true
 ```
 
 ```bash
@@ -84,9 +92,11 @@ docker compose up -d
 
 Open `http://127.0.0.1:2507`. The repository's Compose file builds the current checkout; the example above uses the published GHCR image.
 
+Set `TRADOC_BIND_ADDRESS=0.0.0.0` only for deliberate trusted-LAN exposure and use HTTPS before leaving that network. Before updating, back up `./data` and record the current image digest. Pull, recreate, and verify `/health`; roll back by setting `TRADOC_IMAGE` to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update.
+
 ### Local development
 
-Requirements: Python 3.11+, Node.js 18+, and a local or remote model endpoint.
+Requirements: Python 3.11+, Node.js 22, and a local or remote model endpoint.
 
 ```bash
 git clone https://github.com/lucas-lepajollec/tradoc.git
