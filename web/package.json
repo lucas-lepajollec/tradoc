@@ -3,15 +3,21 @@
   "private": true,
   "version": "1.2.0",
   "type": "module",
+  "engines": {
+    "node": "22.x"
+  },
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host 127.0.0.1",
+    "dev:lan": "vite --host 0.0.0.0",
     "dev:demo": "vite --mode demo --host 127.0.0.1 --port 2505",
     "dev:demo:lan": "vite --mode demo --host 0.0.0.0 --port 2505",
     "build": "vite build",
     "build:demo": "vite build --mode demo",
     "check:demo": "node scripts/check-demo.mjs && npm run build:demo",
-    "preview": "vite preview",
+    "preview": "vite preview --host 127.0.0.1",
+    "preview:lan": "vite preview --host 0.0.0.0",
     "preview:demo": "vite preview --host 127.0.0.1 --port 2505",
+    "preview:demo:lan": "vite preview --host 0.0.0.0 --port 2505",
     "test:e2e": "playwright test",
     "test:e2e:demo": "playwright test --config playwright.demo.config.js"
   },
