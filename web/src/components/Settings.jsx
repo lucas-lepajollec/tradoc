@@ -1,16 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Cpu, Sliders, CheckCircle2, AlertCircle, RefreshCw, Save, Trash2, Plus, Key, Link, Search, Globe, Bookmark, Check, ShieldCheck, ArrowLeftRight, Eye, EyeOff, Lock } from 'lucide-react';
 import { isDemoMode, testConnection, saveProviderCredentials, setAppSecret } from '../api';
-import { t, AVAILABLE_LANGUAGES } from '../i18n/translations';
+import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 
-const DEFAULT_LITERARY_PROMPT = `Tu es un traducteur littéraire professionnel expert en Anglais-Français. 
-Ta tâche est de traduire le texte anglais fourni en un français fluide, naturel et élégant, digne d'une maison d'édition francophone.
+const DEFAULT_LITERARY_PROMPT = `You are a professional literary translator. Translate the supplied source text into the target language configured for this project, using fluent, natural prose suitable for publication.
 
-RÈGLES STRICTES :
-1. Conservation des noms propres et de l'univers : Ne traduis PAS les noms propres de lieux, de personnages ou les termes spécifiques à l'univers (ex: "Crimson" = "Cramoisi", "Temple" dans le contexte anatomique = "Tempe").
-2. Fidélité au texte : Ne saute AUCUNE phrase, n'ajoute AUCUN commentaire, et ne répète JAMAIS de paragraphe.
-3. Intégrité des balises : Conserve exactement la structure des balises HTML (<p>, <i>, <b>, etc.) fournies dans le texte.
-4. Réponse directe : Renvoie STRICTEMENT ET UNIQUEMENT la traduction du texte. Pas de bavardage, pas de préambule, pas d'explication. N'écris aucune réflexion interne ni balise <think>.`;
+STRICT RULES:
+1. Names and world-building: follow the project glossary exactly. Do not translate proper names unless the glossary explicitly provides a target form.
+2. Fidelity: omit no sentence, add no commentary, and never repeat a paragraph.
+3. Structural integrity: preserve the supplied HTML tags (<p>, <i>, <b>, and others) exactly.
+4. Direct answer: return only the translated text. Do not add a preface, explanation, internal reasoning, or <think> tags.`;
 
 // Premium Inline Logo Components (SVG)
 const OpenAiIcon = () => (
@@ -364,7 +363,7 @@ export default function Settings({
       
       {/* Header */}
       <header className="page-intro">
-        <p className="page-kicker">{lang === 'fr' ? 'Préférences' : 'Preferences'}</p>
+        <p className="page-kicker">{l(lang, 'Preferences', 'Préférences', 'Preferencias', 'Einstellungen')}</p>
         <h1>{t('settings.title', lang)}</h1>
         <p>{t('settings.subtitle', lang)}</p>
       </header>
@@ -509,7 +508,7 @@ export default function Settings({
                       type={showApiKey ? 'text' : 'password'}
                       value={apiKey}
                       onChange={(e) => setApiKey(e.target.value)}
-                      placeholder={isDemoMode ? (lang === 'fr' ? 'Désactivée dans la démo' : 'Disabled in demo') : (isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang))}
+                      placeholder={isDemoMode ? l(lang, 'Disabled in demo', 'Désactivée dans la démo', 'Desactivada en la demo', 'In der Demo deaktiviert') : (isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang))}
                       disabled={isDemoMode || (isLocal && apiType !== 'lm-studio')}
                       className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-40 pr-9"
                     />
@@ -522,7 +521,7 @@ export default function Settings({
                       {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
                   </div>
-                  {!isLocal && <p className="mt-1.5 text-[10px] text-[#666]">{lang === 'fr' ? 'Laissez vide pour réutiliser la clé déjà stockée côté serveur.' : 'Leave blank to reuse the key already stored on the server.'}</p>}
+                  {!isLocal && <p className="mt-1.5 text-[10px] text-[#666]">{l(lang, 'Leave blank to reuse the key already stored on the server.', 'Laissez vide pour réutiliser la clé déjà stockée côté serveur.', 'Déjalo vacío para reutilizar la clave guardada en el servidor.', 'Leer lassen, um den bereits auf dem Server gespeicherten Schlüssel zu verwenden.')}</p>}
                 </div>
 
                 {/* Endpoint URL */}
@@ -544,10 +543,10 @@ export default function Settings({
               <div className="local-model-detection-note">
                 <RefreshCw />
                 <div>
-                  <strong>{lang === 'fr' ? 'Détection automatique des modèles' : 'Automatic model detection'}</strong>
+                  <strong>{l(lang, 'Automatic model detection', 'Détection automatique des modèles', 'Detección automática de modelos', 'Automatische Modellerkennung')}</strong>
                   <span>{isLocal
-                    ? (lang === 'fr' ? 'Renseignez l’endpoint de votre serveur local : TraDoc détectera automatiquement les modèles disponibles.' : 'Enter your local server endpoint and TraDoc will automatically detect the available models.')
-                    : (lang === 'fr' ? 'Renseignez votre clé API : TraDoc détectera automatiquement les modèles Cloud disponibles.' : 'Enter your API key and TraDoc will automatically detect the available Cloud models.')}
+                    ? l(lang, 'Enter your local server endpoint and TraDoc will automatically detect the available models.', 'Renseignez l’endpoint de votre serveur local : TraDoc détectera automatiquement les modèles disponibles.', 'Introduce el endpoint del servidor local y TraDoc detectará los modelos disponibles.', 'Gib den Endpunkt deines lokalen Servers ein; TraDoc erkennt die verfügbaren Modelle automatisch.')
+                    : l(lang, 'Enter your API key and TraDoc will automatically detect the available cloud models.', 'Renseignez votre clé API : TraDoc détectera automatiquement les modèles cloud disponibles.', 'Introduce tu clave API y TraDoc detectará los modelos disponibles en la nube.', 'Gib deinen API-Schlüssel ein; TraDoc erkennt die verfügbaren Cloud-Modelle automatisch.')}
                   </span>
                 </div>
               </div>
@@ -580,7 +579,7 @@ export default function Settings({
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-semibold text-white uppercase tracking-wider flex items-center space-x-2">
                     <Globe className="w-4 h-4 text-[#60a5fa]" />
-                    <span>{lang === 'fr' ? 'Langues de Traduction par Défaut' : 'Default Translation Languages'}</span>
+                    <span>{l(lang, 'Default translation languages', 'Langues de traduction par défaut', 'Idiomas de traducción predeterminados', 'Standardsprachen der Übersetzung')}</span>
                   </span>
                   <span className="text-[11px] font-mono text-[#60a5fa] font-bold">
                     {sourceLang.toUpperCase()} ➔ {targetLang.toUpperCase()}
@@ -590,7 +589,7 @@ export default function Settings({
                 <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-center">
                   <div>
                     <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1">
-                      {lang === 'fr' ? 'Langue Source par Défaut' : 'Default Source Language'}
+                      {l(lang, 'Default source language', 'Langue source par défaut', 'Idioma de origen predeterminado', 'Standard-Ausgangssprache')}
                     </label>
                     <select
                       value={sourceLang}
@@ -599,7 +598,7 @@ export default function Settings({
                     >
                       {AVAILABLE_LANGUAGES.map((l) => (
                         <option key={l.code} value={l.code}>
-                          {l.flag} {lang === 'fr' ? l.label : l.labelEn}
+                          {l.flag} {languageLabel(l.code, lang)}
                         </option>
                       ))}
                     </select>
@@ -616,7 +615,7 @@ export default function Settings({
                         }
                       }}
                       className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-400 hover:text-white transition-all"
-                      title={lang === 'fr' ? 'Inverser les langues' : 'Swap languages'}
+                      title={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}
                     >
                       <ArrowLeftRight className="w-4 h-4" />
                     </button>
@@ -624,7 +623,7 @@ export default function Settings({
 
                   <div>
                     <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1">
-                      {lang === 'fr' ? 'Langue Cible par Défaut' : 'Default Target Language'}
+                      {l(lang, 'Default target language', 'Langue cible par défaut', 'Idioma de destino predeterminado', 'Standard-Zielsprache')}
                     </label>
                     <select
                       value={targetLang}
@@ -633,7 +632,7 @@ export default function Settings({
                     >
                       {AVAILABLE_LANGUAGES.filter(l => l.code !== 'auto').map((l) => (
                         <option key={l.code} value={l.code}>
-                          {l.flag} {lang === 'fr' ? l.label : l.labelEn}
+                          {l.flag} {languageLabel(l.code, lang)}
                         </option>
                       ))}
                     </select>
@@ -699,10 +698,10 @@ export default function Settings({
               {/* Proofreading Toggle */}
               <button type="button" role="switch" aria-checked={enableProofreading} className={`proofreading-toggle-compact ${enableProofreading ? 'is-active' : ''}`} onClick={() => setEnableProofreading(!enableProofreading)}>
                 <span className="proofreading-toggle-copy">
-                  <strong>{lang === 'fr' ? 'Relecture éditoriale' : 'Editorial proofreading'}</strong>
-                  <small>{lang === 'fr' ? 'Deuxième passe automatique (2 appels par segment)' : 'Automatic second pass (2 calls per segment)'}</small>
+                  <strong>{l(lang, 'Editorial proofreading', 'Relecture éditoriale', 'Revisión editorial', 'Redaktionelle Überarbeitung')}</strong>
+                  <small>{l(lang, 'Automatic second pass (2 calls per segment)', 'Deuxième passe automatique (2 appels par segment)', 'Segunda pasada automática (2 llamadas por segmento)', 'Automatischer zweiter Durchgang (2 Aufrufe je Segment)')}</small>
                 </span>
-                <span className="proofreading-toggle-status">{enableProofreading ? (lang === 'fr' ? 'Activée' : 'Enabled') : (lang === 'fr' ? 'Désactivée' : 'Disabled')}</span>
+                <span className="proofreading-toggle-status">{enableProofreading ? l(lang, 'Enabled', 'Activée', 'Activada', 'Aktiviert') : l(lang, 'Disabled', 'Désactivée', 'Desactivada', 'Deaktiviert')}</span>
                 <span className="proofreading-switch"><i /></span>
               </button>
 
@@ -780,7 +779,7 @@ export default function Settings({
                   <div>
                     <span className="section-eyebrow">Interface</span>
                     <h3>{t('settings.languageTitle', lang)}</h3>
-                    <p>{lang === 'fr' ? 'Choisissez la langue utilisée dans toute l’application.' : 'Choose the language used throughout the application.'}</p>
+                    <p>{t('settings.languageDesc', lang)}</p>
                   </div>
                 </div>
                 <div className="language-choice-grid">
@@ -794,6 +793,16 @@ export default function Settings({
                     <span className="language-copy"><strong>{t('settings.langFrench', lang)}</strong><small>Interface en français</small></span>
                     <span className="language-radio" aria-hidden="true"><i /></span>
                   </button>
+                  <button type="button" onClick={() => setLang('es')} className={`language-choice ${lang === 'es' ? 'is-selected' : ''}`}>
+                    <span className="language-code">ES</span>
+                    <span className="language-copy"><strong>{t('settings.langSpanish', lang)}</strong><small>Interfaz en español</small></span>
+                    <span className="language-radio" aria-hidden="true"><i /></span>
+                  </button>
+                  <button type="button" onClick={() => setLang('de')} className={`language-choice ${lang === 'de' ? 'is-selected' : ''}`}>
+                    <span className="language-code">DE</span>
+                    <span className="language-copy"><strong>{t('settings.langGerman', lang)}</strong><small>Deutsche Benutzeroberfläche</small></span>
+                    <span className="language-radio" aria-hidden="true"><i /></span>
+                  </button>
                 </div>
               </section>
 
@@ -801,15 +810,15 @@ export default function Settings({
                 <div className="global-section-copy">
                   <span className="global-section-icon"><Lock /></span>
                   <div>
-                    <span className="section-eyebrow">{lang === 'fr' ? 'Sécurité' : 'Security'}</span>
-                    <h3>{lang === 'fr' ? 'Jeton d’application' : 'Application token'}</h3>
-                    <p>{lang === 'fr' ? 'Renseignez ce champ uniquement si APP_SECRET est activé sur votre serveur.' : 'Only fill this field when APP_SECRET is enabled on your server.'}</p>
+                    <span className="section-eyebrow">{l(lang, 'Security', 'Sécurité', 'Seguridad', 'Sicherheit')}</span>
+                    <h3>{l(lang, 'Application token', 'Jeton d’application', 'Token de la aplicación', 'Anwendungstoken')}</h3>
+                    <p>{l(lang, 'Only fill this field when APP_SECRET is enabled on your server.', 'Renseignez ce champ uniquement si APP_SECRET est activé sur votre serveur.', 'Rellena este campo solo si APP_SECRET está activado en el servidor.', 'Fülle dieses Feld nur aus, wenn APP_SECRET auf deinem Server aktiviert ist.')}</p>
                   </div>
                 </div>
                 <label className="secret-field">
-                  <span>{lang === 'fr' ? 'Clé secrète' : 'Secret token'} <small>X-App-Secret</small></span>
-                  <input type="password" value={appSecret} onChange={(e) => setAppSecretValue(e.target.value)} placeholder={lang === 'fr' ? 'Saisissez votre jeton' : 'Enter your token'} className="input-chill font-mono" />
-                  <p>{lang === 'fr' ? 'Stocké localement puis envoyé avec chaque requête adressée à TraDoc.' : 'Stored locally and sent with every request made to TraDoc.'}</p>
+                  <span>{l(lang, 'Secret token', 'Clé secrète', 'Token secreto', 'Geheimes Token')} <small>X-App-Secret</small></span>
+                  <input type="password" value={appSecret} onChange={(e) => setAppSecretValue(e.target.value)} placeholder={l(lang, 'Enter your token', 'Saisissez votre jeton', 'Introduce tu token', 'Token eingeben')} className="input-chill font-mono" />
+                  <p>{l(lang, 'Stored locally, then sent with every request to TraDoc.', 'Stocké localement puis envoyé avec chaque requête adressée à TraDoc.', 'Se guarda localmente y se envía con cada solicitud a TraDoc.', 'Wird lokal gespeichert und mit jeder Anfrage an TraDoc gesendet.')}</p>
                 </label>
               </section>}
             </div>
@@ -827,8 +836,8 @@ export default function Settings({
               <section className="preset-create-card">
                 <span className="preset-create-icon"><Plus /></span>
                 <div className="preset-create-copy">
-                  <strong>{lang === 'fr' ? 'Enregistrer la configuration actuelle' : 'Save the current configuration'}</strong>
-                  <p>{lang === 'fr' ? 'Créez un raccourci avec le fournisseur, le modèle et les réglages actifs.' : 'Create a shortcut with the active provider, model and settings.'}</p>
+                  <strong>{l(lang, 'Save the current configuration', 'Enregistrer la configuration actuelle', 'Guardar la configuración actual', 'Aktuelle Konfiguration speichern')}</strong>
+                  <p>{l(lang, 'Create a shortcut with the active provider, model and settings.', 'Créez un raccourci avec le fournisseur, le modèle et les réglages actifs.', 'Crea un acceso rápido con el proveedor, el modelo y los ajustes activos.', 'Erstelle ein Profil mit dem aktiven Anbieter, Modell und den aktuellen Einstellungen.')}</p>
                 </div>
                 <div className="preset-create-controls">
                   <input type="text" value={newPresetNameInput} onChange={(e) => setNewPresetNameInput(e.target.value)} placeholder={t('settings.presetNamePlaceholder', lang)} className="input-chill" />
@@ -840,7 +849,7 @@ export default function Settings({
 
               <section className="preset-library">
                 <div className="preset-library-heading">
-                  <div><span className="section-eyebrow">{lang === 'fr' ? 'Bibliothèque' : 'Library'}</span><h3>{t('settings.savedPresetsList', lang)}</h3></div>
+                  <div><span className="section-eyebrow">{l(lang, 'Library', 'Bibliothèque', 'Biblioteca', 'Bibliothek')}</span><h3>{t('settings.savedPresetsList', lang)}</h3></div>
                   <span className="preset-count">{presets.length}</span>
                 </div>
 
@@ -848,8 +857,8 @@ export default function Settings({
                   {presets.length === 0 && (
                     <div className="preset-empty-state">
                       <Bookmark />
-                      <strong>{lang === 'fr' ? 'Aucun preset enregistré' : 'No saved presets'}</strong>
-                      <p>{lang === 'fr' ? 'Donnez un nom à la configuration actuelle pour la retrouver ici.' : 'Name the current configuration to find it here.'}</p>
+                      <strong>{l(lang, 'No saved profiles', 'Aucun profil enregistré', 'No hay perfiles guardados', 'Keine Profile gespeichert')}</strong>
+                      <p>{l(lang, 'Name the current configuration to find it here.', 'Donnez un nom à la configuration actuelle pour la retrouver ici.', 'Ponle un nombre a la configuración actual para encontrarla aquí.', 'Gib der aktuellen Konfiguration einen Namen, damit sie hier erscheint.')}</p>
                     </div>
                   )}
                   {presets.map((preset) => {
@@ -858,18 +867,18 @@ export default function Settings({
                       <article key={preset.id} className={`settings-preset-card ${isActive ? 'is-active' : ''}`}>
                         <header>
                           <div><small>Configuration</small><strong title={preset.name}>{preset.name}</strong></div>
-                          <span className={`preset-state ${isActive ? 'is-active' : ''}`}><i />{isActive ? t('settings.activeBadge', lang) : (lang === 'fr' ? 'Disponible' : 'Available')}</span>
+                          <span className={`preset-state ${isActive ? 'is-active' : ''}`}><i />{isActive ? t('settings.activeBadge', lang) : l(lang, 'Available', 'Disponible', 'Disponible', 'Verfügbar')}</span>
                         </header>
                         <dl>
-                          <div><dt>{lang === 'fr' ? 'Fournisseur' : 'Provider'}</dt><dd>{preset.apiType || '—'}</dd></div>
-                          <div><dt>{lang === 'fr' ? 'Modèle' : 'Model'}</dt><dd title={preset.model}>{preset.model || '—'}</dd></div>
-                          <div><dt>{lang === 'fr' ? 'Concurrence' : 'Concurrency'}</dt><dd>{preset.concurrency ?? '—'}</dd></div>
-                          <div><dt>{lang === 'fr' ? 'Segment' : 'Chunk'}</dt><dd>{preset.chunkSize || 1000} tokens</dd></div>
+                          <div><dt>{l(lang, 'Provider', 'Fournisseur', 'Proveedor', 'Anbieter')}</dt><dd>{preset.apiType || '—'}</dd></div>
+                          <div><dt>{l(lang, 'Model', 'Modèle', 'Modelo', 'Modell')}</dt><dd title={preset.model}>{preset.model || '—'}</dd></div>
+                          <div><dt>{l(lang, 'Concurrency', 'Concurrence', 'Concurrencia', 'Parallelität')}</dt><dd>{preset.concurrency ?? '—'}</dd></div>
+                          <div><dt>{l(lang, 'Segment', 'Segment', 'Segmento', 'Segment')}</dt><dd>{preset.chunkSize || 1000} tokens</dd></div>
                         </dl>
                         <footer>
                           {!isActive ? (
                             <button type="button" onClick={() => onApplyPreset && onApplyPreset(preset.id)} className="preset-activate-button"><Check /><span>{t('settings.activatePresetBtn', lang)}</span></button>
-                          ) : <span className="preset-active-copy"><Check />{lang === 'fr' ? 'Preset utilisé' : 'Preset in use'}</span>}
+                          ) : <span className="preset-active-copy"><Check />{l(lang, 'Profile in use', 'Profil utilisé', 'Perfil en uso', 'Profil in Verwendung')}</span>}
                           <button
                             type="button"
                             onClick={() => {

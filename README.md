@@ -40,6 +40,7 @@ EPUB, PDF, DOCX, Markdown, and plain text share one project workflow with checkp
 - Glossaries for names, places, terminology, and project-specific rules.
 - Side-by-side inspection, inline project configuration, progress tracking, and SSE updates.
 - Provider profiles for local and remote OpenAI-compatible workflows.
+- English-first interface with maintained French, Spanish, and German translations; document translation supports a broader independent language set.
 - Reflowable EPUB export and an editorial 6×9 PDF reconstruction path.
 
 ## Quick start
@@ -162,6 +163,7 @@ main.py   # Development and server entry point
 | --- | --- |
 | `python -m unittest discover -s tests` | Run backend, parser, checkpoint, engine, and security tests. |
 | `npm --prefix web run build` | Build the production frontend. |
+| `npm --prefix web run check:i18n` | Verify exact EN/FR/ES/DE key parity and reject binary EN/FR UI copy. |
 | `npm --prefix web run test:e2e` | Run the Playwright browser suite. |
 | `npm --prefix web run check:demo` | Validate and build the isolated demo. |
 

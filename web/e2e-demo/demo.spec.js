@@ -21,7 +21,7 @@ test('opens a completed project in the real inspector', async ({ page }) => {
 test('keeps the demo banner and navigation usable', async ({ page }, testInfo) => {
   await expect(page.getByText('Interactive demo')).toBeVisible();
   if (testInfo.project.name === 'mobile') {
-    await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
+    await page.getByRole('button', { name: 'Open navigation menu' }).click();
   }
   await page.getByRole('button', { name: /^Glossary$/i }).click();
   await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
@@ -30,7 +30,7 @@ test('keeps the demo banner and navigation usable', async ({ page }, testInfo) =
 
 test('returns a complete French translation in the sandbox', async ({ page }, testInfo) => {
   if (testInfo.project.name === 'mobile') {
-    await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
+    await page.getByRole('button', { name: 'Open navigation menu' }).click();
   }
   await page.getByRole('button', { name: /^Test$/i }).click();
   await page.getByRole('button', { name: 'Run test' }).click();

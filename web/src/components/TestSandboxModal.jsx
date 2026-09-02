@@ -1,7 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { TestTube, Play, FileText, AlertCircle, RefreshCw, Upload, Copy, Check, RotateCcw } from 'lucide-react';
 import { testTranslation, extractSandboxSample } from '../api';
-import { AVAILABLE_LANGUAGES, t } from '../i18n/translations';
+import { AVAILABLE_LANGUAGES, l, languageLabel, localeTag, t } from '../i18n/translations';
 
 // Universal Classic Literary Excerpt (Pride and Prejudice by Jane Austen)
 const DEFAULT_UNIVERSAL_SAMPLE = `<p class="chapter-title">CHAPTER I</p>
@@ -46,8 +46,8 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
   const targetCode = settings.targetLang || 'fr';
   const sourceLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === sourceCode);
   const targetLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === targetCode);
-  const sourceLanguageName = sourceLanguage ? (lang === 'fr' ? sourceLanguage.label : sourceLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : sourceCode.toUpperCase();
-  const targetLanguageName = targetLanguage ? (lang === 'fr' ? targetLanguage.label : targetLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : targetCode.toUpperCase();
+  const sourceLanguageName = sourceLanguage ? languageLabel(sourceLanguage.code, lang) : sourceCode.toUpperCase();
+  const targetLanguageName = targetLanguage ? languageLabel(targetLanguage.code, lang) : targetCode.toUpperCase();
   const sourceTokens = estimateTokens(sampleText);
   const resultText = result?.translated_text || '';
   const targetTokens = estimateTokens(resultText);
@@ -125,7 +125,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
       {/* Top Header Card */}
       <div className="page-intro flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <p className="page-kicker">{lang === 'fr' ? 'Essai instantané' : 'Instant test'}</p>
+          <p className="page-kicker">{l(lang, 'Instant test', 'Essai instantané', 'Prueba instantánea', 'Soforttest')}</p>
           <h1>{t('sandbox.title', lang)}</h1>
           <p>{t('sandbox.desc', lang)}</p>
         </div>
@@ -145,10 +145,10 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
             onClick={() => fileInputRef.current?.click()}
             disabled={extracting}
             className="btn-chill px-3.5 py-1.5 text-xs flex items-center space-x-2 rounded-xl transition-all"
-            title={lang === 'fr' ? "Importer le premier extrait d'un fichier .epub" : "Import first excerpt from an .epub file"}
+            title={l(lang, 'Import the first excerpt from an .epub file', 'Importer le premier extrait d’un fichier .epub', 'Importar el primer fragmento de un archivo .epub', 'Ersten Auszug aus einer .epub-Datei importieren')}
           >
             {extracting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            <span>{extracting ? (lang === 'fr' ? "Extraction..." : "Extracting...") : (lang === 'fr' ? "Importer un EPUB" : "Import EPUB")}</span>
+            <span>{extracting ? l(lang, 'Extracting…', 'Extraction…', 'Extrayendo…', 'Wird extrahiert…') : l(lang, 'Import EPUB', 'Importer un EPUB', 'Importar EPUB', 'EPUB importieren')}</span>
           </button>
 
           <button
@@ -171,8 +171,8 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
 
       <section className="sandbox-settings-card">
         <div className="sandbox-settings-heading">
-          <span>{lang === 'fr' ? 'Configuration du test' : 'Test configuration'}</span>
-          <strong>{lang === 'fr' ? 'Paramètres du bac à sable' : 'Sandbox settings'}</strong>
+          <span>{l(lang, 'Test configuration', 'Configuration du test', 'Configuración de la prueba', 'Testkonfiguration')}</span>
+          <strong>{l(lang, 'Sandbox settings', 'Paramètres du bac à sable', 'Ajustes del entorno de prueba', 'Einstellungen der Testumgebung')}</strong>
         </div>
 
         <div className="sandbox-settings-controls">
@@ -194,7 +194,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
           </label>
 
           <label className="sandbox-temperature-setting">
-            <span>{lang === 'fr' ? 'Température' : 'Temperature'} <b>{Number(selectedTemperature).toFixed(2)}</b></span>
+            <span>{l(lang, 'Temperature', 'Température', 'Temperatura', 'Temperatur')} <b>{Number(selectedTemperature).toFixed(2)}</b></span>
             <div>
               <input
                 type="range"
@@ -214,7 +214,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
             className="primary-action sandbox-run-button"
           >
             {loading ? <RefreshCw className="animate-spin" /> : <Play />}
-            <span>{loading ? (lang === 'fr' ? 'Traduction en cours...' : 'Processing...') : (lang === 'fr' ? 'Lancer le test' : 'Run test')}</span>
+            <span>{loading ? l(lang, 'Processing…', 'Traduction en cours…', 'Procesando…', 'Wird verarbeitet…') : l(lang, 'Run test', 'Lancer le test', 'Ejecutar prueba', 'Test ausführen')}</span>
           </button>
         </div>
       </section>
@@ -224,8 +224,8 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
           <div className="segment-workbench-title">
             <FileText />
             <div>
-              <span>{lang === 'fr' ? 'Atelier de traduction' : 'Translation workspace'}</span>
-              <h3>{lang === 'fr' ? 'Inspecteur de test' : 'Test inspector'}</h3>
+              <span>{l(lang, 'Translation workspace', 'Atelier de traduction', 'Espacio de traducción', 'Übersetzungsarbeitsbereich')}</span>
+              <h3>{l(lang, 'Test inspector', 'Inspecteur de test', 'Inspector de la prueba', 'Testinspektor')}</h3>
             </div>
           </div>
 
@@ -237,7 +237,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
               aria-pressed={showRawText}
             >
               <span className="segment-toggle-track"><i /></span>
-              <span>{lang === 'fr' ? 'Texte brut' : 'Raw text'}</span>
+              <span>{l(lang, 'Raw text', 'Texte brut', 'Texto sin procesar', 'Rohtext')}</span>
             </button>
           </div>
         </div>
@@ -246,11 +246,11 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
           <section className="translation-pane source-pane sandbox-pane">
             <header className="translation-pane-header">
               <div className="translation-language">
-                <span>{lang === 'fr' ? 'Texte source' : 'Source text'}</span>
+                <span>{l(lang, 'Source text', 'Texte source', 'Texto de origen', 'Ausgangstext')}</span>
                 <strong>{sourceLanguageName}<small>{sourceCode.toUpperCase()}</small></strong>
               </div>
               <div className="translation-pane-meta">
-                <span className="translation-token-count">{sourceTokens.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens envoyés' : 'tokens sent'}</span>
+                <span className="translation-token-count">{sourceTokens.toLocaleString(localeTag(lang))} {l(lang, 'tokens sent', 'tokens envoyés', 'tokens enviados', 'gesendete Tokens')}</span>
               </div>
             </header>
 
@@ -258,27 +258,27 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
               rows={12}
               value={displayedSourceText}
               onChange={(e) => setSampleText(e.target.value)}
-              placeholder={lang === 'fr' ? 'Saisissez un extrait ou chargez un livre...' : 'Enter an excerpt or import a book...'}
+              placeholder={l(lang, 'Enter an excerpt or import a book…', 'Saisissez un extrait ou chargez un livre…', 'Escribe un fragmento o importa un libro…', 'Auszug eingeben oder Buch importieren…')}
               className="document-text sandbox-document-editor"
             />
 
             <footer className="translation-pane-footer sandbox-pane-footer">
-              <span>{displayedSourceText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+              <span>{displayedSourceText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</span>
             </footer>
           </section>
 
           <section className="translation-pane target-pane sandbox-pane">
             <header className="translation-pane-header">
               <div className="translation-language">
-                <span>{lang === 'fr' ? 'Traduction' : 'Translation'}</span>
+                <span>{l(lang, 'Translation', 'Traduction', 'Traducción', 'Übersetzung')}</span>
                 <strong>{targetLanguageName}<small>{targetCode.toUpperCase()}</small></strong>
               </div>
               <div className="translation-pane-meta">
                 <span className={`translation-status ${result ? 'status-done' : loading ? 'status-processing' : ''}`}>
                   <i />
-                  {loading ? (lang === 'fr' ? 'En cours' : 'Processing') : result ? (lang === 'fr' ? 'Traduit' : 'Translated') : (lang === 'fr' ? 'En attente' : 'Waiting')}
+                  {loading ? l(lang, 'Processing', 'En cours', 'En curso', 'In Arbeit') : result ? l(lang, 'Translated', 'Traduit', 'Traducido', 'Übersetzt') : l(lang, 'Waiting', 'En attente', 'En espera', 'Wartet')}
                 </span>
-                <span className="translation-token-count">{targetTokens.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens reçus' : 'tokens received'}</span>
+                <span className="translation-token-count">{targetTokens.toLocaleString(localeTag(lang))} {l(lang, 'tokens received', 'tokens reçus', 'tokens recibidos', 'empfangene Tokens')}</span>
                 {result && (
                   <button
                     type="button"
@@ -295,13 +295,13 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
             <div className="document-text sandbox-document-output">
               {result ? displayedResultText : (
                 <span className="translation-empty">
-                  {lang === 'fr' ? 'En attente de traduction...' : 'Waiting for translation...'}
+                  {l(lang, 'Waiting for translation…', 'En attente de traduction…', 'Esperando la traducción…', 'Warte auf die Übersetzung…')}
                 </span>
               )}
             </div>
 
             <footer className="translation-pane-footer sandbox-pane-footer">
-              <span>{displayedResultText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+              <span>{displayedResultText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</span>
             </footer>
           </section>
         </div>

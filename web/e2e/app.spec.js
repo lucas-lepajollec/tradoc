@@ -40,7 +40,22 @@ test('main workspaces are reachable from the sidebar', async ({ page }) => {
 
 test('mobile navigation opens and changes workspace', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.getByRole('button', { name: 'Toggle navigation menu' }).click();
+  await page.getByRole('button', { name: 'Open navigation menu' }).click();
   await page.getByRole('button', { name: /^Glossary$/i }).click();
   await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
 });
+
+for (const locale of [
+  { code: 'en', title: /Structured document translation/, heading: 'Your documents, faithfully translated.' },
+  { code: 'fr', title: /Traduction structurée de documents/, heading: 'Vos documents, fidèlement traduits.' },
+  { code: 'es', title: /Traducción estructurada de documentos/, heading: 'Tus documentos, traducidos con fidelidad.' },
+  { code: 'de', title: /Strukturierte Dokumentübersetzung/, heading: 'Deine Dokumente, originalgetreu übersetzt.' },
+]) {
+  test(`loads the complete ${locale.code} interface contract`, async ({ page }) => {
+    await page.evaluate((code) => localStorage.setItem('tradoc_lang', code), locale.code);
+    await page.reload();
+    await expect(page.locator('html')).toHaveAttribute('lang', locale.code);
+    await expect(page).toHaveTitle(locale.title);
+    await expect(page.getByRole('heading', { name: locale.heading })).toBeVisible();
+  });
+}

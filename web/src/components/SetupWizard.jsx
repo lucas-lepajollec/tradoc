@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Cpu, Cloud, BookOpen, FileText, Library, Bookmark, Sparkles, ArrowRight, TrendingDown } from 'lucide-react';
-import { t } from '../i18n/translations';
+import { l, localeTag, t } from '../i18n/translations';
 
 export default function SetupWizard({ settings, onSaveSettings, setActiveTab, lang = 'en' }) {
   const [mode, setMode] = useState('local');
@@ -64,32 +64,32 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
   return (
     <div className="estimator-page page-stack">
       <header className="page-intro">
-        <p className="page-kicker">{lang === 'fr' ? 'Planification' : 'Planning'}</p>
-        <h1>{lang === 'fr' ? 'Estimer une traduction' : 'Estimate a translation'}</h1>
-        <p>{lang === 'fr' ? 'Configurez votre ouvrage et obtenez immédiatement une estimation lisible du volume et du coût.' : 'Configure your document and instantly get a clear volume and cost estimate.'}</p>
+        <p className="page-kicker">{l(lang, 'Planning', 'Planification', 'Planificación', 'Planung')}</p>
+        <h1>{l(lang, 'Estimate a translation', 'Estimer une traduction', 'Estimar una traducción', 'Übersetzung schätzen')}</h1>
+        <p>{l(lang, 'Configure your document and instantly get a clear volume and cost estimate.', 'Configurez votre ouvrage et obtenez immédiatement une estimation lisible du volume et du coût.', 'Configura el documento y obtén de inmediato una estimación clara del volumen y el coste.', 'Konfiguriere dein Dokument und erhalte sofort eine verständliche Umfangs- und Kostenschätzung.')}</p>
       </header>
 
       <div className="estimator-shell">
         <div className="estimator-form">
           <section className="form-section">
-            <div className="section-heading"><span>01</span><div><h2>{t('wizard.executionEnv', lang)}</h2><p>{lang === 'fr' ? 'Choisissez où la traduction sera exécutée.' : 'Choose where translation will run.'}</p></div></div>
+            <div className="section-heading"><span>01</span><div><h2>{t('wizard.executionEnv', lang)}</h2><p>{l(lang, 'Choose where translation will run.', 'Choisissez où la traduction sera exécutée.', 'Elige dónde se ejecutará la traducción.', 'Wähle aus, wo die Übersetzung ausgeführt wird.')}</p></div></div>
             <div className="choice-grid">
               <button type="button" onClick={() => setMode('local')} className={`choice-card ${mode === 'local' ? 'is-selected' : ''}`}>
-                <span className="choice-icon"><Cpu /></span><div><em>{lang === 'fr' ? 'Sur votre machine' : 'On your machine'}</em><strong>{t('wizard.localServer', lang)}</strong><small>{t('wizard.localDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.localBadge', lang)}</span>
+                <span className="choice-icon"><Cpu /></span><div><em>{l(lang, 'On your machine', 'Sur votre machine', 'En tu equipo', 'Auf deinem Rechner')}</em><strong>{t('wizard.localServer', lang)}</strong><small>{t('wizard.localDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.localBadge', lang)}</span>
               </button>
               <button type="button" onClick={() => setMode('cloud')} className={`choice-card ${mode === 'cloud' ? 'is-selected' : ''}`}>
-                <span className="choice-icon"><Cloud /></span><div><em>{lang === 'fr' ? 'Via un fournisseur' : 'Through a provider'}</em><strong>{t('wizard.cloudApi', lang)}</strong><small>{t('wizard.cloudDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.cloudBadge', lang)}</span>
+                <span className="choice-icon"><Cloud /></span><div><em>{l(lang, 'Through a provider', 'Via un fournisseur', 'Mediante un proveedor', 'Über einen Anbieter')}</em><strong>{t('wizard.cloudApi', lang)}</strong><small>{t('wizard.cloudDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.cloudBadge', lang)}</span>
               </button>
             </div>
           </section>
 
           <section className="form-section">
-            <div className="section-heading"><span>02</span><div><h2>{t('wizard.bookSizeTitle', lang)}</h2><p>{lang === 'fr' ? 'Indiquez la longueur approximative du document.' : 'Set the approximate document length.'}</p></div></div>
+            <div className="section-heading"><span>02</span><div><h2>{t('wizard.bookSizeTitle', lang)}</h2><p>{l(lang, 'Set the approximate document length.', 'Indiquez la longueur approximative du document.', 'Indica la longitud aproximada del documento.', 'Gib die ungefähre Dokumentlänge an.')}</p></div></div>
             <div className="page-control">
               <div className="page-amount">
-                <span>{lang === 'fr' ? 'Longueur du document' : 'Document length'}</span>
+                <span>{l(lang, 'Document length', 'Longueur du document', 'Longitud del documento', 'Dokumentlänge')}</span>
                 <div><input type="number" min="20" max="3000" value={pages} style={{ width: `${Math.max(3, String(pages).length) * 15}px` }} onChange={(e) => setPages(Math.max(20, Math.min(3000, parseInt(e.target.value, 10) || 20)))} /><strong>{t('wizard.pagesUnit', lang)}</strong></div>
-                <small>~{wordsCount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'mots estimés' : 'estimated words'}</small>
+                <small>~{wordsCount.toLocaleString(localeTag(lang))} {l(lang, 'estimated words', 'mots estimés', 'palabras estimadas', 'geschätzte Wörter')}</small>
               </div>
               <div className="page-slider">
                 <input type="range" min={20} max={3000} step={10} value={pages} onChange={(e) => setPages(parseInt(e.target.value, 10))} />
@@ -104,7 +104,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
           </section>
 
           <section className="form-section">
-            <div className="section-heading"><span>03</span><div><h2>{t('wizard.fineTuningTitle', lang)}</h2><p>{lang === 'fr' ? 'Ajustez uniquement si vous connaissez les limites de votre modèle.' : 'Adjust only if you know your model limits.'}</p></div></div>
+            <div className="section-heading"><span>03</span><div><h2>{t('wizard.fineTuningTitle', lang)}</h2><p>{l(lang, 'Adjust only if you know your model limits.', 'Ajustez uniquement si vous connaissez les limites de votre modèle.', 'Ajusta estos valores solo si conoces los límites del modelo.', 'Passe diese Werte nur an, wenn du die Grenzen deines Modells kennst.')}</p></div></div>
             <div className="field-grid">
               <label><span>{t('wizard.chunkSize', lang)}</span><input type="number" min="200" max="10000" step="250" value={chunkSize} onChange={(e) => setChunkSize(Math.max(200, Math.min(10000, parseInt(e.target.value, 10) || 1000)))} /></label>
               <label><span>{t('wizard.concurrencySlots', lang)}</span><input type="number" min="1" max="16" value={concurrency} onChange={(e) => setConcurrency(parseInt(e.target.value, 10) || 1)} /></label>
@@ -113,7 +113,7 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
                 <label><span>{t('wizard.outputPrice', lang)}</span><input type="number" step="0.05" value={outputPrice} onChange={(e) => setOutputPrice(parseFloat(e.target.value) || 0)} /></label>
                 <button type="button" role="switch" aria-checked={enableCaching} className={`cache-toggle-card ${enableCaching ? 'is-active' : ''}`} onClick={() => setEnableCaching(!enableCaching)}>
                   <span className="cache-icon"><Sparkles /></span>
-                  <span className="cache-copy"><strong>Prompt Caching</strong><small>{cachingEligible ? (lang === 'fr' ? 'Cache explicite Anthropic sur le prompt système répété' : 'Explicit Anthropic caching for the repeated system prompt') : cachingSupported ? (lang === 'fr' ? 'Prompt trop court pour garantir une mise en cache' : 'Prompt too short to guarantee a cache hit') : (lang === 'fr' ? 'Disponible avec un fournisseur Anthropic' : 'Available with an Anthropic provider')}</small></span>
+                  <span className="cache-copy"><strong>Prompt Caching</strong><small>{cachingEligible ? l(lang, 'Explicit Anthropic caching for the repeated system prompt', 'Cache Anthropic explicite sur le prompt système répété', 'Caché explícito de Anthropic para el prompt de sistema repetido', 'Expliziter Anthropic-Cache für den wiederholten Systemprompt') : cachingSupported ? l(lang, 'Prompt too short to guarantee a cache hit', 'Prompt trop court pour garantir une mise en cache', 'El prompt es demasiado corto para garantizar el uso de la caché', 'Prompt zu kurz für einen garantierten Cache-Treffer') : l(lang, 'Available with an Anthropic provider', 'Disponible avec un fournisseur Anthropic', 'Disponible con un proveedor Anthropic', 'Mit einem Anthropic-Anbieter verfügbar')}</small></span>
                   <span className="cache-switch"><i /></span>
                 </button>
               </>}
@@ -125,12 +125,12 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
           <div className="receipt-heading"><Sparkles /><span>{t('wizard.resultsTitle', lang)}</span></div>
           <div className="cost-display"><small>{t('wizard.estimatedCost', lang)}</small><strong>{mode === 'local' ? '0,00 €' : `$${totalCost}`}</strong><p>{mode === 'local' ? t('wizard.freeLocal', lang) : `${inputPrice}$ input · ${outputPrice}$ output`}</p></div>
           <dl>
-            <div><dt>{t('wizard.estimatedVolume', lang)}</dt><dd>~{wordsCount.toLocaleString()} {lang === 'fr' ? 'mots' : 'words'}</dd></div>
+            <div><dt>{t('wizard.estimatedVolume', lang)}</dt><dd>~{wordsCount.toLocaleString(localeTag(lang))} {l(lang, 'words', 'mots', 'palabras', 'Wörter')}</dd></div>
             <div><dt>{t('wizard.totalTokens', lang)}</dt><dd>~{totalTokens.toLocaleString()}</dd></div>
             <div><dt>{t('wizard.chunksUnit', lang)}</dt><dd>{totalRequests}</dd></div>
-            <div><dt>{lang === 'fr' ? 'Exécution' : 'Execution'}</dt><dd>{mode === 'local' ? t('wizard.localServer', lang) : t('wizard.cloudApi', lang)}</dd></div>
+            <div><dt>{l(lang, 'Execution', 'Exécution', 'Ejecución', 'Ausführung')}</dt><dd>{mode === 'local' ? t('wizard.localServer', lang) : t('wizard.cloudApi', lang)}</dd></div>
           </dl>
-          {mode === 'cloud' && enableCaching && cachingEligible && parseFloat(cachingSavings) > 0 && <div className="saving-note"><TrendingDown />{lang === 'fr' ? 'Économie estimée' : 'Estimated savings'}: {cachingSavings}$</div>}
+          {mode === 'cloud' && enableCaching && cachingEligible && parseFloat(cachingSavings) > 0 && <div className="saving-note"><TrendingDown />{l(lang, 'Estimated savings', 'Économie estimée', 'Ahorro estimado', 'Geschätzte Ersparnis')}: {cachingSavings}$</div>}
           <p className="receipt-note">{t('wizard.disclaimer', lang)}</p>
           <button type="button" onClick={handleApplySettings} className="primary-button">{t('wizard.applySettings', lang)}<ArrowRight /></button>
         </aside>

@@ -8,7 +8,7 @@ import GlossaryManager from './components/GlossaryManager';
 import TestSandboxModal from './components/TestSandboxModal';
 import SetupWizard from './components/SetupWizard';
 import { isDemoMode, testConnection } from './api';
-import { t } from './i18n/translations';
+import { INTERFACE_LANGUAGES, l, t } from './i18n/translations';
 
 const DEFAULT_PRESETS = [];
 
@@ -63,13 +63,20 @@ export default function App() {
   // App Language State (Default English)
   const [lang, setLang] = useState(() => {
     const savedLang = localStorage.getItem('tradoc_lang');
-    return savedLang || 'en';
+    return INTERFACE_LANGUAGES.includes(savedLang) ? savedLang : 'en';
   });
 
   const handleSetLang = (newLang) => {
+    if (!INTERFACE_LANGUAGES.includes(newLang)) return;
     setLang(newLang);
     localStorage.setItem('tradoc_lang', newLang);
   };
+
+  useEffect(() => {
+    document.documentElement.lang = lang;
+    document.title = t('meta.title', lang);
+    document.querySelector('meta[name="description"]')?.setAttribute('content', t('meta.description', lang));
+  }, [lang]);
 
   // Presets Management State
   const [presets, setPresets] = useState(() => {
@@ -278,7 +285,7 @@ export default function App() {
           <button
             onClick={() => setMobileMenuOpen(true)}
             className="p-2 bg-white/[0.04] hover:bg-white/[0.08] text-white rounded-xl border border-white/[0.08] transition-colors"
-            aria-label="Toggle navigation menu"
+            aria-label={l(lang, 'Open navigation menu', 'Ouvrir le menu de navigation', 'Abrir el menú de navegación', 'Navigationsmenü öffnen')}
           >
             <Menu className="w-5 h-5" />
           </button>
@@ -287,11 +294,13 @@ export default function App() {
         {isDemoMode && (
           <div className="mx-4 sm:mx-7 lg:mx-9 mt-5 rounded-2xl border border-blue-400/25 bg-blue-500/[0.08] px-4 py-3 text-xs text-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              <strong className="text-white">{lang === 'fr' ? 'Démonstration interactive' : 'Interactive demo'}</strong>
+              <strong className="text-white">{l(lang, 'Interactive demo', 'Démonstration interactive', 'Demostración interactiva', 'Interaktive Demo')}</strong>
               <span className="block mt-0.5 text-blue-100/70">
-                {lang === 'fr'
-                  ? 'Données fictives, actions simulées dans ce navigateur, aucun serveur IA ni fichier envoyé.'
-                  : 'Fictional data, browser-only simulated actions, no AI server and no uploaded file leaves this device.'}
+                {l(lang,
+                  'Fictional data and browser-only simulated actions: no AI server is contacted and no uploaded file leaves this device.',
+                  'Données fictives et actions simulées uniquement dans ce navigateur : aucun serveur IA n’est contacté et aucun fichier envoyé ne quitte cet appareil.',
+                  'Datos ficticios y acciones simuladas solo en este navegador: no se contacta con ningún servidor de IA ni sale ningún archivo de este dispositivo.',
+                  'Fiktive Daten und ausschließlich im Browser simulierte Aktionen: Es wird kein KI-Server kontaktiert und keine hochgeladene Datei verlässt dieses Gerät.')}
               </span>
             </div>
             <button
@@ -299,7 +308,7 @@ export default function App() {
               onClick={() => window.location.reload()}
               className="btn-chill px-3 py-2 text-[11px] whitespace-nowrap"
             >
-              {lang === 'fr' ? 'Réinitialiser la démo' : 'Reset demo'}
+              {l(lang, 'Reset demo', 'Réinitialiser la démo', 'Restablecer demo', 'Demo zurücksetzen')}
             </button>
           </div>
         )}

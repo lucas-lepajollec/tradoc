@@ -37,7 +37,7 @@ async function request(path, options = {}) {
   });
   if (response.status === 401) notifyAuthenticationRequired();
   if (!response.ok) {
-    let message = `Erreur HTTP ${response.status}`;
+    let message = `HTTP error ${response.status}`;
     try {
       const payload = await response.json();
       message = payload.detail || payload.message || message;
@@ -142,7 +142,7 @@ export async function downloadJob(jobId) {
     headers: getAuthHeaders(),
   });
   if (!response.ok) {
-    let message = 'Le téléchargement a échoué.';
+    let message = 'The download failed.';
     try {
       message = (await response.json()).detail || message;
     } catch {

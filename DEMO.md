@@ -11,6 +11,7 @@ not connected to FastAPI, SQLite, an AI provider, or a credential store.
   in volatile memory so a demo export keeps the original container and extension;
 - provider keys and the application token are disabled;
 - simulated changes disappear on reload;
+- the interface language selector supports the same maintained English, French, Spanish, and German locales as the self-hosted product;
 - built-in Markdown and text previews are generated locally from fictional
   segments; imported PDF, EPUB, DOCX, Markdown, and TXT files are returned in
   their original format when no real translation exists;

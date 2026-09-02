@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { UploadCloud, BookOpen, Play, Pause, RefreshCw, Download, Trash2, ChevronRight, AlertCircle, Cpu, ArrowRight, TestTube, Layers, Globe, ArrowLeftRight } from 'lucide-react';
 import { uploadBook, startJob, pauseJob, retryJob, deleteJob, fetchJobs, fetchGlossaries, cloneJobForProofread, downloadJob, subscribeToEvents } from '../api';
-import { t, AVAILABLE_LANGUAGES } from '../i18n/translations';
+import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 
 const PROVIDER_NAMES = {
   openai: 'OpenAI',
@@ -97,7 +97,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
         setFile(f);
         setError(null);
       } else {
-        setError('Formats acceptés : EPUB, PDF, DOCX, MD et TXT.');
+        setError(l(lang, 'Accepted formats: EPUB, PDF, DOCX, MD, and TXT.', 'Formats acceptés : EPUB, PDF, DOCX, MD et TXT.', 'Formatos admitidos: EPUB, PDF, DOCX, MD y TXT.', 'Unterstützte Formate: EPUB, PDF, DOCX, MD und TXT.'));
       }
     }
   };
@@ -112,7 +112,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
       if (jobMode === 'proofreading' && proofreadSourceType === 'existing') {
         if (!selectedExistingJobId) {
-          setError('Veuillez sélectionner un livre existant dans la base.');
+          setError(l(lang, 'Select an existing document first.', 'Sélectionnez d’abord un document existant.', 'Selecciona primero un documento existente.', 'Wähle zuerst ein vorhandenes Dokument aus.'));
           setUploading(false);
           return;
         }
@@ -120,7 +120,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
         newJob = await cloneJobForProofread(selectedExistingJobId, chosenModel);
       } else {
         if (!file) {
-          setError('Veuillez sélectionner un fichier (EPUB, PDF, DOCX, MD, TXT).');
+          setError(l(lang, 'Select a file (EPUB, PDF, DOCX, MD, or TXT).', 'Sélectionnez un fichier (EPUB, PDF, DOCX, MD ou TXT).', 'Selecciona un archivo (EPUB, PDF, DOCX, MD o TXT).', 'Wähle eine Datei aus (EPUB, PDF, DOCX, MD oder TXT).'));
           setUploading(false);
           return;
         }
@@ -225,7 +225,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
   const handleDeleteJob = async (e, jobId, fileName) => {
     e.stopPropagation();
-    if (!window.confirm(`Supprimer définitivement le projet "${fileName}" ?`)) return;
+    if (!window.confirm(l(lang, `Permanently delete “${fileName}”?`, `Supprimer définitivement « ${fileName} » ?`, `¿Eliminar “${fileName}” de forma permanente?`, `„${fileName}“ endgültig löschen?`))) return;
     setJobs((prev) => prev.filter((j) => j.id !== jobId));
     deleteJob(jobId).catch(console.error);
   };
@@ -246,18 +246,18 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
       <header className="page-intro flex flex-col sm:flex-row sm:items-end justify-between gap-4">
         <div>
-          <p className="page-kicker">{lang === 'fr' ? 'Espace de traduction' : 'Translation workspace'}</p>
-          <h1>{lang === 'fr' ? 'Vos documents, fidèlement traduits.' : 'Your documents, faithfully translated.'}</h1>
-          <p>{lang === 'fr' ? 'Importez un ouvrage, choisissez vos langues et suivez chaque étape jusqu’à l’export.' : 'Import a document, choose your languages, and follow every step through export.'}</p>
+          <p className="page-kicker">{l(lang, 'Translation workspace', 'Espace de traduction', 'Espacio de traducción', 'Übersetzungsbereich')}</p>
+          <h1>{l(lang, 'Your documents, faithfully translated.', 'Vos documents, fidèlement traduits.', 'Tus documentos, traducidos con fidelidad.', 'Deine Dokumente, originalgetreu übersetzt.')}</h1>
+          <p>{l(lang, 'Import a document, choose your languages, and follow every step through export.', 'Importez un document, choisissez vos langues et suivez chaque étape jusqu’à l’export.', 'Importa un documento, elige los idiomas y sigue cada etapa hasta la exportación.', 'Importiere ein Dokument, wähle die Sprachen und begleite jeden Schritt bis zum Export.')}</p>
         </div>
         <div className="page-status-stack">
-          <div className="connection-pill active-jobs-pill" title={lang === 'fr' ? `${activeJobCount} projet(s) actuellement en cours` : `${activeJobCount} project(s) currently running`}>
+          <div className="connection-pill active-jobs-pill" title={l(lang, `${activeJobCount} ${activeJobCount === 1 ? 'project' : 'projects'} currently running`, `${activeJobCount} ${activeJobCount > 1 ? 'projets actuellement en cours' : 'projet actuellement en cours'}`, `${activeJobCount} ${activeJobCount === 1 ? 'proyecto en curso' : 'proyectos en curso'}`, `${activeJobCount} laufende${activeJobCount === 1 ? 's Projekt' : ' Projekte'}`)}>
             <span />
-            {activeJobCount} {lang === 'fr' ? (activeJobCount > 1 ? 'projets actifs' : 'projet actif') : (activeJobCount === 1 ? 'active project' : 'active projects')}
+            {activeJobCount} {l(lang, activeJobCount === 1 ? 'active project' : 'active projects', activeJobCount > 1 ? 'projets actifs' : 'projet actif', activeJobCount === 1 ? 'proyecto activo' : 'proyectos activos', activeJobCount === 1 ? 'aktives Projekt' : 'aktive Projekte')}
           </div>
           <div className={`connection-pill ${endpointStatus ? 'is-online' : 'is-offline'}`}>
             <span />
-            {endpointStatus ? (lang === 'fr' ? 'Service prêt' : 'Service ready') : (lang === 'fr' ? 'Service hors ligne' : 'Service offline')}
+            {endpointStatus ? l(lang, 'Service ready', 'Service prêt', 'Servicio listo', 'Dienst bereit') : l(lang, 'Service offline', 'Service hors ligne', 'Servicio sin conexión', 'Dienst offline')}
           </div>
         </div>
       </header>
@@ -339,7 +339,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-semibold text-[#888] uppercase tracking-wider flex items-center space-x-1.5">
                 <Globe className="w-3.5 h-3.5 text-[#60a5fa]" />
-                <span>{lang === 'fr' ? 'Langues du projet' : 'Project Languages'}</span>
+                <span>{l(lang, 'Project languages', 'Langues du projet', 'Idiomas del proyecto', 'Projektsprachen')}</span>
               </span>
               <span className="text-[11px] font-mono text-[#60a5fa] font-bold">
                 {sourceLang.toUpperCase()} ➔ {targetLang.toUpperCase()}
@@ -350,7 +350,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               {/* Source Language */}
               <div>
                 <label className="block text-[9px] text-[#666] uppercase font-bold mb-1">
-                  {lang === 'fr' ? 'Langue Source (Original)' : 'Source Language (Original)'}
+                  {l(lang, 'Source language (original)', 'Langue source (original)', 'Idioma de origen (original)', 'Ausgangssprache (Original)')}
                 </label>
                 <select
                   value={sourceLang}
@@ -359,7 +359,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                 >
                   {AVAILABLE_LANGUAGES.map((l) => (
                     <option key={l.code} value={l.code}>
-                      {l.flag} {lang === 'fr' ? l.label : l.labelEn}
+                      {l.flag} {languageLabel(l.code, lang)}
                     </option>
                   ))}
                 </select>
@@ -377,7 +377,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                     }
                   }}
                   className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-400 hover:text-white transition-all"
-                  title={lang === 'fr' ? 'Inverser les langues' : 'Swap languages'}
+                  title={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}
                 >
                   <ArrowLeftRight className="w-3.5 h-3.5" />
                 </button>
@@ -386,7 +386,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               {/* Target Language */}
               <div>
                 <label className="block text-[9px] text-[#666] uppercase font-bold mb-1">
-                  {lang === 'fr' ? 'Langue Cible (Traduction)' : 'Target Language (Translation)'}
+                  {l(lang, 'Target language (translation)', 'Langue cible (traduction)', 'Idioma de destino (traducción)', 'Zielsprache (Übersetzung)')}
                 </label>
                 <select
                   value={targetLang}
@@ -395,7 +395,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                 >
                   {AVAILABLE_LANGUAGES.filter(l => l.code !== 'auto').map((l) => (
                     <option key={l.code} value={l.code}>
-                      {l.flag} {lang === 'fr' ? l.label : l.labelEn}
+                      {l.flag} {languageLabel(l.code, lang)}
                     </option>
                   ))}
                 </select>
@@ -406,13 +406,13 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           {/* Proofreading Mode Sub-options (Select existing job vs upload new file) */}
           {jobMode === 'proofreading' && (
             <div className="proofreading-source-compact">
-              <span className="proofreading-source-label">{lang === 'fr' ? 'Document à relire' : 'Document to proofread'}</span>
+              <span className="proofreading-source-label">{l(lang, 'Document to proofread', 'Document à relire', 'Documento que revisar', 'Dokument zum Korrekturlesen')}</span>
               <div className="proofreading-source-toggle">
-                <button type="button" onClick={() => setProofreadSourceType('existing')} className={proofreadSourceType === 'existing' ? 'is-selected' : ''}><BookOpen />{lang === 'fr' ? 'Projet existant' : 'Existing project'}</button>
-                <button type="button" onClick={() => setProofreadSourceType('upload')} className={proofreadSourceType === 'upload' ? 'is-selected' : ''}><UploadCloud />{lang === 'fr' ? 'Nouveau fichier' : 'New file'}</button>
+                <button type="button" onClick={() => setProofreadSourceType('existing')} className={proofreadSourceType === 'existing' ? 'is-selected' : ''}><BookOpen />{l(lang, 'Existing project', 'Projet existant', 'Proyecto existente', 'Vorhandenes Projekt')}</button>
+                <button type="button" onClick={() => setProofreadSourceType('upload')} className={proofreadSourceType === 'upload' ? 'is-selected' : ''}><UploadCloud />{l(lang, 'New file', 'Nouveau fichier', 'Archivo nuevo', 'Neue Datei')}</button>
               </div>
-              {proofreadSourceType === 'existing' && <select value={selectedExistingJobId} onChange={(e) => setSelectedExistingJobId(e.target.value)}><option value="">{lang === 'fr' ? 'Sélectionner un projet…' : 'Select a project…'}</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.file_name} · {j.completed_chunks}/{j.total_chunks} · {j.status}</option>)}</select>}
-              {proofreadSourceType === 'upload' && <span className="proofreading-upload-hint">{lang === 'fr' ? 'Déposez le fichier dans la zone ci-dessous' : 'Drop the file in the area below'}</span>}
+              {proofreadSourceType === 'existing' && <select value={selectedExistingJobId} onChange={(e) => setSelectedExistingJobId(e.target.value)}><option value="">{l(lang, 'Select a project…', 'Sélectionner un projet…', 'Seleccionar un proyecto…', 'Projekt auswählen…')}</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.file_name} · {j.completed_chunks}/{j.total_chunks} · {j.status}</option>)}</select>}
+              {proofreadSourceType === 'upload' && <span className="proofreading-upload-hint">{l(lang, 'Drop the file in the area below', 'Déposez le fichier dans la zone ci-dessous', 'Suelta el archivo en la zona inferior', 'Lege die Datei im Bereich unten ab')}</span>}
             </div>
           )}
 
@@ -552,7 +552,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
           <button type="button" className="utility-panel sandbox-utility" onClick={() => setActiveTab('sandbox')}>
             <span className="utility-icon"><TestTube /></span>
-            <span className="utility-copy"><small>{t('dashboard.liveTester', lang)}</small><strong>{lang === 'fr' ? 'Tester une phrase avant de lancer un livre' : 'Test a sentence before starting a book'}</strong><span>{t('dashboard.liveTesterDesc', lang)}</span></span>
+            <span className="utility-copy"><small>{t('dashboard.liveTester', lang)}</small><strong>{l(lang, 'Test a sentence before starting a document', 'Testez une phrase avant de lancer un document', 'Prueba una frase antes de iniciar un documento', 'Teste einen Satz, bevor du ein Dokument startest')}</strong><span>{t('dashboard.liveTesterDesc', lang)}</span></span>
             <span className="utility-action-label">{t('dashboard.openSandbox', lang)}</span>
             <span className="utility-arrow"><ArrowRight /></span>
           </button>
@@ -620,7 +620,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                   {/* Progress bar */}
                   <div className="space-y-1.5">
                     <div className="flex justify-between text-[10px] font-medium">
-                      <span className="text-[#888]">{lang === 'fr' ? 'Progression' : 'Progress'}</span>
+                      <span className="text-[#888]">{l(lang, 'Progress', 'Progression', 'Progreso', 'Fortschritt')}</span>
                       <span className="text-[#60a5fa] font-semibold">{percent}% ({j.completed_chunks}/{j.total_chunks})</span>
                     </div>
                     <div className="w-full h-1.5 bg-black rounded-full overflow-hidden border border-white/[0.08]">
@@ -648,7 +648,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                           className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-md text-[10px] font-medium flex items-center space-x-1 transition-all"
                         >
                           <Play className="w-3 h-3 fill-blue-300 text-blue-300" />
-                          <span>{j.completed_chunks > 0 ? t('dashboard.resume', lang) : (lang === 'fr' ? 'Lancer' : 'Start')}</span>
+                          <span>{j.completed_chunks > 0 ? t('dashboard.resume', lang) : l(lang, 'Start', 'Lancer', 'Iniciar', 'Starten')}</span>
                         </button>
                       )}
 
@@ -662,11 +662,11 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                             : 'opacity-20 cursor-not-allowed'
                         }`}
                         title={isPartialExport
-                          ? (lang === 'fr' ? 'Télécharger un aperçu partiel' : 'Download partial preview')
-                          : (lang === 'fr' ? 'Télécharger la traduction finale' : 'Download final translation')}
+                          ? l(lang, 'Download partial preview', 'Télécharger un aperçu partiel', 'Descargar vista previa parcial', 'Teilvorschau herunterladen')
+                          : l(lang, 'Download final translation', 'Télécharger la traduction finale', 'Descargar traducción final', 'Endgültige Übersetzung herunterladen')}
                       >
                         <Download className="w-3 h-3" />
-                        <span>{isPartialExport ? (lang === 'fr' ? 'Aperçu' : 'Preview') : (lang === 'fr' ? 'Exporter' : 'Export')}</span>
+                        <span>{isPartialExport ? l(lang, 'Preview', 'Aperçu', 'Vista previa', 'Vorschau') : l(lang, 'Export', 'Exporter', 'Exportar', 'Exportieren')}</span>
                       </button>
                     </div>
 
