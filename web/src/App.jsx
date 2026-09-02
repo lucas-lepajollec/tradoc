@@ -62,6 +62,8 @@ export default function App() {
 
   // App Language State (Default English)
   const [lang, setLang] = useState(() => {
+    const requestedLang = new URLSearchParams(window.location.search).get('lang');
+    if (INTERFACE_LANGUAGES.includes(requestedLang)) return requestedLang;
     const savedLang = localStorage.getItem('tradoc_lang');
     return INTERFACE_LANGUAGES.includes(savedLang) ? savedLang : 'en';
   });
@@ -73,6 +75,7 @@ export default function App() {
   };
 
   useEffect(() => {
+    localStorage.setItem('tradoc_lang', lang);
     document.documentElement.lang = lang;
     document.title = t('meta.title', lang);
     document.querySelector('meta[name="description"]')?.setAttribute('content', t('meta.description', lang));

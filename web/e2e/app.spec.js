@@ -59,3 +59,10 @@ for (const locale of [
     await expect(page.getByRole('heading', { name: locale.heading })).toBeVisible();
   });
 }
+
+test('accepts a locale passed by the public landing page', async ({ page }) => {
+  await page.goto('/?lang=de');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+  await expect(page.getByRole('heading', { name: 'Deine Dokumente, originalgetreu übersetzt.' })).toBeVisible();
+  await expect.poll(() => page.evaluate(() => localStorage.getItem('tradoc_lang'))).toBe('de');
+});
