@@ -516,7 +516,9 @@ export default function Settings({
                       type="button"
                       onClick={() => setShowApiKey(!showApiKey)}
                       className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                      title={showApiKey ? "Masquer la clé" : "Afficher la clé"}
+                      title={showApiKey
+                        ? l(lang, 'Hide API key', 'Masquer la clé API', 'Ocultar la clave API', 'API-Schlüssel ausblenden')
+                        : l(lang, 'Show API key', 'Afficher la clé API', 'Mostrar la clave API', 'API-Schlüssel anzeigen')}
                     >
                       {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                     </button>
@@ -571,7 +573,13 @@ export default function Settings({
                   <Sliders className="w-4 h-4 text-[#60a5fa]" />
                   <span>{t('settings.tabTranslation', lang)}</span>
                 </h2>
-                <p className="text-xs text-[#888] mt-0.5">Configure default languages, segment sizes, LLM temperature, concurrency, and editorial passes.</p>
+                <p className="text-xs text-[#888] mt-0.5">{l(
+                  lang,
+                  'Configure default languages, segment sizes, LLM temperature, concurrency, and editorial passes.',
+                  'Configurez les langues par défaut, la taille des segments, la température du LLM, la concurrence et les passes éditoriales.',
+                  'Configura los idiomas predeterminados, el tamaño de los segmentos, la temperatura del LLM, la concurrencia y las pasadas editoriales.',
+                  'Konfiguriere Standardsprachen, Segmentgrößen, LLM-Temperatur, Parallelität und redaktionelle Durchgänge.',
+                )}</p>
               </div>
 
               {/* Default Languages Configuration Box */}
@@ -656,8 +664,8 @@ export default function Settings({
                     className="w-full accent-[#2563eb] mt-2"
                   />
                   <div className="segment-size-advice">
-                    <span><i />Local : 500–2 500 <b>1 000 recommandé</b></span>
-                    <span><i />Cloud : 2 500–10 000 <b>7 000 recommandé</b></span>
+                    <span><i />{l(lang, 'Local: 500–2,500', 'Local : 500–2 500', 'Local: 500–2.500', 'Lokal: 500–2.500')} <b>{l(lang, '1,000 recommended', '1 000 recommandé', '1.000 recomendado', '1.000 empfohlen')}</b></span>
+                    <span><i />{l(lang, 'Cloud: 2,500–10,000', 'Cloud : 2 500–10 000', 'Nube: 2.500–10.000', 'Cloud: 2.500–10.000')} <b>{l(lang, '7,000 recommended', '7 000 recommandé', '7.000 recomendado', '7.000 empfohlen')}</b></span>
                   </div>
                 </div>
 
@@ -718,7 +726,7 @@ export default function Settings({
                       onChange={(e) => handlePromptPresetChange(e.target.value)}
                       className="input-chill px-3 py-1 text-xs text-zinc-200"
                     >
-                      <option value="literary">Literary Default Prompt</option>
+                      <option value="literary">{l(lang, 'Literary default prompt', 'Prompt littéraire par défaut', 'Prompt literario predeterminado', 'Standardprompt für literarische Texte')}</option>
                       {Object.keys(customPromptPresets).map((k) => (
                         <option key={k} value={k}>{k}</option>
                       ))}
@@ -777,7 +785,7 @@ export default function Settings({
               <section className="global-settings-section">
                 <div className="global-section-copy">
                   <div>
-                    <span className="section-eyebrow">Interface</span>
+                    <span className="section-eyebrow">{l(lang, 'Interface', 'Interface', 'Interfaz', 'Oberfläche')}</span>
                     <h3>{t('settings.languageTitle', lang)}</h3>
                     <p>{t('settings.languageDesc', lang)}</p>
                   </div>
@@ -866,7 +874,7 @@ export default function Settings({
                     return (
                       <article key={preset.id} className={`settings-preset-card ${isActive ? 'is-active' : ''}`}>
                         <header>
-                          <div><small>Configuration</small><strong title={preset.name}>{preset.name}</strong></div>
+                          <div><small>{l(lang, 'Configuration', 'Configuration', 'Configuración', 'Konfiguration')}</small><strong title={preset.name}>{preset.name}</strong></div>
                           <span className={`preset-state ${isActive ? 'is-active' : ''}`}><i />{isActive ? t('settings.activeBadge', lang) : l(lang, 'Available', 'Disponible', 'Disponible', 'Verfügbar')}</span>
                         </header>
                         <dl>

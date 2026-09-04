@@ -296,7 +296,7 @@ export const translations = {
     nav: {
       appName: 'TraDoc',
       appSubtitle: 'Traduction Littéraire IA',
-      projects: 'Dashboard',
+      projects: 'Tableau de bord',
       inspector: 'Inspecteur & Suivi',
       vram: 'Estimateur',
       sandbox: 'Test',
@@ -523,7 +523,7 @@ export const translations = {
       savedPresetsList: 'Presets de Config Enregistrés',
       activatePresetBtn: 'Activer',
       activeBadge: 'ACTIF',
-      deletePresetBtn: 'Delete Preset',
+      deletePresetBtn: 'Supprimer le preset',
       confirmDeletePreset: 'Supprimer le profil preset "{name}" ?',
       
       saveAllSettings: 'Enregistrer la Configuration',
