@@ -1,9 +1,22 @@
 import { test, expect } from '@playwright/test';
 
+let serverLanguage = 'en';
 
 test.beforeEach(async ({ page }) => {
+  serverLanguage = 'en';
   await page.route('**/api/**', async (route) => {
     const url = new URL(route.request().url());
+    if (url.pathname === '/api/settings/interface') {
+      if (route.request().method() === 'PUT') {
+        const payload = route.request().postDataJSON();
+        if (['en', 'fr', 'es', 'de'].includes(payload?.language)) serverLanguage = payload.language;
+      }
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ language: serverLanguage }),
+      });
+    }
     if (url.pathname === '/api/events') {
       return route.fulfill({ status: 200, contentType: 'text/event-stream', body: 'data: {"type":"connected"}\n\n' });
     }
@@ -52,8 +65,7 @@ for (const locale of [
   { code: 'de', title: /Strukturierte Dokumentübersetzung/, heading: 'Deine Dokumente, originalgetreu übersetzt.' },
 ]) {
   test(`loads the complete ${locale.code} interface contract`, async ({ page }) => {
-    await page.evaluate((code) => localStorage.setItem('tradoc_lang', code), locale.code);
-    await page.reload();
+    await page.goto(`/?lang=${locale.code}`);
     await expect(page.locator('html')).toHaveAttribute('lang', locale.code);
     await expect(page).toHaveTitle(locale.title);
     await expect(page.getByRole('heading', { name: locale.heading })).toBeVisible();
@@ -64,5 +76,24 @@ test('accepts a locale passed by the public landing page', async ({ page }) => {
   await page.goto('/?lang=de');
   await expect(page.locator('html')).toHaveAttribute('lang', 'de');
   await expect(page.getByRole('heading', { name: 'Deine Dokumente, originalgetreu übersetzt.' })).toBeVisible();
-  await expect.poll(() => page.evaluate(() => localStorage.getItem('tradoc_lang'))).toBe('de');
+  expect(await page.evaluate(() => localStorage.getItem('tradoc_lang'))).toBeNull();
+
+  await page.goto('/');
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en');
+});
+
+test('persists the real app language through server settings', async ({ page }) => {
+  await page.getByRole('button', { name: /^Settings$/i }).click();
+  await page.getByRole('button', { name: /^Global & Language$/i }).click();
+
+  const saveRequest = page.waitForRequest((request) => (
+    new URL(request.url()).pathname === '/api/settings/interface'
+      && request.method() === 'PUT'
+  ));
+  await page.getByRole('button', { name: /Deutsch/ }).click();
+  await saveRequest;
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
+
+  await page.reload();
+  await expect(page.locator('html')).toHaveAttribute('lang', 'de');
 });
