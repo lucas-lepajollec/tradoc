@@ -37,7 +37,7 @@ async function request(path, options = {}) {
   });
   if (response.status === 401) notifyAuthenticationRequired();
   if (!response.ok) {
-    let message = `Erreur HTTP ${response.status}`;
+    let message = `HTTP error ${response.status}`;
     try {
       const payload = await response.json();
       message = payload.detail || payload.message || message;
@@ -110,6 +110,14 @@ export function testTranslation(payload) {
 }
 
 export const fetchCredentialMetadata = () => request('/settings/credentials');
+export const fetchInterfaceSettings = () => request('/settings/interface');
+export function saveInterfaceLanguage(language) {
+  return request('/settings/interface', {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ language }),
+  });
+}
 export function saveProviderCredentials(provider, apiKey, endpoint) {
   const payload = { provider };
   if (apiKey !== undefined) payload.api_key = apiKey;
@@ -142,7 +150,7 @@ export async function downloadJob(jobId) {
     headers: getAuthHeaders(),
   });
   if (!response.ok) {
-    let message = 'Le téléchargement a échoué.';
+    let message = 'The download failed.';
     try {
       message = (await response.json()).detail || message;
     } catch {

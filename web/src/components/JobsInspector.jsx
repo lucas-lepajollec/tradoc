@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RefreshCw, Download, FileText, CheckCircle2, AlertTriangle, Terminal, ChevronRight, ChevronLeft, Clock, Copy, Check, Trash2, ArrowRight, Sparkles, Sliders } from 'lucide-react';
 import { fetchJobs, fetchJobDetail, fetchJobSegments, startJob, pauseJob, retryJob, deleteJob, updateJobConfig, downloadJob, subscribeToEvents } from '../api';
-import { AVAILABLE_LANGUAGES, t } from '../i18n/translations';
+import { l, languageLabel, localeTag, t } from '../i18n/translations';
 
 const readableSegment = (text = '') => text
   .replace(/<style[\s\S]*?<\/style>/gi, ' ')
@@ -502,7 +502,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
   const handleDeleteJob = async (e, jobId, fileName) => {
     if (e) e.stopPropagation();
-    if (!window.confirm(`Supprimer définitivement le projet "${fileName}" ?`)) return;
+    if (!window.confirm(l(lang, `Permanently delete “${fileName}”?`, `Supprimer définitivement « ${fileName} » ?`, `¿Eliminar “${fileName}” de forma permanente?`, `„${fileName}“ endgültig löschen?`))) return;
     
     try {
       await deleteJob(jobId);
@@ -532,7 +532,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
       await downloadJob(job.id);
     } catch (err) {
       console.error(err);
-      alert(err?.message || (lang === 'fr' ? 'Échec de la reconstruction ou du téléchargement.' : 'Failed to rebuild or download file.'));
+      alert(err?.message || l(lang, 'Failed to rebuild or download the file.', 'Échec de la reconstruction ou du téléchargement du fichier.', 'No se ha podido reconstruir o descargar el archivo.', 'Die Datei konnte nicht neu erstellt oder heruntergeladen werden.'));
     } finally {
       setIsDownloading(false);
     }
@@ -555,26 +555,28 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   };
 
   const calculateETA = () => {
-    if (!job || job.total_chunks === 0) return lang === 'fr' ? 'Calcul de la vitesse...' : 'Calculating speed...';
+    if (!job || job.total_chunks === 0) return l(lang, 'Calculating speed…', 'Calcul de la vitesse…', 'Calculando la velocidad…', 'Geschwindigkeit wird berechnet…');
     const isProofread = job.job_type === 'proofreading';
-    if (job.status === 'COMPLETED') return isProofread ? (lang === 'fr' ? 'Relecture terminée' : 'Proofreading completed') : (lang === 'fr' ? 'Traduction terminée' : 'Translation completed');
-    if (job.status === 'PENDING') return isProofread ? (lang === 'fr' ? 'En attente de relecture...' : 'Waiting for proofreading...') : (lang === 'fr' ? 'En attente du lancement...' : 'Waiting to start...');
-    if (job.status === 'PAUSED') return lang === 'fr' ? 'En pause' : 'Paused';
-    if (job.completed_chunks === 0) return isProofread ? (lang === 'fr' ? 'Démarrage de la relecture...' : 'Starting proofreading...') : (lang === 'fr' ? 'Démarrage de la traduction...' : 'Starting translation...');
+    if (job.status === 'COMPLETED') return isProofread ? l(lang, 'Proofreading completed', 'Relecture terminée', 'Revisión completada', 'Korrekturlesen abgeschlossen') : l(lang, 'Translation completed', 'Traduction terminée', 'Traducción completada', 'Übersetzung abgeschlossen');
+    if (job.status === 'PENDING') return isProofread ? l(lang, 'Waiting for proofreading…', 'En attente de relecture…', 'Esperando la revisión…', 'Warten auf Korrekturlesen…') : l(lang, 'Waiting to start…', 'En attente du lancement…', 'Esperando para iniciar…', 'Warten auf Start…');
+    if (job.status === 'PAUSED') return l(lang, 'Paused', 'En pause', 'En pausa', 'Pausiert');
+    if (job.completed_chunks === 0) return isProofread ? l(lang, 'Starting proofreading…', 'Démarrage de la relecture…', 'Iniciando la revisión…', 'Korrekturlesen wird gestartet…') : l(lang, 'Starting translation…', 'Démarrage de la traduction…', 'Iniciando la traducción…', 'Übersetzung wird gestartet…');
 
     const remaining = job.total_chunks - job.completed_chunks;
-    if (remaining <= 0) return isProofread ? (lang === 'fr' ? 'Relecture terminée' : 'Proofreading completed') : (lang === 'fr' ? 'Traduction terminée' : 'Translation completed');
+    if (remaining <= 0) return isProofread ? l(lang, 'Proofreading completed', 'Relecture terminée', 'Revisión completada', 'Korrekturlesen abgeschlossen') : l(lang, 'Translation completed', 'Traduction terminée', 'Traducción completada', 'Übersetzung abgeschlossen');
 
     const minHistory = 8;
     if (sessionStats.startTime && sessionStats.jobId === job.id && job.status === 'PROCESSING') {
       const completedInSession = job.completed_chunks - sessionStats.startCompletedCount;
       if (completedInSession < minHistory) {
-        return lang === 'fr'
-          ? `Calcul du temps restant (historique ${completedInSession}/${minHistory})...`
-          : `Calculating remaining time (history ${completedInSession}/${minHistory})...`;
+        return l(lang,
+          `Calculating remaining time (history ${completedInSession}/${minHistory})…`,
+          `Calcul du temps restant (historique ${completedInSession}/${minHistory})…`,
+          `Calculando el tiempo restante (historial ${completedInSession}/${minHistory})…`,
+          `Restzeit wird berechnet (Verlauf ${completedInSession}/${minHistory})…`);
       }
     } else {
-      return lang === 'fr' ? 'Calcul du temps restant...' : 'Calculating remaining time...';
+      return l(lang, 'Calculating remaining time…', 'Calcul du temps restant…', 'Calculando el tiempo restante…', 'Restzeit wird berechnet…');
     }
 
     const totalSeconds = Math.round(remaining * secondsPerChunk);
@@ -593,27 +595,25 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   const currentSegment = segments[selectedSegIndex] || segments[0];
   const failedCount = segments.filter((s) => s.status === 'FAILED').length;
   const overviewTitle = job?.file_name && job.file_name.length > 80 ? `${job.file_name.slice(0, 80)}…` : (job?.file_name || '');
-  const sourceLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === job?.source_lang);
-  const targetLanguage = AVAILABLE_LANGUAGES.find((item) => item.code === job?.target_lang);
-  const sourceLanguageName = sourceLanguage ? (lang === 'fr' ? sourceLanguage.label : sourceLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : job?.source_lang?.toUpperCase();
-  const targetLanguageName = targetLanguage ? (lang === 'fr' ? targetLanguage.label : targetLanguage.labelEn).replace(/\s*\([A-Z]+\)$/, '') : job?.target_lang?.toUpperCase();
+  const sourceLanguageName = job?.source_lang ? languageLabel(job.source_lang, lang).replace(/\s*\([A-Z]+\)$/, '') : '';
+  const targetLanguageName = job?.target_lang ? languageLabel(job.target_lang, lang).replace(/\s*\([A-Z]+\)$/, '') : '';
   const sourceTokenCount = currentSegment ? (currentSegment.tokens_est || estimateTokens(currentSegment.original_text)) : 0;
   const targetTokenCount = currentSegment?.translated_text ? estimateTokens(currentSegment.translated_text) : 0;
   const displayedSourceText = currentSegment ? (showRawSegments ? currentSegment.original_text : readableSegment(currentSegment.original_text)) : '';
   const displayedTargetText = currentSegment?.translated_text ? (showRawSegments ? currentSegment.translated_text : readableSegment(currentSegment.translated_text)) : '';
   const segmentStatusLabel = currentSegment?.status === 'DONE'
-    ? (job?.job_type === 'proofreading' ? (lang === 'fr' ? 'Relu' : 'Proofread') : (lang === 'fr' ? 'Traduit' : 'Translated'))
+    ? (job?.job_type === 'proofreading' ? l(lang, 'Proofread', 'Relu', 'Revisado', 'Korrekturgelesen') : l(lang, 'Translated', 'Traduit', 'Traducido', 'Übersetzt'))
     : currentSegment?.status === 'FAILED'
       ? t('dashboard.failed', lang)
       : currentSegment?.status === 'PROCESSING'
         ? t('dashboard.processing', lang)
-        : (lang === 'fr' ? 'En attente' : 'Pending');
+        : l(lang, 'Pending', 'En attente', 'Pendiente', 'Ausstehend');
   const activeJobCount = jobs.filter((item) => item.status === 'PROCESSING').length;
   const canExport = Boolean(job && (job.status === 'COMPLETED' || job.completed_chunks > 0));
   const isPartialExport = Boolean(job && job.status !== 'COMPLETED');
   const exportLabel = isPartialExport
-    ? (lang === 'fr' ? 'Exporter l’aperçu' : 'Export preview')
-    : (lang === 'fr' ? 'Exporter' : 'Export');
+    ? l(lang, 'Export preview', 'Exporter l’aperçu', 'Exportar vista previa', 'Vorschau exportieren')
+    : l(lang, 'Export', 'Exporter', 'Exportar', 'Exportieren');
 
   useEffect(() => {
     if (!job?.id || !currentSegment) return;
@@ -635,18 +635,16 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
       <header className="page-intro page-intro-with-status">
         <div>
-          <p className="page-kicker">{lang === 'fr' ? 'Atelier éditorial' : 'Editorial workspace'}</p>
-          <h1>{lang === 'fr' ? 'Inspection et révision' : 'Inspect and review'}</h1>
-          <p>{lang === 'fr' ? 'Comparez les segments, contrôlez la progression et préparez une traduction prête à publier.' : 'Compare segments, monitor progress, and prepare a translation ready to publish.'}</p>
+          <p className="page-kicker">{l(lang, 'Editorial workspace', 'Atelier éditorial', 'Espacio editorial', 'Redaktioneller Arbeitsbereich')}</p>
+          <h1>{l(lang, 'Inspect and review', 'Inspection et révision', 'Inspección y revisión', 'Prüfen und überarbeiten')}</h1>
+          <p>{l(lang, 'Compare segments, monitor progress, and prepare a translation ready to publish.', 'Comparez les segments, contrôlez la progression et préparez une traduction prête à publier.', 'Compara segmentos, supervisa el progreso y prepara una traducción lista para publicar.', 'Vergleiche Segmente, überwache den Fortschritt und bereite eine veröffentlichungsreife Übersetzung vor.')}</p>
         </div>
         <div
           className="connection-pill active-jobs-pill"
-          title={lang === 'fr' ? 'Projets actuellement en cours de traduction' : 'Projects currently translating'}
+          title={l(lang, 'Projects currently running', 'Projets actuellement en cours', 'Proyectos actualmente en curso', 'Derzeit laufende Projekte')}
         >
           <span />
-          {activeJobCount} {lang === 'fr'
-            ? (activeJobCount > 1 ? 'projets en cours' : 'projet en cours')
-            : (activeJobCount === 1 ? 'project running' : 'projects running')}
+          {activeJobCount} {l(lang, activeJobCount === 1 ? 'project running' : 'projects running', activeJobCount > 1 ? 'projets en cours' : 'projet en cours', activeJobCount === 1 ? 'proyecto en curso' : 'proyectos en curso', activeJobCount === 1 ? 'laufendes Projekt' : 'laufende Projekte')}
         </div>
       </header>
       
@@ -715,12 +713,12 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       {showDetails && (
                         <div className="project-detail-meta">
                           <span><small>ID</small>{job.id}</span>
-                          <span><small>{lang === 'fr' ? 'Glossaire' : 'Glossary'}</small>{job.glossary_name || (lang === 'fr' ? 'Aucun' : 'None')}</span>
-                          <span><small>{lang === 'fr' ? 'Segment' : 'Chunk'}</small>{job.chunk_size || 1000} tokens</span>
-                          <span><small>{lang === 'fr' ? 'Créé le' : 'Created'}</small>{new Date(job.created_at).toLocaleDateString()}</span>
+                          <span><small>{l(lang, 'Glossary', 'Glossaire', 'Glosario', 'Glossar')}</small>{job.glossary_name || l(lang, 'None', 'Aucun', 'Ninguno', 'Keines')}</span>
+                          <span><small>{l(lang, 'Segment', 'Segment', 'Segmento', 'Segment')}</small>{job.chunk_size || 1000} tokens</span>
+                          <span><small>{l(lang, 'Created', 'Créé le', 'Creado', 'Erstellt')}</small>{new Date(job.created_at).toLocaleDateString(localeTag(lang))}</span>
                         </div>
                       )}
-                      <button type="button" className="project-more" onClick={() => setShowDetails(!showDetails)}>{showDetails ? (lang === 'fr' ? 'Réduire' : 'Show less') : (lang === 'fr' ? 'Voir plus' : 'Show more')}</button>
+                      <button type="button" className="project-more" onClick={() => setShowDetails(!showDetails)}>{showDetails ? l(lang, 'Show less', 'Réduire', 'Ver menos', 'Weniger anzeigen') : l(lang, 'Show more', 'Voir plus', 'Ver más', 'Mehr anzeigen')}</button>
                     </div>
                   </div>
 
@@ -728,7 +726,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     {job.status === 'PROCESSING' ? (
                       <button type="button" onClick={handlePause} className="primary-action"><Pause />{t('dashboard.pause', lang)}</button>
                     ) : (
-                      <button type="button" onClick={handleStartResume} className="primary-action"><Play />{job.completed_chunks > 0 ? t('dashboard.resume', lang) : (lang === 'fr' ? 'Démarrer' : 'Start')}</button>
+                      <button type="button" onClick={handleStartResume} className="primary-action"><Play />{job.completed_chunks > 0 ? t('dashboard.resume', lang) : l(lang, 'Start', 'Démarrer', 'Iniciar', 'Starten')}</button>
                     )}
                     <button
                       type="button"
@@ -736,12 +734,12 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       disabled={isDownloading || !canExport}
                       className="secondary-action"
                       title={isPartialExport
-                        ? (lang === 'fr' ? 'Télécharger un instantané avec les segments déjà traduits' : 'Download a snapshot with completed translations')
-                        : (lang === 'fr' ? 'Télécharger la traduction finale' : 'Download final translation')}
+                        ? l(lang, 'Download a snapshot with completed segments', 'Télécharger un instantané avec les segments terminés', 'Descargar una instantánea con los segmentos completados', 'Momentaufnahme mit abgeschlossenen Segmenten herunterladen')
+                        : l(lang, 'Download final translation', 'Télécharger la traduction finale', 'Descargar la traducción final', 'Endgültige Übersetzung herunterladen')}
                     >
-                      {isDownloading ? <RefreshCw className="animate-spin" /> : <Download />}{isDownloading ? (lang === 'fr' ? 'Préparation' : 'Preparing') : exportLabel}
+                      {isDownloading ? <RefreshCw className="animate-spin" /> : <Download />}{isDownloading ? l(lang, 'Preparing', 'Préparation', 'Preparando', 'Wird vorbereitet') : exportLabel}
                     </button>
-                    <button type="button" onClick={() => setIsEditingConfig(!isEditingConfig)} className={`icon-action ${isEditingConfig ? 'is-active' : ''}`} title={lang === 'fr' ? 'Configuration' : 'Settings'}><Sliders /></button>
+                    <button type="button" onClick={() => setIsEditingConfig(!isEditingConfig)} className={`icon-action ${isEditingConfig ? 'is-active' : ''}`} title={l(lang, 'Settings', 'Configuration', 'Configuración', 'Einstellungen')}><Sliders /></button>
                   </div>
                 </div>
 
@@ -756,15 +754,15 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 </div>
 
                 <div className="overview-more-actions">
-                  <button type="button" onClick={handleRetryAndStart}><RefreshCw />{lang === 'fr' ? 'Relancer les échecs' : 'Retry failed'}</button>
-                  <button type="button" onClick={(e) => handleDeleteJob(e, job.id, job.file_name)} className="danger-link"><Trash2 />{lang === 'fr' ? 'Supprimer le projet' : 'Delete project'}</button>
+                  <button type="button" onClick={handleRetryAndStart}><RefreshCw />{l(lang, 'Retry failed segments', 'Relancer les segments en échec', 'Reintentar segmentos fallidos', 'Fehlgeschlagene Segmente wiederholen')}</button>
+                  <button type="button" onClick={(e) => handleDeleteJob(e, job.id, job.file_name)} className="danger-link"><Trash2 />{l(lang, 'Delete project', 'Supprimer le projet', 'Eliminar proyecto', 'Projekt löschen')}</button>
                 </div>
               </section>
 
               {isEditingConfig && job.status !== 'PROCESSING' && (
                 <form onSubmit={handleSaveJobConfig} className="project-config-card">
                   <div className="project-config-card-heading">
-                    <strong>{lang === 'fr' ? 'Configuration du projet' : 'Project configuration'}</strong>
+                    <strong>{l(lang, 'Project settings', 'Configuration du projet', 'Configuración del proyecto', 'Projekteinstellungen')}</strong>
                     <button
                       type="button"
                       className="project-config-global"
@@ -774,7 +772,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                         if (settings?.temperature !== undefined) setEditTemperature(settings.temperature);
                       }}
                     >
-                      {lang === 'fr' ? 'Utiliser les valeurs actuelles' : 'Use current values'}
+                      {l(lang, 'Use current values', 'Utiliser les valeurs actuelles', 'Usar valores actuales', 'Aktuelle Werte verwenden')}
                     </button>
                   </div>
 
@@ -792,15 +790,15 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       <input type="number" min="1" max="16" value={editConcurrency} onChange={(e) => setEditConcurrency(parseInt(e.target.value, 10) || 1)} />
                     </label>
                     <label>
-                      <span>{lang === 'fr' ? 'Température' : 'Temperature'} <b>{Number(editTemperature).toFixed(2)}</b></span>
+                      <span>{l(lang, 'Temperature', 'Température', 'Temperatura', 'Temperatur')} <b>{Number(editTemperature).toFixed(2)}</b></span>
                       <div className="project-temperature-control">
                         <input type="range" min="0" max="1" step="0.05" value={editTemperature} onChange={(e) => setEditTemperature(parseFloat(e.target.value))} />
                       </div>
                     </label>
                     <div className="project-config-card-actions">
-                      <button type="button" onClick={() => setIsEditingConfig(false)}>{lang === 'fr' ? 'Fermer' : 'Close'}</button>
+                      <button type="button" onClick={() => setIsEditingConfig(false)}>{l(lang, 'Close', 'Fermer', 'Cerrar', 'Schließen')}</button>
                       <button type="submit" disabled={savingConfig} className="primary-action">
-                        {savingConfig ? (lang === 'fr' ? 'Enregistrement…' : 'Saving…') : (lang === 'fr' ? 'Enregistrer' : 'Save')}
+                        {savingConfig ? l(lang, 'Saving…', 'Enregistrement…', 'Guardando…', 'Wird gespeichert…') : l(lang, 'Save', 'Enregistrer', 'Guardar', 'Speichern')}
                       </button>
                     </div>
                   </div>
@@ -838,7 +836,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
                       {failedCount > 0 && (
                         <span className="text-[#ff6369] font-mono text-xs font-semibold">
-                          ({failedCount} {lang === 'fr' ? 'échec' : 'failed'}{failedCount > 1 ? 's' : ''})
+                          ({failedCount} {l(lang, failedCount === 1 ? 'failure' : 'failures', failedCount > 1 ? 'échecs' : 'échec', failedCount === 1 ? 'fallo' : 'fallos', failedCount === 1 ? 'Fehler' : 'Fehler')})
                         </span>
                       )}
                     </div>
@@ -848,7 +846,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                   <div className="flex items-center space-x-3 flex-shrink-0 self-start sm:self-center">
                     {job.status === 'PROCESSING' ? (
                       <span className="text-[10px] text-[#666] italic font-mono">
-                        {lang === 'fr' ? '(Mettez en pause pour modifier la config)' : '(Pause job to edit config)'}
+                        {l(lang, '(Pause the project to edit its settings)', '(Mettez le projet en pause pour modifier sa configuration)', '(Pausa el proyecto para editar su configuración)', '(Pausiere das Projekt, um seine Einstellungen zu bearbeiten)')}
                       </span>
                     ) : (
                       <button
@@ -856,7 +854,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                         onClick={() => setIsEditingConfig(!isEditingConfig)}
                         className="text-xs font-medium text-[#60a5fa] hover:text-blue-300 transition-colors flex items-center space-x-1"
                       >
-                        <span>{isEditingConfig ? (lang === 'fr' ? 'Fermer Config' : 'Close Config') : (lang === 'fr' ? 'Modifier la config ➔' : 'Modify config ➔')}</span>
+                        <span>{isEditingConfig ? l(lang, 'Close settings', 'Fermer la configuration', 'Cerrar configuración', 'Einstellungen schließen') : l(lang, 'Edit settings ➔', 'Modifier la configuration ➔', 'Editar configuración ➔', 'Einstellungen bearbeiten ➔')}</span>
                       </button>
                     )}
                     <button
@@ -864,7 +862,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       onClick={() => setShowDetails(!showDetails)}
                       className="text-xs font-medium text-[#888] hover:text-white transition-colors flex items-center space-x-1"
                     >
-                      <span>{showDetails ? (lang === 'fr' ? 'Masquer Détails' : 'Hide Details') : (lang === 'fr' ? 'Détails' : 'Details')}</span>
+                      <span>{showDetails ? l(lang, 'Hide details', 'Masquer les détails', 'Ocultar detalles', 'Details ausblenden') : l(lang, 'Details', 'Détails', 'Detalles', 'Details')}</span>
                     </button>
                   </div>
                 </div>
@@ -876,22 +874,22 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       <span className="text-[#444]">ID :</span> <span className="text-zinc-300">{job.id}</span>
                     </div>
                     <div>
-                      <span className="text-[#444]">{lang === 'fr' ? 'Langues :' : 'Languages:'}</span> <span className="text-zinc-300">{job.source_lang.toUpperCase()} ➔ {job.target_lang.toUpperCase()}</span>
+                      <span className="text-[#444]">{l(lang, 'Languages:', 'Langues :', 'Idiomas:', 'Sprachen:')}</span> <span className="text-zinc-300">{job.source_lang.toUpperCase()} ➔ {job.target_lang.toUpperCase()}</span>
                     </div>
                     <div>
-                      <span className="text-[#444]">{lang === 'fr' ? 'Glossaire :' : 'Glossary:'}</span> <span className="text-zinc-300">{job.glossary_name || (lang === 'fr' ? 'Aucun' : 'None')}</span>
+                      <span className="text-[#444]">{l(lang, 'Glossary:', 'Glossaire :', 'Glosario:', 'Glossar:')}</span> <span className="text-zinc-300">{job.glossary_name || l(lang, 'None', 'Aucun', 'Ninguno', 'Keines')}</span>
                     </div>
                     <div>
-                      <span className="text-[#444]">{lang === 'fr' ? 'Taille chunk :' : 'Chunk size:'}</span> <span className="text-[#60a5fa]">{job.chunk_size || 1000} tokens</span>
+                      <span className="text-[#444]">{l(lang, 'Segment size:', 'Taille du segment :', 'Tamaño del segmento:', 'Segmentgröße:')}</span> <span className="text-[#60a5fa]">{job.chunk_size || 1000} tokens</span>
                     </div>
                     <div>
-                      <span className="text-[#444]">{lang === 'fr' ? 'Température :' : 'Temperature:'}</span> <span className="text-[#60a5fa]">{job.temperature !== undefined && job.temperature !== null ? Number(job.temperature).toFixed(2) : (settings?.temperature ? Number(settings.temperature).toFixed(2) : '1.50')}</span>
+                      <span className="text-[#444]">{l(lang, 'Temperature:', 'Température :', 'Temperatura:', 'Temperatur:')}</span> <span className="text-[#60a5fa]">{job.temperature !== undefined && job.temperature !== null ? Number(job.temperature).toFixed(2) : (settings?.temperature ? Number(settings.temperature).toFixed(2) : '1.50')}</span>
                     </div>
                     <div>
-                      <span className="text-[#444]">{lang === 'fr' ? 'Concurrence :' : 'Concurrency:'}</span> <span className="text-[#60a5fa]">{job.concurrency || settings?.concurrency || 1} req.</span>
+                      <span className="text-[#444]">{l(lang, 'Concurrency:', 'Concurrence :', 'Concurrencia:', 'Parallelität:')}</span> <span className="text-[#60a5fa]">{job.concurrency || settings?.concurrency || 1} req.</span>
                     </div>
                     <div>
-                      <span className="text-[#444]">{lang === 'fr' ? "Date d'import :" : 'Import date:'}</span> <span className="text-zinc-300">{new Date(job.created_at).toLocaleString()}</span>
+                      <span className="text-[#444]">{l(lang, 'Import date:', 'Date d’import :', 'Fecha de importación:', 'Importdatum:')}</span> <span className="text-zinc-300">{new Date(job.created_at).toLocaleString(localeTag(lang))}</span>
                     </div>
                   </div>
                 )}
@@ -901,7 +899,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                   <form onSubmit={handleSaveJobConfig} className="project-config-panel p-5 space-y-5 mt-2">
                     <div className="flex items-center justify-between border-b border-white/10 pb-2.5 flex-wrap gap-2">
                       <span className="text-xs font-semibold text-zinc-300 uppercase tracking-wider">
-                        {lang === 'fr' ? 'Modifier la Config du Projet' : 'Modify Project Configuration'}
+                        {l(lang, 'Edit project settings', 'Modifier la configuration du projet', 'Editar la configuración del proyecto', 'Projekteinstellungen bearbeiten')}
                       </span>
                       <button
                         type="button"
@@ -913,7 +911,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                         className="text-[10px] text-[#60a5fa] hover:underline font-mono flex items-center space-x-1"
                       >
                         <Sparkles className="w-3 h-3 text-[#60a5fa]" />
-                        <span>{lang === 'fr' ? 'Appliquer la config du Dashboard' : 'Apply Dashboard Config'}</span>
+                        <span>{l(lang, 'Apply dashboard settings', 'Appliquer la configuration du tableau de bord', 'Aplicar la configuración del panel', 'Dashboard-Einstellungen anwenden')}</span>
                       </button>
                     </div>
 
@@ -947,7 +945,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
 
                       <div>
                         <label className="block text-[10px] text-zinc-400 uppercase font-bold mb-1">
-                          Température <span className="text-[#60a5fa] font-mono">({editTemperature})</span>
+                          {l(lang, 'Temperature', 'Température', 'Temperatura', 'Temperatur')} <span className="text-[#60a5fa] font-mono">({editTemperature})</span>
                         </label>
                         <input
                           type="range"
@@ -967,14 +965,14 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                         onClick={() => setIsEditingConfig(false)}
                         className="px-3 py-1 text-xs text-zinc-400 hover:text-white transition-colors"
                       >
-                        {lang === 'fr' ? 'Annuler' : 'Cancel'}
+                        {l(lang, 'Cancel', 'Annuler', 'Cancelar', 'Abbrechen')}
                       </button>
                       <button
                         type="submit"
                         disabled={savingConfig}
                         className="btn-orange px-4 py-1.5 text-xs font-semibold"
                       >
-                        {savingConfig ? (lang === 'fr' ? 'Sauvegarde...' : 'Saving...') : (lang === 'fr' ? 'Enregistrer' : 'Save')}
+                        {savingConfig ? l(lang, 'Saving…', 'Enregistrement…', 'Guardando…', 'Wird gespeichert…') : l(lang, 'Save', 'Enregistrer', 'Guardar', 'Speichern')}
                       </button>
                     </div>
                   </form>
@@ -996,25 +994,25 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       className="btn-orange px-3.5 py-1.5 text-xs font-medium flex items-center space-x-1.5"
                     >
                       <Play className="w-3.5 h-3.5 fill-white" />
-                      <span>{job.completed_chunks > 0 ? t('dashboard.resume', lang) : (lang === 'fr' ? 'Démarrer' : 'Start')}</span>
+                      <span>{job.completed_chunks > 0 ? t('dashboard.resume', lang) : l(lang, 'Start', 'Démarrer', 'Iniciar', 'Starten')}</span>
                     </button>
                   )}
 
                   <button
                     onClick={handleRetryAndStart}
                     className="px-3 py-1.5 bg-[#ff6369]/10 text-[#ff6369] border border-[#ff6369]/20 rounded-lg text-xs font-medium hover:bg-[#ff6369]/20 flex items-center space-x-1.5 transition-colors"
-                    title={lang === 'fr' ? 'Réinitialise les échecs et relance' : 'Reset failed chunks and retry'}
+                    title={l(lang, 'Reset failed segments and retry', 'Réinitialiser les segments en échec et relancer', 'Restablecer los segmentos fallidos y reintentar', 'Fehlgeschlagene Segmente zurücksetzen und erneut versuchen')}
                   >
                     <RefreshCw className="w-3.5 h-3.5" />
-                    <span>{lang === 'fr' ? 'Relancer Échecs' : 'Retry Failed'}</span>
+                    <span>{l(lang, 'Retry failed', 'Relancer les échecs', 'Reintentar fallidos', 'Fehler wiederholen')}</span>
                   </button>
 
                   <button
                     onClick={handleDownload}
                     disabled={isDownloading || !canExport}
                     title={isPartialExport
-                      ? (lang === 'fr' ? 'Télécharger un instantané avec les segments déjà traduits' : 'Download a snapshot with completed translations')
-                      : (lang === 'fr' ? 'Télécharger la traduction finale' : 'Download final translation')}
+                      ? l(lang, 'Download a snapshot with completed segments', 'Télécharger un instantané avec les segments terminés', 'Descargar una instantánea con los segmentos completados', 'Momentaufnahme mit abgeschlossenen Segmenten herunterladen')
+                      : l(lang, 'Download final translation', 'Télécharger la traduction finale', 'Descargar la traducción final', 'Endgültige Übersetzung herunterladen')}
                     className={`px-3 py-1.5 rounded-lg text-xs font-medium inline-flex items-center space-x-1.5 transition-all border ${
                       isDownloading
                         ? 'bg-blue-500/10 text-blue-400 border-blue-500/30 cursor-wait'
@@ -1026,12 +1024,12 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     {isDownloading ? (
                       <>
                         <RefreshCw className="w-3.5 h-3.5 animate-spin text-[#60a5fa]" />
-                        <span>{lang === 'fr' ? 'Reconstruction...' : 'Rebuilding...'}</span>
+                        <span>{l(lang, 'Rebuilding…', 'Reconstruction…', 'Reconstruyendo…', 'Wird neu erstellt…')}</span>
                       </>
                     ) : (
                       <>
                         <Download className="w-3.5 h-3.5" />
-                        <span>{isPartialExport ? (lang === 'fr' ? 'Aperçu' : 'Preview') : (lang === 'fr' ? 'Télécharger' : 'Download')}</span>
+                        <span>{isPartialExport ? l(lang, 'Preview', 'Aperçu', 'Vista previa', 'Vorschau') : l(lang, 'Download', 'Télécharger', 'Descargar', 'Herunterladen')}</span>
                       </>
                     )}
                   </button>
@@ -1053,7 +1051,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       <span className="font-mono text-zinc-300">{calculateETA()}</span>
                     </div>
                     <div className="text-[#888]">
-                      {lang === 'fr' ? 'Avancement :' : 'Progress:'} <span className="text-white font-bold">{Math.round((job.completed_chunks / (job.total_chunks || 1)) * 100)}%</span> <span className="text-[#666] font-mono">({job.completed_chunks}/{job.total_chunks})</span>
+                      {l(lang, 'Progress:', 'Avancement :', 'Progreso:', 'Fortschritt:')} <span className="text-white font-bold">{Math.round((job.completed_chunks / (job.total_chunks || 1)) * 100)}%</span> <span className="text-[#666] font-mono">({job.completed_chunks}/{job.total_chunks})</span>
                     </div>
                   </div>
                   <div className="w-full h-1 bg-black rounded-full overflow-hidden border border-white/[0.08]">
@@ -1071,7 +1069,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                   <div className="segment-workbench-title">
                     <FileText />
                     <div>
-                      <span>{lang === 'fr' ? 'Atelier de traduction' : 'Translation workspace'}</span>
+                      <span>{l(lang, 'Translation workspace', 'Atelier de traduction', 'Espacio de traducción', 'Übersetzungsbereich')}</span>
                       <h3>{t('inspector.title', lang)}</h3>
                     </div>
                   </div>
@@ -1084,7 +1082,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       aria-pressed={showRawSegments}
                     >
                       <span className="segment-toggle-track"><i /></span>
-                      <span>{lang === 'fr' ? 'Texte brut' : 'Raw text'}</span>
+                      <span>{l(lang, 'Raw text', 'Texte brut', 'Texto sin formato', 'Rohtext')}</span>
                     </button>
 
                     <div className="flex items-center space-x-2 flex-wrap">
@@ -1094,7 +1092,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                           onClick={handleResync}
                           className="px-2 py-0.5 text-[9px] font-semibold bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#60a5fa] rounded-md transition-all flex-shrink-0"
                         >
-                          {lang === 'fr' ? 'Resynchroniser' : 'Resync'}
+                          {l(lang, 'Resync', 'Resynchroniser', 'Resincronizar', 'Neu synchronisieren')}
                         </button>
                       )}
 
@@ -1102,7 +1100,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                         disabled={selectedSegIndex <= 0}
                         onClick={() => { setSelectedSegIndex((prev) => Math.max(0, prev - 1)); setAutoScroll(false); }}
                         className="text-zinc-400 hover:text-white disabled:opacity-20 transition-colors p-1"
-                        aria-label={lang === 'fr' ? 'Segment précédent' : 'Previous segment'}
+                        aria-label={l(lang, 'Previous segment', 'Segment précédent', 'Segmento anterior', 'Vorheriges Segment')}
                       >
                         <ChevronLeft className="w-4 h-4" />
                       </button>
@@ -1112,7 +1110,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                           type="text"
                           value={jumpInput}
                           onChange={(e) => setJumpInput(e.target.value)}
-                          aria-label={lang === 'fr' ? 'Numéro du segment' : 'Segment number'}
+                          aria-label={l(lang, 'Segment number', 'Numéro du segment', 'Número de segmento', 'Segmentnummer')}
                           className="w-10 bg-transparent border-b border-white/10 hover:border-white/30 focus:border-[#2563eb] text-center text-xs font-mono text-white outline-none pb-0.5"
                         />
                         <span className="text-xs text-zinc-500 font-mono">/ {segments.length}</span>
@@ -1122,7 +1120,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                         disabled={selectedSegIndex >= segments.length - 1}
                         onClick={() => { setSelectedSegIndex((prev) => Math.min(segments.length - 1, prev + 1)); setAutoScroll(false); }}
                         className="text-[#888] hover:text-white disabled:opacity-20 transition-colors p-1"
-                        aria-label={lang === 'fr' ? 'Segment suivant' : 'Next segment'}
+                        aria-label={l(lang, 'Next segment', 'Segment suivant', 'Segmento siguiente', 'Nächstes Segment')}
                       >
                         <ChevronRight className="w-4 h-4" />
                       </button>
@@ -1135,25 +1133,25 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     <section className="translation-pane source-pane">
                       <header className="translation-pane-header">
                         <div className="translation-language">
-                          <span>{lang === 'fr' ? 'Texte source' : 'Source text'}</span>
+                          <span>{l(lang, 'Source text', 'Texte source', 'Texto de origen', 'Ausgangstext')}</span>
                           <strong>{sourceLanguageName}<small>{job.source_lang.toUpperCase()}</small></strong>
                         </div>
                         <div className="translation-pane-meta">
-                          <span className="translation-token-count">{sourceTokenCount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens envoyés' : 'tokens sent'}</span>
+                          <span className="translation-token-count">{sourceTokenCount.toLocaleString(localeTag(lang))} {l(lang, 'tokens sent', 'tokens envoyés', 'tokens enviados', 'gesendete Tokens')}</span>
                         </div>
                       </header>
                       <div className="document-text">
                         {displayedSourceText}
                       </div>
                       <footer className="translation-pane-footer">
-                        <span>{displayedSourceText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+                        <span>{displayedSourceText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</span>
                       </footer>
                     </section>
 
                     <section className="translation-pane target-pane">
                       <header className="translation-pane-header">
                         <div className="translation-language">
-                          <span>{job.job_type === 'proofreading' ? (lang === 'fr' ? 'Texte relu' : 'Proofread text') : (lang === 'fr' ? 'Traduction' : 'Translation')}</span>
+                          <span>{job.job_type === 'proofreading' ? l(lang, 'Proofread text', 'Texte relu', 'Texto revisado', 'Korrekturgelesener Text') : l(lang, 'Translation', 'Traduction', 'Traducción', 'Übersetzung')}</span>
                           <strong>{targetLanguageName}<small>{job.target_lang.toUpperCase()}</small></strong>
                         </div>
                         <div className="translation-pane-meta">
@@ -1161,7 +1159,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                             <i />
                             {segmentStatusLabel}
                           </span>
-                          <span className="translation-token-count">{targetTokenCount.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'tokens reçus' : 'tokens received'}</span>
+                          <span className="translation-token-count">{targetTokenCount.toLocaleString(localeTag(lang))} {l(lang, 'tokens received', 'tokens reçus', 'tokens recibidos', 'empfangene Tokens')}</span>
                           {currentSegment.translated_text && (
                           <button
                             type="button"
@@ -1177,17 +1175,17 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       <div className={`document-text ${currentSegment.translated_text ? '' : 'is-empty'}`}>
                         {currentSegment.translated_text ? displayedTargetText : (
                           <span className="translation-empty">
-                            {job.job_type === 'proofreading' ? (lang === 'fr' ? 'En attente de relecture...' : 'Waiting for proofreading...') : (lang === 'fr' ? 'En attente de traduction...' : 'Waiting for translation...')}
+                            {job.job_type === 'proofreading' ? l(lang, 'Waiting for proofreading…', 'En attente de relecture…', 'Esperando la revisión…', 'Warten auf Korrekturlesen…') : l(lang, 'Waiting for translation…', 'En attente de traduction…', 'Esperando la traducción…', 'Warten auf Übersetzung…')}
                           </span>
                         )}
                       </div>
                       <footer className="translation-pane-footer">
-                        <span>{displayedTargetText.length.toLocaleString(lang === 'fr' ? 'fr-FR' : 'en-US')} {lang === 'fr' ? 'caractères' : 'characters'}</span>
+                        <span>{displayedTargetText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</span>
                       </footer>
                     </section>
                   </div>
                 ) : (
-                  <div className="segment-loading">{lang === 'fr' ? 'Chargement...' : 'Loading...'}</div>
+                  <div className="segment-loading">{l(lang, 'Loading…', 'Chargement…', 'Cargando…', 'Wird geladen…')}</div>
                 )}
               </div>
 
@@ -1213,20 +1211,20 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
               <Terminal className="w-3.5 h-3.5 text-white" />
               <span>{t('inspector.liveSseLogs', lang)} ({logs.length})</span>
             </div>
-            <span className="text-[10px] text-[#666] font-mono">{showConsole ? (lang === 'fr' ? 'Masquer' : 'Hide') : (lang === 'fr' ? 'Afficher' : 'Show')}</span>
+            <span className="text-[10px] text-[#666] font-mono">{showConsole ? l(lang, 'Hide', 'Masquer', 'Ocultar', 'Ausblenden') : l(lang, 'Show', 'Afficher', 'Mostrar', 'Anzeigen')}</span>
           </button>
 
           {showConsole && (
             <div className="bg-[#030303] p-4 border-t border-white/[0.08] font-mono text-xs text-[#888] h-44 overflow-y-auto space-y-1">
               {logs.length === 0 ? (
-                <span className="text-[#444]">// En attente d'événements...</span>
+                <span className="text-[#444]">// {l(lang, 'Waiting for events…', 'En attente d’événements…', 'Esperando eventos…', 'Warten auf Ereignisse…')}</span>
               ) : (
                 logs.map((log, idx) => (
                   <div key={idx} className="flex space-x-2">
                     <span className="text-[#444]">[{log.timestamp?.slice(11, 19)}]</span>
                     <span className="text-[#60a5fa]">[{log.type}]</span>
                     <span>
-                      Chunk #{log.chunk_index} {log.type === 'segment_completed' ? 'généré avec succès.' : log.error || ''}
+                      {l(lang, 'Segment', 'Segment', 'Segmento', 'Segment')} #{log.chunk_index} {log.type === 'segment_completed' ? l(lang, 'generated successfully.', 'généré avec succès.', 'generado correctamente.', 'erfolgreich erstellt.') : log.error || ''}
                     </span>
                   </div>
                 ))

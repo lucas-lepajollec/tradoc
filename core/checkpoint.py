@@ -158,6 +158,19 @@ class CheckpointDatabase:
             except sqlite3.IntegrityError:
                 logger.warning("Duplicate segment indexes found; uniqueness migration skipped")
 
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS app_settings (
+                    key TEXT PRIMARY KEY,
+                    value TEXT NOT NULL
+                )
+                """
+            )
+            conn.execute(
+                "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)",
+                ("ui_language", "en"),
+            )
+
             # A process that stopped mid-request leaves no reliable running worker.
             conn.execute("UPDATE jobs SET status = 'PAUSED' WHERE status = 'PROCESSING'")
             conn.execute("UPDATE segments SET status = 'PENDING' WHERE status = 'PROCESSING'")
@@ -180,6 +193,24 @@ class CheckpointDatabase:
         except (TypeError, json.JSONDecodeError):
             data["node_indices"] = []
         return SegmentRecord(**data)
+
+    async def get_app_setting(self, key: str, default: str) -> str:
+        def operation(conn: sqlite3.Connection) -> str:
+            row = conn.execute("SELECT value FROM app_settings WHERE key = ?", (key,)).fetchone()
+            return str(row["value"]) if row else default
+
+        return await self._run(operation)
+
+    async def set_app_setting(self, key: str, value: str) -> None:
+        def operation(conn: sqlite3.Connection) -> None:
+            conn.execute(
+                "INSERT INTO app_settings (key, value) VALUES (?, ?) "
+                "ON CONFLICT(key) DO UPDATE SET value = excluded.value",
+                (key, value),
+            )
+            conn.commit()
+
+        await self._run(operation)
 
     async def create_job(self, job: JobRecord, segments: List[SegmentRecord]) -> None:
         def operation(conn: sqlite3.Connection) -> None:

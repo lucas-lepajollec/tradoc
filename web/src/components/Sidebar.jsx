@@ -1,6 +1,6 @@
 import React from 'react';
 import { BookOpen, LayoutDashboard, Settings as SettingsIcon, BookMarked, Cpu, TestTube, X, Sliders, ChevronDown } from 'lucide-react';
-import { t } from '../i18n/translations';
+import { l, t } from '../i18n/translations';
 
 export default function Sidebar({
   activeTab,
@@ -18,7 +18,7 @@ export default function Sidebar({
 }) {
   const navGroups = [
     {
-      label: lang === 'fr' ? 'Traduire' : 'Translate',
+      label: l(lang, 'Translate', 'Traduire', 'Traducir', 'Übersetzen'),
       items: [
         { id: 'dashboard', label: t('nav.projects', lang), icon: LayoutDashboard },
         { id: 'jobs', label: t('nav.inspector', lang), icon: BookOpen },
@@ -26,7 +26,7 @@ export default function Sidebar({
       ]
     },
     {
-      label: lang === 'fr' ? 'Outils' : 'Tools',
+      label: l(lang, 'Tools', 'Outils', 'Herramientas', 'Werkzeuge'),
       items: [
         { id: 'glossary', label: t('nav.glossaries', lang), icon: BookMarked },
         { id: 'wizard', label: t('nav.vram', lang), icon: Cpu },
@@ -41,7 +41,7 @@ export default function Sidebar({
   };
 
   const activePresetName = presets.find((preset) => preset.id === activePresetId)?.name
-    || (lang === 'fr' ? 'Aucun preset' : 'No preset');
+    || l(lang, 'No profile', 'Aucun profil', 'Sin perfil', 'Kein Profil');
 
   const renderContent = (isMobile = false) => (
     <>
@@ -65,7 +65,7 @@ export default function Sidebar({
             <button
               onClick={onClose}
               className="p-1.5 text-zinc-400 hover:text-white rounded-xl hover:bg-white/5 transition-colors"
-              aria-label="Close menu"
+              aria-label={l(lang, 'Close menu', 'Fermer le menu', 'Cerrar menú', 'Menü schließen')}
             >
               <X className="w-4 h-4" />
             </button>
@@ -101,9 +101,9 @@ export default function Sidebar({
       {/* Bottom: active preset and model */}
       <div className="sidebar-tools">
         <div className="sidebar-runtime-heading">
-          <span>{lang === 'fr' ? 'Configuration active' : 'Active configuration'}</span>
+          <span>{l(lang, 'Active configuration', 'Configuration active', 'Configuración activa', 'Aktive Konfiguration')}</span>
           <span className={`sidebar-service-state ${endpointStatus ? 'is-online' : ''}`}>
-            <i />{endpointStatus ? (lang === 'fr' ? 'Prêt' : 'Ready') : (lang === 'fr' ? 'Hors ligne' : 'Offline')}
+            <i />{endpointStatus ? l(lang, 'Ready', 'Prêt', 'Listo', 'Bereit') : l(lang, 'Offline', 'Hors ligne', 'Sin conexión', 'Offline')}
           </span>
         </div>
 
@@ -114,7 +114,7 @@ export default function Sidebar({
               <small>{t('nav.presetSelect', lang)}</small>
               <strong>{activePresetName}</strong>
               <select aria-label={t('nav.presetSelect', lang)} value={activePresetId || ''} onChange={(e) => onSelectPreset(e.target.value)}>
-                <option value="">{lang === 'fr' ? 'Aucun preset' : 'No preset'}</option>
+                <option value="">{l(lang, 'No profile', 'Aucun profil', 'Sin perfil', 'Kein Profil')}</option>
                 {presets.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
               </select>
             </span>
@@ -126,12 +126,12 @@ export default function Sidebar({
           <label className="sidebar-select-card">
             <span className="sidebar-select-icon"><Cpu /></span>
             <span className="sidebar-select-copy">
-              <small>{lang === 'fr' ? 'Modèle actif' : 'Active model'}</small>
-              <strong className="is-model">{currentModel || (lang === 'fr' ? 'Aucun modèle' : 'No model')}</strong>
-              <select aria-label={lang === 'fr' ? 'Modèle actif' : 'Active model'} value={currentModel} onChange={(e) => onSelectModel(e.target.value)}>
+              <small>{l(lang, 'Active model', 'Modèle actif', 'Modelo activo', 'Aktives Modell')}</small>
+              <strong className="is-model">{currentModel || l(lang, 'No model', 'Aucun modèle', 'Sin modelo', 'Kein Modell')}</strong>
+              <select aria-label={l(lang, 'Active model', 'Modèle actif', 'Modelo activo', 'Aktives Modell')} value={currentModel} onChange={(e) => onSelectModel(e.target.value)}>
                 {availableModels.length > 0
                   ? availableModels.map((m) => <option key={m} value={m}>{m}</option>)
-                  : <option value={currentModel}>{currentModel || (lang === 'fr' ? 'Aucun modèle' : 'No model')}</option>}
+                  : <option value={currentModel}>{currentModel || l(lang, 'No model', 'Aucun modèle', 'Sin modelo', 'Kein Modell')}</option>}
               </select>
             </span>
             <ChevronDown className="sidebar-select-chevron" />

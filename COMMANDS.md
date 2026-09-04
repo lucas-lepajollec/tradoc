@@ -1,80 +1,126 @@
-# Commandes TraDoc
+# TraDoc commands
 
-Ce guide complète le README avec les commandes utiles au développement et à
-l'exploitation. Toutes les commandes sont à lancer depuis la racine du dépôt,
-sauf indication contraire.
+This guide complements the README with reproducible development and operation commands for Windows, Linux and macOS. Run every command from the repository root unless stated otherwise.
 
-## Développement local
+## Requirements
 
-Installation initiale sous Windows :
+- Python 3.11 or newer
+- Node.js 22 and npm
+- Docker Engine with Compose v2 only for the container workflow
+
+## Initial installation
+
+Windows PowerShell:
 
 ```powershell
-python -m venv .venv
+py -3.11 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
-Set-Location web
-npm ci
-Set-Location ..
+npm --prefix web ci
 ```
 
-Lancement quotidien, limité à la machine locale :
+Linux / macOS:
+
+```bash
+python3 -m venv .venv
+./.venv/bin/python -m pip install -r requirements.txt
+npm --prefix web ci
+```
+
+The commands use the virtual environment's interpreter directly, so shell activation is optional.
+
+## Local development
+
+Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\python.exe main.py dev
 ```
 
-Options utiles :
+Linux / macOS:
 
-```powershell
-.\.venv\Scripts\python.exe main.py dev --api-port 8001 --web-port 2500
-.\.venv\Scripts\python.exe main.py dev --reload
+```bash
+./.venv/bin/python main.py dev
 ```
 
-Pour un test depuis un téléphone sur un réseau local de confiance :
+Open <http://127.0.0.1:2499>. The supervisor starts the API and Vite together, and `Ctrl+C` stops both.
+
+Useful options use the same arguments on every platform:
+
+```text
+main.py dev --api-port 8001 --web-port 2500
+main.py dev --reload
+```
+
+Prefix `main.py` with `.\.venv\Scripts\python.exe` on Windows or `./.venv/bin/python` on Linux/macOS.
+
+## Browser-only public demo
+
+This mode needs no Python backend and uses only fictional in-browser data:
+
+```shell
+npm --prefix web run dev:demo
+```
+
+Open <http://127.0.0.1:2505>.
+
+## Trusted-LAN development
+
+Use only on a trusted private network:
 
 ```powershell
 .\.venv\Scripts\python.exe main.py dev --lan
 ```
 
-Ce mode est volontairement sans authentification. Pour un réseau partagé,
-utilisez le mode sécurisé avec le `APP_SECRET` de `.env`. Copiez le secret sans
-l'afficher, collez-le dans **Paramètres > Général > Jeton d'application**, puis
-enregistrez :
-
-```powershell
-(Get-Content .env | Select-String '^APP_SECRET=').Line.Split('=', 2)[1] | Set-Clipboard
-.\.venv\Scripts\python.exe main.py dev --lan-secure
+```bash
+./.venv/bin/python main.py dev --lan
 ```
 
-Le mode LAN ne doit pas être utilisé sur un réseau public ou non fiable.
+This mode intentionally disables authentication. For a shared LAN, configure a strong `APP_SECRET`, use `main.py dev --lan-secure`, and paste the secret into **Settings → Global & Language → Application token** without printing or recording it. Never use either LAN mode on a public or untrusted network.
 
-## Serveur compilé
+## Production-style local server
 
-Après avoir généré le frontend :
+Build the frontend on every platform:
+
+```shell
+npm --prefix web run build
+```
+
+Then serve it with the backend.
+
+Windows PowerShell:
 
 ```powershell
-Set-Location web
-npm run build
-Set-Location ..
 .\.venv\Scripts\python.exe main.py serve
 ```
 
-Une écoute autre que localhost exige également un `APP_SECRET` fort :
+Linux / macOS:
 
-```powershell
-.\.venv\Scripts\python.exe main.py serve --host 0.0.0.0 --port 8000
+```bash
+./.venv/bin/python main.py serve
 ```
 
-## CLI de traduction
+Binding beyond localhost requires a strong `APP_SECRET`:
+
+```text
+main.py serve --host 0.0.0.0 --port 8000
+```
+
+## Translation CLI
 
 ```powershell
 .\.venv\Scripts\python.exe main.py translate --input .\livre.epub --model qwen3.5-9b --concurrent 2
 .\.venv\Scripts\python.exe main.py status
 ```
 
-La liste complète des options reste disponible avec :
+```bash
+./.venv/bin/python main.py translate --input ./book.epub --model qwen3.5-9b --concurrent 2
+./.venv/bin/python main.py status
+```
 
-```powershell
-.\.venv\Scripts\python.exe main.py translate --help
+List every translation option with:
+
+```text
+main.py translate --help
 ```
 
 ## Docker
@@ -85,15 +131,26 @@ docker compose logs -f tradoc
 docker compose down
 ```
 
-L'application utilise `data/tradoc.db`. Le dossier `data/` contient aussi les
-documents, sorties, glossaires et identifiants de fournisseurs ; sauvegardez-le
-avant toute maintenance.
+TraDoc stores its database and sensitive working material under `data/`. Back up that directory before maintenance, and never commit its documents, outputs, glossaries or provider data.
 
-## Contrôles avant contribution
+## Validation before contributing
+
+Windows PowerShell:
 
 ```powershell
 .\.venv\Scripts\python.exe -m unittest discover -s tests -v
-Set-Location web
-npm run build
-npm run test:e2e
+npm --prefix web run check:i18n
+npm --prefix web run build
+npm --prefix web run test:e2e
+npm --prefix web run check:demo
+```
+
+Linux / macOS:
+
+```bash
+./.venv/bin/python -m unittest discover -s tests -v
+npm --prefix web run check:i18n
+npm --prefix web run build
+npm --prefix web run test:e2e
+npm --prefix web run check:demo
 ```

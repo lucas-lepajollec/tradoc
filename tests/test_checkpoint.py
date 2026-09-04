@@ -47,6 +47,11 @@ class CheckpointTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(await self.db.delete_job(job.id))
         self.assertEqual(await self.db.get_segments(job.id), [])
 
+    async def test_app_settings_are_persisted(self):
+        self.assertEqual(await self.db.get_app_setting("ui_language", "fr"), "en")
+        await self.db.set_app_setting("ui_language", "de")
+        self.assertEqual(await self.db.get_app_setting("ui_language", "en"), "de")
+
 
 if __name__ == "__main__":
     unittest.main()
