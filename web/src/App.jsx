@@ -7,7 +7,7 @@ import Settings from './components/Settings';
 import GlossaryManager from './components/GlossaryManager';
 import TestSandboxModal from './components/TestSandboxModal';
 import SetupWizard from './components/SetupWizard';
-import { isDemoMode, testConnection } from './api';
+import { fetchInterfaceSettings, isDemoMode, saveInterfaceLanguage, testConnection } from './api';
 import { INTERFACE_LANGUAGES, l, t } from './i18n/translations';
 
 const DEFAULT_PRESETS = [];
@@ -64,22 +64,45 @@ export default function App() {
   const [lang, setLang] = useState(() => {
     const requestedLang = new URLSearchParams(window.location.search).get('lang');
     if (INTERFACE_LANGUAGES.includes(requestedLang)) return requestedLang;
-    const savedLang = localStorage.getItem('tradoc_lang');
-    return INTERFACE_LANGUAGES.includes(savedLang) ? savedLang : 'en';
+    if (isDemoMode) {
+      const savedLang = localStorage.getItem('tradoc_lang');
+      if (INTERFACE_LANGUAGES.includes(savedLang)) return savedLang;
+    }
+    return 'en';
   });
 
   const handleSetLang = (newLang) => {
     if (!INTERFACE_LANGUAGES.includes(newLang)) return;
     setLang(newLang);
-    localStorage.setItem('tradoc_lang', newLang);
+    if (isDemoMode) {
+      localStorage.setItem('tradoc_lang', newLang);
+      return;
+    }
+    saveInterfaceLanguage(newLang).catch(() => {
+      fetchInterfaceSettings()
+        .then(({ language }) => {
+          if (INTERFACE_LANGUAGES.includes(language)) setLang(language);
+        })
+        .catch(() => setLang('en'));
+    });
   };
 
   useEffect(() => {
-    localStorage.setItem('tradoc_lang', lang);
+    if (isDemoMode) localStorage.setItem('tradoc_lang', lang);
     document.documentElement.lang = lang;
     document.title = t('meta.title', lang);
     document.querySelector('meta[name="description"]')?.setAttribute('content', t('meta.description', lang));
   }, [lang]);
+
+  useEffect(() => {
+    const requestedLang = new URLSearchParams(window.location.search).get('lang');
+    if (isDemoMode || INTERFACE_LANGUAGES.includes(requestedLang)) return;
+    fetchInterfaceSettings()
+      .then(({ language }) => {
+        if (INTERFACE_LANGUAGES.includes(language)) setLang(language);
+      })
+      .catch(() => {});
+  }, []);
 
   // Presets Management State
   const [presets, setPresets] = useState(() => {

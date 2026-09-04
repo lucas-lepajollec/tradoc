@@ -40,7 +40,7 @@ EPUB, PDF, DOCX, Markdown, and plain text share one project workflow with checkp
 - Glossaries for names, places, terminology, and project-specific rules.
 - Side-by-side inspection, inline project configuration, progress tracking, and SSE updates.
 - Provider profiles for local and remote OpenAI-compatible workflows.
-- English-first interface with maintained French, Spanish, and German translations; document translation supports a broader independent language set.
+- English-first interface with a server-persisted English, French, Spanish, or German preference; document translation supports a broader independent language set.
 - Reflowable EPUB export and an editorial 6×9 PDF reconstruction path.
 
 ## Quick start
@@ -99,6 +99,8 @@ Set `TRADOC_BIND_ADDRESS=0.0.0.0` only for deliberate trusted-LAN exposure and u
 
 Requirements: Python 3.11+, Node.js 22, and a local or remote model endpoint.
 
+Linux / macOS:
+
 ```bash
 git clone https://github.com/lucas-lepajollec/tradoc.git
 cd tradoc
@@ -109,7 +111,19 @@ npm --prefix web ci
 ./.venv/bin/python main.py dev
 ```
 
-On Windows, use `.\.venv\Scripts\python.exe` instead. Open `http://127.0.0.1:2499`.
+Windows PowerShell:
+
+```powershell
+git clone https://github.com/lucas-lepajollec/tradoc.git
+Set-Location tradoc
+Copy-Item .env.example .env
+py -3.11 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+npm --prefix web ci
+.\.venv\Scripts\python.exe main.py dev
+```
+
+Open `http://127.0.0.1:2499`. See [`COMMANDS.md`](COMMANDS.md) for the complete Windows, Linux and macOS command reference, including demo, LAN, validation and production-style workflows.
 
 Use `main.py dev --lan` only on a trusted network. On a shared network, configure an `APP_SECRET` of at least 24 characters and use `main.py dev --lan-secure`.
 

@@ -94,6 +94,32 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(response.json()["models"], ["model-a", "model-b"])
         self.assertEqual(fake_client.fetch_count, 1)
 
+    def test_interface_language_is_read_and_saved_server_side(self):
+        with patch("api.routes.db.get_app_setting", new=AsyncMock(return_value="de")):
+            response = self.client.get(
+                "/api/settings/interface",
+                headers={"X-App-Secret": "unit-test-secret"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"language": "de"})
+
+        with patch("api.routes.db.set_app_setting", new=AsyncMock()) as save:
+            response = self.client.put(
+                "/api/settings/interface",
+                headers={"X-App-Secret": "unit-test-secret"},
+                json={"language": "fr"},
+            )
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json(), {"language": "fr"})
+        save.assert_awaited_once_with("ui_language", "fr")
+
+        response = self.client.put(
+            "/api/settings/interface",
+            headers={"X-App-Secret": "unit-test-secret"},
+            json={"language": "it"},
+        )
+        self.assertEqual(response.status_code, 422)
+
     def test_active_job_download_returns_and_cleans_a_partial_snapshot(self):
         job = JobRecord(
             id="partial-api-job",

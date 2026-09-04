@@ -7,7 +7,7 @@ import re
 import shutil
 import uuid
 from pathlib import Path
-from typing import List, Optional
+from typing import List, Literal, Optional
 from urllib.parse import urlparse
 
 from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
@@ -110,6 +110,10 @@ class CredentialRequest(BaseModel):
     endpoint: Optional[str] = Field(default=None, max_length=2_000)
 
 
+class InterfaceSettingsRequest(BaseModel):
+    language: Literal["en", "fr", "es", "de"]
+
+
 def _provider_values(api_type: str, endpoint: Optional[str], api_key: Optional[str]) -> tuple[str, str]:
     provider = (api_type or settings.API_TYPE).strip().lower()
     resolved_endpoint = (endpoint or credential_store.get_endpoint(provider) or settings.LLM_ENDPOINT).strip()
@@ -160,6 +164,20 @@ async def _cancel_task(job_id: str) -> None:
 @router.get("/settings/credentials")
 async def credential_metadata():
     return credential_store.metadata()
+
+
+@router.get("/settings/interface")
+async def interface_settings():
+    language = await db.get_app_setting("ui_language", "en")
+    if language not in {"en", "fr", "es", "de"}:
+        language = "en"
+    return {"language": language}
+
+
+@router.put("/settings/interface")
+async def save_interface_settings(req: InterfaceSettingsRequest):
+    await db.set_app_setting("ui_language", req.language)
+    return {"language": req.language}
 
 
 @router.post("/settings/credentials")
