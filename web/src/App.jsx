@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { Menu } from 'lucide-react';
+import DemoExperience from './components/DemoExperience';
 import Sidebar from './components/Sidebar';
 import Dashboard from './components/Dashboard';
 import JobsInspector from './components/JobsInspector';
@@ -317,28 +318,6 @@ export default function App() {
           </button>
         </div>
 
-        {isDemoMode && (
-          <div className="mx-4 sm:mx-7 lg:mx-9 mt-5 rounded-2xl border border-blue-400/25 bg-blue-500/[0.08] px-4 py-3 text-xs text-blue-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <strong className="text-white">{l(lang, 'Interactive demo', 'Démonstration interactive', 'Demostración interactiva', 'Interaktive Demo')}</strong>
-              <span className="block mt-0.5 text-blue-100/70">
-                {l(lang,
-                  'Fictional data and browser-only simulated actions: no AI server is contacted and no uploaded file leaves this device.',
-                  'Données fictives et actions simulées uniquement dans ce navigateur : aucun serveur IA n’est contacté et aucun fichier envoyé ne quitte cet appareil.',
-                  'Datos ficticios y acciones simuladas solo en este navegador: no se contacta con ningún servidor de IA ni sale ningún archivo de este dispositivo.',
-                  'Fiktive Daten und ausschließlich im Browser simulierte Aktionen: Es wird kein KI-Server kontaktiert und keine hochgeladene Datei verlässt dieses Gerät.')}
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={() => window.location.reload()}
-              className="btn-chill px-3 py-2 text-[11px] whitespace-nowrap"
-            >
-              {l(lang, 'Reset demo', 'Réinitialiser la démo', 'Restablecer demo', 'Demo zurücksetzen')}
-            </button>
-          </div>
-        )}
-
         {/* Main Body */}
         <main className="workspace w-full max-w-[1380px] mx-auto px-4 sm:px-7 lg:px-9 pt-5 sm:pt-8 lg:pt-12 pb-14 lg:pb-20">
           {activeTab === 'dashboard' && (
@@ -409,6 +388,7 @@ export default function App() {
 
       </div>
 
+      {isDemoMode && <DemoExperience lang={lang} />}
     </div>
   );
 }
