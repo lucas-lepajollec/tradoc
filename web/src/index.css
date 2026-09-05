@@ -874,6 +874,27 @@ button { letter-spacing: -.005em; }
   .utility-provider-logo, .utility-action-label { display: none; }
 }
 
+.lh-demo-dialog:modal {
+  margin: auto;
+}
+
+.lh-demo-dialog::backdrop {
+  background: rgba(0, 0, 0, 0.72);
+}
+
+.lh-demo-dialog {
+  border-color: var(--border) !important;
+}
+
+.lh-demo-card,
+.lh-demo-limits {
+  border: 1px solid var(--border);
+}
+
+#lh-demo-title:focus {
+  outline: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; }
 }
