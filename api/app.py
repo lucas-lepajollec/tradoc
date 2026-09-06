@@ -141,13 +141,16 @@ if web_build_dir.exists():
     if assets_dir.is_dir():
         app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
 
+    # Resolve the deployment-owned file list once. Requests only select an
+    # existing key; no request-controlled value reaches a filesystem API.
+    spa_files = {
+        file.relative_to(web_build_dir).as_posix(): file
+        for file in web_build_dir.rglob("*")
+        if file.is_file() and file.name != "index.html"
+    }
+    spa_index = web_build_dir / "index.html"
+
     @app.get("/{full_path:path}", include_in_schema=False)
     async def serve_spa(full_path: str):
-        target = (web_build_dir / full_path).resolve()
-        try:
-            target.relative_to(web_build_dir)
-        except ValueError:
-            return JSONResponse({"detail": "Chemin invalide."}, status_code=400)
-        if target.is_file():
-            return FileResponse(target)
-        return FileResponse(web_build_dir / "index.html")
+        target = spa_files.get(full_path)
+        return FileResponse(target or spa_index)

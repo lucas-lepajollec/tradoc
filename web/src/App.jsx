@@ -10,19 +10,14 @@ import TestSandboxModal from './components/TestSandboxModal';
 import SetupWizard from './components/SetupWizard';
 import { fetchInterfaceSettings, isDemoMode, saveInterfaceLanguage, testConnection } from './api';
 import { INTERFACE_LANGUAGES, l, t } from './i18n/translations';
+import { sanitizePersistedPreset, sanitizePersistedSettings } from './utils/persistence';
 
 const DEFAULT_PRESETS = [];
-
-const withoutSecrets = (value) => {
-  if (!value || typeof value !== 'object') return value;
-  const { apiKey, ...safe } = value;
-  return safe;
-};
 
 const parseStoredArray = (key) => {
   try {
     const parsed = JSON.parse(localStorage.getItem(key) || '[]');
-    const sanitized = Array.isArray(parsed) ? parsed.map(withoutSecrets) : [];
+    const sanitized = Array.isArray(parsed) ? parsed.map(sanitizePersistedPreset) : [];
     localStorage.setItem(key, JSON.stringify(sanitized));
     return sanitized;
   } catch {
@@ -134,7 +129,7 @@ export default function App() {
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        let safe = withoutSecrets(parsed);
+        let safe = sanitizePersistedSettings(parsed);
         // This option used to default to true while the backend ignored it.
         // It now performs a real second LLM pass, so require an explicit opt-in.
         if (localStorage.getItem(proofreadingOptInMigrationKey) !== 'done') {
@@ -199,7 +194,7 @@ export default function App() {
 
   const updateSettings = (newSettings) => {
     setSettings(newSettings);
-    localStorage.setItem('tradoc_settings', JSON.stringify(withoutSecrets(newSettings)));
+    localStorage.setItem('tradoc_settings', JSON.stringify(sanitizePersistedSettings(newSettings)));
 
     testConnection(newSettings.endpoint, newSettings.apiKey, newSettings.apiType)
       .then(res => {
@@ -245,9 +240,9 @@ export default function App() {
     const existingIndex = presets.findIndex(p => p.id === presetObj.id);
     if (existingIndex >= 0) {
       updated = [...presets];
-      updated[existingIndex] = withoutSecrets(presetObj);
+      updated[existingIndex] = sanitizePersistedPreset(presetObj);
     } else {
-      updated = [...presets, withoutSecrets(presetObj)];
+      updated = [...presets, sanitizePersistedPreset(presetObj)];
     }
     setPresets(updated);
     localStorage.setItem('tradoc_presets', JSON.stringify(updated));

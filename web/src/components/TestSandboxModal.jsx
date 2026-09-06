@@ -2,6 +2,7 @@ import React, { useState, useRef } from 'react';
 import { TestTube, Play, FileText, AlertCircle, RefreshCw, Upload, Copy, Check, RotateCcw } from 'lucide-react';
 import { testTranslation, extractSandboxSample } from '../api';
 import { AVAILABLE_LANGUAGES, l, languageLabel, localeTag, t } from '../i18n/translations';
+import { readableSegment } from '../utils/readableSegment';
 
 // Universal Classic Literary Excerpt (Pride and Prejudice by Jane Austen)
 const DEFAULT_UNIVERSAL_SAMPLE = `<p class="chapter-title">CHAPTER I</p>
@@ -17,18 +18,6 @@ const estimateTokens = (text = '') => {
   const words = text.split(/\s+/).filter(Boolean).length;
   return Math.max(Math.floor(text.length / 3.8), Math.floor(words * 1.3));
 };
-
-const readableSegment = (text = '') => text
-  .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-  .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-  .replace(/<[^>]+>/g, ' ')
-  .replace(/&nbsp;/g, ' ')
-  .replace(/&amp;/g, '&')
-  .replace(/&lt;/g, '<')
-  .replace(/&gt;/g, '>')
-  .replace(/[ \t]{2,}/g, ' ')
-  .replace(/\n\s+/g, '\n')
-  .trim();
 
 export default function TestSandboxModal({ settings, availableModels, lang = 'en', onSelectModel }) {
   const [sampleText, setSampleText] = useState(DEFAULT_UNIVERSAL_SAMPLE);

@@ -2,26 +2,25 @@ import * as demoApi from './demo/api';
 
 const API_BASE = '/api';
 export const isDemoMode = import.meta.env.MODE === 'demo';
+let appSecret = '';
+
+// Remove credentials persisted by older releases. Authentication secrets are
+// intentionally memory-only and must be re-entered after a browser reload.
+if (typeof window !== 'undefined') {
+  sessionStorage.removeItem('tradoc_app_secret');
+  localStorage.removeItem('tradoc_app_secret');
+}
 
 function notifyAuthenticationRequired() {
   window.dispatchEvent(new CustomEvent('tradoc:auth-required'));
 }
 
-function getAppSecret() {
-  const current = sessionStorage.getItem('tradoc_app_secret');
-  if (current) return current;
-  const legacy = localStorage.getItem('tradoc_app_secret');
-  if (legacy) {
-    sessionStorage.setItem('tradoc_app_secret', legacy);
-    localStorage.removeItem('tradoc_app_secret');
-  }
-  return legacy || '';
+export function getAppSecret() {
+  return appSecret;
 }
 
 export function setAppSecret(secret) {
-  if (secret?.trim()) sessionStorage.setItem('tradoc_app_secret', secret.trim());
-  else sessionStorage.removeItem('tradoc_app_secret');
-  localStorage.removeItem('tradoc_app_secret');
+  appSecret = secret?.trim() || '';
 }
 
 function getAuthHeaders(extraHeaders = {}) {
