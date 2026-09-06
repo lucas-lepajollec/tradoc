@@ -15,3 +15,10 @@ If private reporting is unavailable, open a minimal public issue asking for a pr
 Include the affected commit or image tag, deployment method, clear reproduction steps, the expected impact, and a sanitized proof of concept when possible. You should receive an acknowledgement within seven days and an initial assessment within fourteen days.
 
 Configuration questions and ordinary translation failures should use the normal issue tracker after all documents, keys, logs, and private endpoints have been sanitized.
+
+## Trust boundaries
+
+- The application password is kept only in browser memory and is lost on reload. Provider credentials are sent to and stored by the server-side credential store; they are never intentionally written to browser storage.
+- Uploaded documents, generated translations, checkpoints and backups are private application data. Protect the mounted data directory and every backup derived from it.
+- Remote AI endpoints are validated before use, but operators remain responsible for choosing a provider they trust with document contents.
+- The default deployment assumes one trusted operator or a trusted private network. Put any wider deployment behind HTTPS and authentication, and do not expose its data directory directly.

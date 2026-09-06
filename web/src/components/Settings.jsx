@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Server, Cpu, Sliders, CheckCircle2, AlertCircle, RefreshCw, Save, Trash2, Plus, Key, Link, Search, Globe, Bookmark, Check, ShieldCheck, ArrowLeftRight, Eye, EyeOff, Lock } from 'lucide-react';
-import { isDemoMode, testConnection, saveProviderCredentials, setAppSecret } from '../api';
+import { getAppSecret, isDemoMode, testConnection, saveProviderCredentials, setAppSecret } from '../api';
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
+import { sanitizeProviderConfigs } from '../utils/persistence';
 
 const DEFAULT_LITERARY_PROMPT = `You are a professional literary translator. Translate the supplied source text into the target language configured for this project, using fluent, natural prose suitable for publication.
 
@@ -106,7 +107,7 @@ export default function Settings({
   const [endpoint, setEndpoint] = useState(settings.endpoint);
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
   const [showApiKey, setShowApiKey] = useState(false);
-  const [appSecret, setAppSecretValue] = useState(() => sessionStorage.getItem('tradoc_app_secret') || localStorage.getItem('tradoc_app_secret') || '');
+  const [appSecret, setAppSecretValue] = useState(getAppSecret);
   const [model, setModel] = useState(settings.model);
   const [sourceLang, setSourceLang] = useState(settings.sourceLang || 'en');
   const [targetLang, setTargetLang] = useState(settings.targetLang || 'fr');
@@ -135,10 +136,7 @@ export default function Settings({
     try {
       const parsed = JSON.parse(localStorage.getItem('tradoc_provider_configs') || '{}');
       if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-      const sanitized = Object.fromEntries(Object.entries(parsed).map(([key, value]) => {
-        const { apiKey: _removed, ...safe } = value || {};
-        return [key, safe];
-      }));
+      const sanitized = sanitizeProviderConfigs(parsed);
       localStorage.setItem('tradoc_provider_configs', JSON.stringify(sanitized));
       return sanitized;
     } catch {
@@ -219,7 +217,7 @@ export default function Settings({
     };
 
     setProviderConfigs(updatedConfigs);
-    localStorage.setItem('tradoc_provider_configs', JSON.stringify(updatedConfigs));
+    localStorage.setItem('tradoc_provider_configs', JSON.stringify(sanitizeProviderConfigs(updatedConfigs)));
 
     // 2. Load target provider config if saved previously
     const targetConfig = updatedConfigs[prov.id];
@@ -327,7 +325,7 @@ export default function Settings({
       }
     };
     setProviderConfigs(updatedConfigs);
-    localStorage.setItem('tradoc_provider_configs', JSON.stringify(updatedConfigs));
+    localStorage.setItem('tradoc_provider_configs', JSON.stringify(sanitizeProviderConfigs(updatedConfigs)));
 
     onSaveSettings({
       endpoint,

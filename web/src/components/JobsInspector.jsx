@@ -2,18 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Play, Pause, RefreshCw, Download, FileText, CheckCircle2, AlertTriangle, Terminal, ChevronRight, ChevronLeft, Clock, Copy, Check, Trash2, ArrowRight, Sparkles, Sliders } from 'lucide-react';
 import { fetchJobs, fetchJobDetail, fetchJobSegments, startJob, pauseJob, retryJob, deleteJob, updateJobConfig, downloadJob, subscribeToEvents } from '../api';
 import { l, languageLabel, localeTag, t } from '../i18n/translations';
-
-const readableSegment = (text = '') => text
-  .replace(/<style[\s\S]*?<\/style>/gi, ' ')
-  .replace(/<script[\s\S]*?<\/script>/gi, ' ')
-  .replace(/<[^>]+>/g, ' ')
-  .replace(/&nbsp;/g, ' ')
-  .replace(/&amp;/g, '&')
-  .replace(/&lt;/g, '<')
-  .replace(/&gt;/g, '>')
-  .replace(/[ \t]{2,}/g, ' ')
-  .replace(/\n\s+/g, '\n')
-  .trim();
+import { readableSegment } from '../utils/readableSegment';
 
 const estimateTokens = (text = '') => {
   if (!text) return 0;
