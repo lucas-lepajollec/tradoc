@@ -6,6 +6,19 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-09-06
+
+### Security
+
+- Keep the application secret in browser memory instead of persisting it in local or session storage.
+- Restrict persisted interface settings to explicit non-sensitive allowlists.
+- Remove request-derived filesystem lookup from the single-page application fallback.
+- Convert rich translation segments to readable text without reinterpreting document markup as browser HTML.
+
+### Changed
+
+- Extend protected validation to the complete Python and frontend dependency surfaces, demo contract and container health.
+
 ## [0.1.0] - 2026-09-06
 
 ### Added
@@ -23,5 +36,6 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Earlier development remains available in Git history; this changelog does not invent releases that were never deliberately published.
 
-[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/lucas-lepajollec/tradoc/releases/tag/v0.1.0
