@@ -799,9 +799,9 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 {/* Top Row: Title + Badges on Left, Config & Details Links on Right */}
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="flex flex-wrap items-center gap-2 min-w-0 flex-1">
-                    <h1 className="text-sm font-semibold text-white tracking-tight leading-snug truncate max-w-full sm:max-w-[360px] md:max-w-[480px]" title={job.file_name}>
+                    <h2 className="text-sm font-semibold text-white tracking-tight leading-snug truncate max-w-full sm:max-w-[360px] md:max-w-[480px]" title={job.file_name}>
                       {job.file_name}
-                    </h1>
+                    </h2>
 
                     <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
                       {/* 1. Type de Fichier */}
