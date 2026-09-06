@@ -28,7 +28,12 @@ jobs:
           cache: pip
 
       - name: Install backend dependencies
-        run: pip install -r requirements.txt
+        run: |
+          pip install -r requirements.txt
+          pip install pip-audit==2.10.1
+
+      - name: Audit backend dependencies
+        run: pip-audit -r requirements.txt
 
       - name: Run backend tests
         run: |
@@ -46,9 +51,9 @@ jobs:
         working-directory: web
         run: npm ci
 
-      - name: Audit production dependencies
+      - name: Audit frontend dependencies
         working-directory: web
-        run: npm audit --omit=dev --audit-level=high
+        run: npm audit --audit-level=moderate
 
       - name: Build frontend
         working-directory: web
