@@ -57,7 +57,10 @@ jobs:
 
       - name: Build frontend
         working-directory: web
-        run: npm run build
+        run: |
+          npm run check:i18n
+          npm run check:demo
+          npm run build
 
       - name: Install Playwright Chromium
         working-directory: web
@@ -88,3 +91,15 @@ jobs:
 
       - name: Build container
         run: docker build --tag tradoc:ci .
+
+      - name: Smoke-test container health
+        run: |
+          docker run --detach --name tradoc-ci tradoc:ci
+          for attempt in {1..30}; do
+            status="$(docker inspect --format '{{.State.Health.Status}}' tradoc-ci)"
+            [ "$status" = healthy ] && exit 0
+            [ "$status" = unhealthy ] && break
+            sleep 1
+          done
+          docker logs tradoc-ci
+          exit 1
