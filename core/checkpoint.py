@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 logger = logging.getLogger("tradoc.checkpoint")
 T = TypeVar("T")
+SCHEMA_VERSION = 1
 
 
 class JobRecord(BaseModel):
@@ -87,6 +88,12 @@ class CheckpointDatabase:
     def _init_db(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         with self._thread_lock, closing(self._get_conn()) as conn:
+            current_schema = int(conn.execute("PRAGMA user_version").fetchone()[0])
+            if current_schema > SCHEMA_VERSION:
+                raise RuntimeError(
+                    f"TraDoc data uses schema {current_schema}, but this application supports up to "
+                    f"schema {SCHEMA_VERSION}. Restore the matching/newer application image instead of downgrading."
+                )
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS jobs (
@@ -174,6 +181,7 @@ class CheckpointDatabase:
             # A process that stopped mid-request leaves no reliable running worker.
             conn.execute("UPDATE jobs SET status = 'PAUSED' WHERE status = 'PROCESSING'")
             conn.execute("UPDATE segments SET status = 'PENDING' WHERE status = 'PROCESSING'")
+            conn.execute(f"PRAGMA user_version={SCHEMA_VERSION}")
             conn.execute("PRAGMA optimize")
             conn.commit()
 

@@ -93,7 +93,7 @@ docker compose up -d
 
 Open `http://127.0.0.1:2507`. The repository's Compose file builds the current checkout; the example above uses the published GHCR image.
 
-Set `TRADOC_BIND_ADDRESS=0.0.0.0` only for deliberate trusted-LAN exposure and use HTTPS before leaving that network. Before updating, back up `./data` and record the current image digest. Pull, recreate, and verify `/health`; roll back by setting `TRADOC_IMAGE` to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update.
+Set `TRADOC_BIND_ADDRESS=0.0.0.0` only for deliberate trusted-LAN exposure and use HTTPS before leaving that network. Before updating, stop TraDoc, make a consistent copy or snapshot of the complete `./data` directory, record the current image digest, and start the service again. Pull, recreate, and verify `/health`; roll back by restoring the matching data snapshot and setting `TRADOC_IMAGE` to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update. TraDoc records its SQLite schema and refuses to open data created by a newer unsupported application version rather than attempting an unsafe downgrade.
 
 ### Local development
 
@@ -130,7 +130,7 @@ Use `main.py dev --lan` only on a trusted network. On a shared network, configur
 ## Configuration and persistence
 
 - `DATA_DIR` contains `tradoc.db`, provider configuration, checkpoints, source material, and generated exports.
-- Back up the complete data directory before upgrades.
+- Back up the complete data directory while TraDoc is stopped before upgrades; database, WAL state, documents and outputs are one recovery unit.
 - Each project records its own model and configuration; changing the active dashboard preset does not silently rewrite existing projects.
 - Provider credentials are server-side secrets stored in the private persistent volume and must never be committed.
 - Local and remote provider profiles can target LM Studio, Ollama, vLLM, and other OpenAI-compatible endpoints.

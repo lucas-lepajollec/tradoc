@@ -69,4 +69,6 @@ En participant à ce projet, vous acceptez de respecter notre [Code de Conduite]
 
 ## Maintainer release process
 
+`core/__init__.py` is the authoritative product version. The private web package and lockfile must match it; `python scripts/check_version.py` enforces the contract, including the tag name in release CI.
+
 Releases are deliberate milestones, not snapshots of every merge. Prepare a release pull request that updates the declared version sources, moves completed entries out of `Unreleased` in [CHANGELOG.md](CHANGELOG.md), and documents provider compatibility, migrations, and rollback when relevant. After all required checks pass, tag the exact accepted `main` commit with an annotated `vMAJOR.MINOR.PATCH` tag and push it through the authoritative Forgejo remote. Verify that the identical tag reaches GitHub and that the versioned container finishes successfully before publishing a draft GitHub release. Never move or reuse a published version tag.
