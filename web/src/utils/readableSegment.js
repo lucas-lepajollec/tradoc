@@ -33,11 +33,6 @@ export function readableSegment(text = '') {
 
   return plain
     .replaceAll('&nbsp;', ' ')
-    .replaceAll('&amp;', '&')
-    .replaceAll('&lt;', '<')
-    .replaceAll('&gt;', '>')
-    .replaceAll('&quot;', '"')
-    .replaceAll('&#39;', "'")
     .replace(/[ \t]{2,}/g, ' ')
     .replace(/\n\s+/g, '\n')
     .trim();
