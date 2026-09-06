@@ -35,6 +35,7 @@ jobs:
       - name: Test backend
         run: |
           pip install -r requirements.txt
+          python scripts/check_version.py
           python -m unittest discover -s tests -v
 
       - name: Set up Node.js

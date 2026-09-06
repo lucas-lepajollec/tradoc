@@ -1,5 +1,6 @@
 import tempfile
 import unittest
+import sqlite3
 from datetime import datetime
 from pathlib import Path
 
@@ -51,6 +52,27 @@ class CheckpointTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(await self.db.get_app_setting("ui_language", "fr"), "en")
         await self.db.set_app_setting("ui_language", "de")
         self.assertEqual(await self.db.get_app_setting("ui_language", "en"), "de")
+
+    async def test_fresh_database_records_supported_schema(self):
+        with sqlite3.connect(self.db.db_path) as conn:
+            self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 1)
+
+    async def test_unversioned_database_is_adopted_without_losing_data(self):
+        legacy_path = Path(self.temp.name) / "legacy.db"
+        with sqlite3.connect(legacy_path) as conn:
+            conn.execute("CREATE TABLE marker (value TEXT NOT NULL)")
+            conn.execute("INSERT INTO marker (value) VALUES ('keep-me')")
+        CheckpointDatabase(legacy_path)
+        with sqlite3.connect(legacy_path) as conn:
+            self.assertEqual(conn.execute("SELECT value FROM marker").fetchone()[0], "keep-me")
+            self.assertEqual(conn.execute("PRAGMA user_version").fetchone()[0], 1)
+
+    async def test_newer_database_schema_is_rejected(self):
+        future_path = Path(self.temp.name) / "future.db"
+        with sqlite3.connect(future_path) as conn:
+            conn.execute("PRAGMA user_version=2")
+        with self.assertRaisesRegex(RuntimeError, "supports up to schema 1"):
+            CheckpointDatabase(future_path)
 
 
 if __name__ == "__main__":
