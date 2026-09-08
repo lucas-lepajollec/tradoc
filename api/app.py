@@ -20,12 +20,6 @@ logger = logging.getLogger("tradoc.app")
 
 @asynccontextmanager
 async def lifespan(_: FastAPI):
-    if (
-        settings.ENV.lower() == "production"
-        and not settings.TRUSTED_LAN_PROXY
-        and not (settings.APP_SECRET or "").strip()
-    ):
-        logger.warning("APP_SECRET is empty: keep TraDoc bound to localhost or configure authentication before LAN exposure")
     yield
     tasks = [task for task in active_tasks.values() if not task.done()]
     for task in tasks:
@@ -52,7 +46,7 @@ if origins:
         allow_origins=origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type", "X-App-Secret"],
+        allow_headers=["Content-Type"],
     )
 
 

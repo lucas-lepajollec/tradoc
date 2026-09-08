@@ -18,7 +18,7 @@ Configuration questions and ordinary translation failures should use the normal 
 
 ## Trust boundaries
 
-- The application password is kept only in browser memory and is lost on reload. Provider credentials are sent to and stored by the server-side credential store; they are never intentionally written to browser storage.
+- Provider credentials are sent to and stored by the server-side credential store; they are never intentionally written to browser storage.
 - Uploaded documents, generated translations, checkpoints and backups are private application data. Protect the mounted data directory and every backup derived from it.
 - Remote AI endpoints are validated before use, but operators remain responsible for choosing a provider they trust with document contents.
 - The default deployment assumes one trusted operator or a trusted private network. Put any wider deployment behind HTTPS and authentication, and do not expose its data directory directly.

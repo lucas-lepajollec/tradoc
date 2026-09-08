@@ -1,5 +1,4 @@
 import asyncio
-import hmac
 import ipaddress
 import json
 import logging
@@ -10,7 +9,7 @@ from pathlib import Path
 from typing import List, Literal, Optional
 from urllib.parse import urlparse
 
-from fastapi import APIRouter, Depends, File, Form, Header, HTTPException, Request, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel, Field
 from starlette.background import BackgroundTask
@@ -40,16 +39,9 @@ def _is_loopback_hostname(hostname: Optional[str]) -> bool:
         return False
 
 
-async def verify_app_secret(
-    request: Request,
-    x_app_secret: Optional[str] = Header(None, alias="X-App-Secret"),
-) -> None:
-    expected = (settings.APP_SECRET or "").strip()
-    if expected and (not x_app_secret or not hmac.compare_digest(x_app_secret.strip(), expected)):
-        raise HTTPException(status_code=401, detail="Accès refusé.")
-
+async def verify_request_origin(request: Request) -> None:
     # Mutating browser requests must come from the served app or an explicitly
-    # allowed origin. This remains useful even when APP_SECRET is disabled locally.
+    # allowed origin.
     origin = request.headers.get("origin")
     if origin and request.method not in {"GET", "HEAD", "OPTIONS"}:
         allowed = {value.strip().rstrip("/") for value in settings.ALLOWED_ORIGINS.split(",") if value.strip()}
@@ -64,7 +56,7 @@ async def verify_app_secret(
             raise HTTPException(status_code=403, detail="Origine non autorisée.")
 
 
-router = APIRouter(dependencies=[Depends(verify_app_secret)])
+router = APIRouter(dependencies=[Depends(verify_request_origin)])
 db = CheckpointDatabase(settings.DB_PATH)
 glossary_mgr = GlossaryManager(settings.GLOSSARY_DIR)
 credential_store = ProviderCredentialStore(settings.CREDENTIALS_PATH)

@@ -1,4 +1,3 @@
-import ipaddress
 import os
 import shutil
 import signal
@@ -12,7 +11,6 @@ import typer
 import uvicorn
 
 from cli import cli_app
-from core.config import settings
 
 
 if hasattr(sys.stdout, "reconfigure"):
@@ -23,26 +21,6 @@ if hasattr(sys.stdout, "reconfigure"):
 
 
 app = typer.Typer(help="TraDoc — traduction littéraire auto-hébergée")
-WEAK_APP_SECRETS = {"replace-with-a-long-random-secret", "changeme", "secret", "password"}
-
-
-def _is_loopback_host(host: str) -> bool:
-    normalized = host.strip().strip("[]").lower()
-    if normalized == "localhost":
-        return True
-    try:
-        return ipaddress.ip_address(normalized).is_loopback
-    except ValueError:
-        return False
-
-
-def _require_secure_app_secret() -> None:
-    secret = (settings.APP_SECRET or "").strip()
-    if len(secret) < 24 or secret.lower() in WEAK_APP_SECRETS:
-        raise typer.BadParameter(
-            "Une exposition réseau exige APP_SECRET avec au moins 24 caractères "
-            "et une valeur différente de celle de .env.example."
-        )
 
 
 def _ensure_port_available(port: int, label: str) -> None:
@@ -95,16 +73,13 @@ def serve(
     reload: bool = typer.Option(False, "--reload", help="Activer le rechargement du backend"),
 ):
     """Démarre l'API et sert le dashboard compilé."""
-    if not _is_loopback_host(host):
-        _require_secure_app_secret()
     typer.echo(f"[TraDoc] Serveur disponible sur http://{host}:{port}")
     uvicorn.run("api.app:app", host=host, port=port, reload=reload)
 
 
 @app.command("dev")
 def dev(
-    lan: bool = typer.Option(False, "--lan", help="Exposer TraDoc sans authentification sur un LAN de confiance"),
-    lan_secure: bool = typer.Option(False, "--lan-secure", help="Exposer TraDoc sur le LAN avec APP_SECRET"),
+    lan: bool = typer.Option(False, "--lan", help="Exposer TraDoc sur un LAN de confiance"),
     api_port: int = typer.Option(8000, "--api-port", min=1, max=65535),
     web_port: int = typer.Option(2499, "--web-port", min=1, max=65535),
     reload: bool = typer.Option(False, "--reload/--no-reload", help="Recharger le backend à chaque modification"),
@@ -112,9 +87,6 @@ def dev(
     """Démarre le backend et Vite ensemble, en local par défaut."""
     if api_port == web_port:
         raise typer.BadParameter("Les ports du backend et du frontend doivent être différents.")
-    expose_lan = lan or lan_secure
-    if lan_secure:
-        _require_secure_app_secret()
     _ensure_port_available(api_port, "API")
     _ensure_port_available(web_port, "frontend")
 
@@ -126,15 +98,10 @@ def dev(
     if not vite_entry.is_file():
         raise typer.BadParameter("Dépendances frontend absentes : exécutez d'abord 'cd web' puis 'npm ci'.")
 
-    frontend_host = "0.0.0.0" if expose_lan else "127.0.0.1"
+    frontend_host = "0.0.0.0" if lan else "127.0.0.1"
     environment = os.environ.copy()
     environment["TRADOC_API_PORT"] = str(api_port)
-    environment["TRUSTED_LAN_PROXY"] = "true" if expose_lan else "false"
-    if not lan_secure:
-        # Local development is already isolated by the loopback bind. Override
-        # a secret present in .env so localhost and trusted-LAN testing work
-        # without browser setup. --lan-secure keeps authentication enabled.
-        environment["APP_SECRET"] = ""
+    environment["TRUSTED_LAN_PROXY"] = "true" if lan else "false"
     backend_command = [
         sys.executable,
         "-m",
@@ -160,15 +127,10 @@ def dev(
     try:
         processes.append(subprocess.Popen(backend_command, env=environment, **_process_options()))
         processes.append(subprocess.Popen(frontend_command, cwd=web_dir, env=environment, **_process_options()))
-        location = f"http://{'<IP-DE-LA-MACHINE>' if expose_lan else '127.0.0.1'}:{web_port}"
+        location = f"http://{'<IP-DE-LA-MACHINE>' if lan else '127.0.0.1'}:{web_port}"
         typer.echo(f"[TraDoc] Développement disponible sur {location}")
-        if lan and not lan_secure:
-            typer.echo("[TraDoc] Attention : accès sans authentification, réservé à un réseau de confiance.")
-        if lan_secure:
-            typer.echo(
-                "[TraDoc] Première connexion : copiez APP_SECRET depuis .env, puis "
-                "collez-le dans Paramètres > Général > Jeton d'application."
-            )
+        if lan:
+            typer.echo("[TraDoc] Attention : réservé à un réseau de confiance.")
         typer.echo("[TraDoc] Ctrl+C arrête les deux processus.")
         while all(process.poll() is None for process in processes):
             time.sleep(0.25)

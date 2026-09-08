@@ -2,39 +2,19 @@ import * as demoApi from './demo/api';
 
 const API_BASE = '/api';
 export const isDemoMode = import.meta.env.MODE === 'demo';
-let appSecret = '';
 
-// Remove credentials persisted by older releases. Authentication secrets are
-// intentionally memory-only and must be re-entered after a browser reload.
 if (typeof window !== 'undefined') {
-  sessionStorage.removeItem('tradoc_app_secret');
-  localStorage.removeItem('tradoc_app_secret');
-}
-
-function notifyAuthenticationRequired() {
-  window.dispatchEvent(new CustomEvent('tradoc:auth-required'));
-}
-
-export function getAppSecret() {
-  return appSecret;
-}
-
-export function setAppSecret(secret) {
-  appSecret = secret?.trim() || '';
-}
-
-function getAuthHeaders(extraHeaders = {}) {
-  const secret = getAppSecret();
-  return secret ? { ...extraHeaders, 'X-App-Secret': secret } : extraHeaders;
+  try {
+    sessionStorage.removeItem('tradoc_app_secret');
+    localStorage.removeItem('tradoc_app_secret');
+  } catch {
+    // Ignore storage access errors in locked-down browsers.
+  }
 }
 
 async function request(path, options = {}) {
   if (isDemoMode) return demoApi.request(path, options);
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...options,
-    headers: getAuthHeaders(options.headers || {}),
-  });
-  if (response.status === 401) notifyAuthenticationRequired();
+  const response = await fetch(`${API_BASE}${path}`, options);
   if (!response.ok) {
     let message = `HTTP error ${response.status}`;
     try {
@@ -145,9 +125,7 @@ export function extractSandboxSample(formData) {
 
 export async function downloadJob(jobId) {
   if (isDemoMode) return demoApi.downloadJob(jobId);
-  const response = await fetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}/download`, {
-    headers: getAuthHeaders(),
-  });
+  const response = await fetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}/download`);
   if (!response.ok) {
     let message = 'The download failed.';
     try {
@@ -180,14 +158,9 @@ export function subscribeToEvents(onEvent, onError = () => {}) {
     while (!controller.signal.aborted) {
       try {
         const response = await fetch(`${API_BASE}/events`, {
-          headers: getAuthHeaders({ Accept: 'text/event-stream' }),
+          headers: { Accept: 'text/event-stream' },
           signal: controller.signal,
         });
-        if (response.status === 401) {
-          notifyAuthenticationRequired();
-          onError(new Error('SSE HTTP 401'));
-          return;
-        }
         if (!response.ok || !response.body) throw new Error(`SSE HTTP ${response.status}`);
         const reader = response.body.getReader();
         const decoder = new TextDecoder();

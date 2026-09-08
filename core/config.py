@@ -1,5 +1,4 @@
 from pathlib import Path
-from typing import Optional
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings
 
@@ -68,8 +67,7 @@ class Settings(BaseSettings):
     
     ENABLE_PROOFREADING: bool = Field(default=False)
     
-    # Security & Auth
-    APP_SECRET: Optional[str] = Field(default=None)
+    # Security
     ALLOWED_ORIGINS: str = Field(default="")
     ALLOWED_LLM_HOSTS: str = Field(default="")
     TRUSTED_LAN_PROXY: bool = Field(default=False)
