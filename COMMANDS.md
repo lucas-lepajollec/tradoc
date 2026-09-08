@@ -126,9 +126,20 @@ main.py translate --help
 ## Docker
 
 ```bash
-docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+docker compose pull
+docker compose up -d
+docker compose ps
+docker compose exec tradoc cat /app/data/.app_secret
 docker compose logs -f tradoc
 docker compose down
+```
+
+The first three commands work without a `.env`; the image creates and reuses `data/.app_secret`. The fourth command displays that generated application token so it can be entered in TraDoc's settings. Treat it as a credential and never paste it into an issue, documentation or Git.
+
+Build the current checkout explicitly with:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 ```
 
 TraDoc stores its database and sensitive working material under `data/`. Back up that directory before maintenance, and never commit its documents, outputs, glossaries or provider data.

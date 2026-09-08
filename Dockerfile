@@ -29,6 +29,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy source code
 COPY . .
 
+COPY docker-entrypoint.sh /usr/local/bin/tradoc-entrypoint
+
 # Copy UI build from Stage 1
 COPY --from=ui-builder /app/web/dist /app/web/dist
 
@@ -36,7 +38,8 @@ COPY --from=ui-builder /app/web/dist /app/web/dist
 RUN groupadd -g 1000 tradocgroup && \
     useradd -u 1000 -g tradocgroup -s /bin/bash -m tradocuser && \
     mkdir -p /app/data/input /app/data/output /app/data/glossaries /app/data/jobs /app/data/tmp && \
-    chown -R tradocuser:tradocgroup /app
+    chown -R tradocuser:tradocgroup /app && \
+    chmod 755 /usr/local/bin/tradoc-entrypoint
 
 USER tradocuser
 
@@ -45,4 +48,5 @@ EXPOSE 2507
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
   CMD curl --fail --silent --show-error http://127.0.0.1:2507/health >/dev/null || exit 1
 
+ENTRYPOINT ["tradoc-entrypoint"]
 CMD ["python", "main.py", "serve", "--host", "0.0.0.0", "--port", "2507"]
