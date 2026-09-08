@@ -1,13 +1,12 @@
 services:
   tradoc:
-    image: ${TRADOC_IMAGE:-ghcr.io/lucas-lepajollec/tradoc:latest}
+    image: ghcr.io/lucas-lepajollec/tradoc:latest
     container_name: tradoc-server
     restart: unless-stopped
     ports:
       - "2507:2507"
-    environment:
-      APP_SECRET: ${APP_SECRET:?Define APP_SECRET in the .env file}
-      LLM_ENDPOINT: ${LLM_ENDPOINT:-http://host.docker.internal:1234/v1}
+    env_file:
+      - .env
     volumes:
       - ./data:/app/data
     extra_hosts:
