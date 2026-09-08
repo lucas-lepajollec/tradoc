@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Cpu, Sliders, CheckCircle2, AlertCircle, RefreshCw, Save, Trash2, Plus, Key, Link, Search, Globe, Bookmark, Check, ShieldCheck, ArrowLeftRight, Eye, EyeOff, Lock } from 'lucide-react';
-import { getAppSecret, isDemoMode, testConnection, saveProviderCredentials, setAppSecret } from '../api';
+import { Server, Cpu, Sliders, CheckCircle2, AlertCircle, RefreshCw, Save, Trash2, Plus, Key, Link, Search, Globe, Bookmark, Check, ShieldCheck, ArrowLeftRight, Eye, EyeOff } from 'lucide-react';
+import { isDemoMode, testConnection, saveProviderCredentials } from '../api';
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 import { sanitizeProviderConfigs } from '../utils/persistence';
 
@@ -107,7 +107,6 @@ export default function Settings({
   const [endpoint, setEndpoint] = useState(settings.endpoint);
   const [apiKey, setApiKey] = useState(settings.apiKey || '');
   const [showApiKey, setShowApiKey] = useState(false);
-  const [appSecret, setAppSecretValue] = useState(getAppSecret);
   const [model, setModel] = useState(settings.model);
   const [sourceLang, setSourceLang] = useState(settings.sourceLang || 'en');
   const [targetLang, setTargetLang] = useState(settings.targetLang || 'fr');
@@ -306,8 +305,6 @@ export default function Settings({
 
   const handleSaveAll = async (e) => {
     if (e) e.preventDefault();
-    setAppSecret(appSecret);
-
     try {
       await saveProviderCredentials(apiType, apiKey.trim() || undefined, endpoint);
     } catch (error) {
@@ -812,21 +809,6 @@ export default function Settings({
                 </div>
               </section>
 
-              {!isDemoMode && <section className="global-settings-section security-settings-section">
-                <div className="global-section-copy">
-                  <span className="global-section-icon"><Lock /></span>
-                  <div>
-                    <span className="section-eyebrow">{l(lang, 'Security', 'Sécurité', 'Seguridad', 'Sicherheit')}</span>
-                    <h3>{l(lang, 'Application token', 'Jeton d’application', 'Token de la aplicación', 'Anwendungstoken')}</h3>
-                    <p>{l(lang, 'Only fill this field when APP_SECRET is enabled on your server.', 'Renseignez ce champ uniquement si APP_SECRET est activé sur votre serveur.', 'Rellena este campo solo si APP_SECRET está activado en el servidor.', 'Fülle dieses Feld nur aus, wenn APP_SECRET auf deinem Server aktiviert ist.')}</p>
-                  </div>
-                </div>
-                <label className="secret-field">
-                  <span>{l(lang, 'Secret token', 'Clé secrète', 'Token secreto', 'Geheimes Token')} <small>X-App-Secret</small></span>
-                  <input type="password" value={appSecret} onChange={(e) => setAppSecretValue(e.target.value)} placeholder={l(lang, 'Enter your token', 'Saisissez votre jeton', 'Introduce tu token', 'Token eingeben')} className="input-chill font-mono" />
-                  <p>{l(lang, 'Stored locally, then sent with every request to TraDoc.', 'Stocké localement puis envoyé avec chaque requête adressée à TraDoc.', 'Se guarda localmente y se envía con cada solicitud a TraDoc.', 'Wird lokal gespeichert und mit jeder Anfrage an TraDoc gesendet.')}</p>
-                </label>
-              </section>}
             </div>
 
             {/* TAB 4: CONFIG PRESETS MANAGER */}

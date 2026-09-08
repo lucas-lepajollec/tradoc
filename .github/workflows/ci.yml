@@ -94,7 +94,7 @@ jobs:
 
       - name: Smoke-test container health
         run: |
-          docker run --detach --name tradoc-ci --env APP_SECRET=ci-healthcheck-password-1234 tradoc:ci
+          docker run --detach --name tradoc-ci tradoc:ci
           for attempt in {1..30}; do
             status="$(docker inspect --format '{{.State.Health.Status}}' tradoc-ci)"
             [ "$status" = healthy ] && exit 0

@@ -27,7 +27,7 @@ const parseStoredArray = (key) => {
 };
 
 export default function App() {
-  const [settingsInitialTab, setSettingsInitialTab] = useState('providers');
+  const [settingsInitialTab] = useState('providers');
   const [activeTab, setActiveTab] = useState(() => {
     return localStorage.getItem('tradoc_active_tab') || 'dashboard';
   });
@@ -45,16 +45,6 @@ export default function App() {
     else localStorage.removeItem('tradoc_selected_job_id');
   }, []);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  useEffect(() => {
-    const showAuthenticationSettings = () => {
-      setSettingsInitialTab('global');
-      setActiveTab('settings');
-      localStorage.setItem('tradoc_active_tab', 'settings');
-    };
-    window.addEventListener('tradoc:auth-required', showAuthenticationSettings);
-    return () => window.removeEventListener('tradoc:auth-required', showAuthenticationSettings);
-  }, []);
 
   // App Language State (Default English)
   const [lang, setLang] = useState(() => {

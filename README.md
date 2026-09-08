@@ -77,7 +77,7 @@ Open `http://<server-ip>:2507` from the LAN, or `http://localhost:2507` on the D
 
 The ownership preparation is required for Linux bind mounts because the image runs as the non-root UID/GID `1000:1000`; Docker Desktop normally handles host-file sharing itself. Do not replace it with `chmod 777`.
 
-No `.env` file is required for the first start. When `APP_SECRET` is absent, the container creates a strong secret in the persistent `data` directory and reuses it after updates. Retrieve it with `docker compose exec tradoc cat /app/data/.app_secret`, then paste it into **Settings → Global & Language → Application token**. An optional untracked `.env` can override the generated secret and initial provider settings; start from `.env.example` and replace every placeholder before use.
+No `.env` file is required for the first start. An optional untracked `.env` can override initial provider settings; start from `.env.example` and replace every placeholder before use. An older `APP_SECRET` value is ignored.
 
 TraDoc uses port `2507` both on the Docker host and inside the container. Before updating, stop TraDoc, make a consistent copy or snapshot of the complete `./data` directory, record the current image digest, and start the service again. Pull, recreate, and verify `/health`; roll back by restoring the matching data snapshot and changing the `image:` line to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update. TraDoc records its SQLite schema and refuses to open data created by a newer unsupported application version rather than attempting an unsafe downgrade.
 
@@ -117,7 +117,7 @@ npm --prefix web ci
 
 Open `http://127.0.0.1:2499`. See [`COMMANDS.md`](COMMANDS.md) for the complete Windows, Linux and macOS command reference, including demo, LAN, validation and production-style workflows.
 
-Use `main.py dev --lan` only on a trusted network. On a shared network, configure an `APP_SECRET` of at least 24 characters and use `main.py dev --lan-secure`.
+Use `main.py dev --lan` only on a trusted network.
 
 ## Configuration and persistence
 
@@ -134,7 +134,7 @@ Provider availability does not imply equal behavior or verified end-to-end trans
 > [!WARNING]
 > Do not expose TraDoc or a local inference endpoint directly to the public internet.
 
-- Use a strong `APP_SECRET`, HTTPS, an authenticated reverse proxy, and appropriate firewall rules.
+- Use HTTPS, an authenticated reverse proxy, and appropriate firewall rules before any untrusted network.
 - Keep provider keys, source documents, outputs, and the SQLite database inside the protected volume.
 - Keep `ALLOWED_ORIGINS` narrow when the frontend and API use different origins.
 - Never solve permission errors with `chmod 777`; align ownership with the non-root container user.

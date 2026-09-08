@@ -75,7 +75,7 @@ Use only on a trusted private network:
 ./.venv/bin/python main.py dev --lan
 ```
 
-This mode intentionally disables authentication. For a shared LAN, configure a strong `APP_SECRET`, use `main.py dev --lan-secure`, and paste the secret into **Settings → Global & Language → Application token** without printing or recording it. Never use either LAN mode on a public or untrusted network.
+This mode is for a trusted LAN only. Never use it on a public or untrusted network.
 
 ## Production-style local server
 
@@ -99,7 +99,7 @@ Linux / macOS:
 ./.venv/bin/python main.py serve
 ```
 
-Binding beyond localhost requires a strong `APP_SECRET`:
+The production container listens on all interfaces:
 
 ```text
 main.py serve --host 0.0.0.0 --port 8000
@@ -129,12 +129,11 @@ main.py translate --help
 docker compose pull
 docker compose up -d
 docker compose ps
-docker compose exec tradoc cat /app/data/.app_secret
 docker compose logs -f tradoc
 docker compose down
 ```
 
-The first three commands work without a `.env`; the image creates and reuses `data/.app_secret`. The fourth command displays that generated application token so it can be entered in TraDoc's settings. Treat it as a credential and never paste it into an issue, documentation or Git.
+The first three commands work without a `.env`.
 
 Build the current checkout explicitly with:
 

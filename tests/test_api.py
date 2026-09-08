@@ -12,23 +12,19 @@ from core.config import settings
 
 class ApiSecurityTests(unittest.TestCase):
     def setUp(self):
-        self.previous_secret = settings.APP_SECRET
         self.previous_trusted_lan_proxy = settings.TRUSTED_LAN_PROXY
-        settings.APP_SECRET = "unit-test-secret"
         settings.TRUSTED_LAN_PROXY = False
         self.client = TestClient(app)
 
     def tearDown(self):
-        settings.APP_SECRET = self.previous_secret
         settings.TRUSTED_LAN_PROXY = self.previous_trusted_lan_proxy
 
     def test_health_is_public(self):
         response = self.client.get("/health")
         self.assertEqual(response.status_code, 200)
 
-    def test_api_requires_secret_when_configured(self):
-        self.assertEqual(self.client.get("/api/jobs").status_code, 401)
-        response = self.client.get("/api/jobs", headers={"X-App-Secret": "unit-test-secret"})
+    def test_api_is_open_without_an_application_token(self):
+        response = self.client.get("/api/jobs")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.headers.get("x-content-type-options"), "nosniff")
 
@@ -38,7 +34,6 @@ class ApiSecurityTests(unittest.TestCase):
             headers={
                 "Origin": "http://localhost:2499",
                 "Host": "127.0.0.1:8000",
-                "X-App-Secret": "unit-test-secret",
             },
         )
         self.assertEqual(response.status_code, 422)
@@ -49,13 +44,11 @@ class ApiSecurityTests(unittest.TestCase):
             headers={
                 "Origin": "https://malicious.example",
                 "Host": "127.0.0.1:8000",
-                "X-App-Secret": "unit-test-secret",
             },
         )
         self.assertEqual(response.status_code, 403)
 
     def test_explicit_trusted_lan_proxy_accepts_phone_origin(self):
-        settings.APP_SECRET = ""
         settings.TRUSTED_LAN_PROXY = True
         response = self.client.post(
             "/api/settings/test-connection",
@@ -85,7 +78,6 @@ class ApiSecurityTests(unittest.TestCase):
         with patch("api.routes._new_client", new=AsyncMock(return_value=fake_client)):
             response = self.client.post(
                 "/api/settings/test-connection",
-                headers={"X-App-Secret": "unit-test-secret"},
                 json={"api_type": "lm-studio", "endpoint": "http://127.0.0.1:1234/v1"},
             )
 
@@ -96,17 +88,13 @@ class ApiSecurityTests(unittest.TestCase):
 
     def test_interface_language_is_read_and_saved_server_side(self):
         with patch("api.routes.db.get_app_setting", new=AsyncMock(return_value="de")):
-            response = self.client.get(
-                "/api/settings/interface",
-                headers={"X-App-Secret": "unit-test-secret"},
-            )
+            response = self.client.get("/api/settings/interface")
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.json(), {"language": "de"})
 
         with patch("api.routes.db.set_app_setting", new=AsyncMock()) as save:
             response = self.client.put(
                 "/api/settings/interface",
-                headers={"X-App-Secret": "unit-test-secret"},
                 json={"language": "fr"},
             )
         self.assertEqual(response.status_code, 200)
@@ -115,7 +103,6 @@ class ApiSecurityTests(unittest.TestCase):
 
         response = self.client.put(
             "/api/settings/interface",
-            headers={"X-App-Secret": "unit-test-secret"},
             json={"language": "it"},
         )
         self.assertEqual(response.status_code, 422)
@@ -141,10 +128,7 @@ class ApiSecurityTests(unittest.TestCase):
                 patch("api.routes.db.count_unfinished_segments", new=AsyncMock(return_value=2)),
                 patch("api.routes.engine.rebuild_output_file", new=AsyncMock(return_value=preview)) as rebuild,
             ):
-                response = self.client.get(
-                    "/api/jobs/partial-api-job/download",
-                    headers={"X-App-Secret": "unit-test-secret"},
-                )
+                response = self.client.get("/api/jobs/partial-api-job/download")
 
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.headers.get("x-tradoc-export"), "partial")
@@ -170,10 +154,7 @@ class ApiSecurityTests(unittest.TestCase):
             patch("api.routes.db.get_job", new=AsyncMock(return_value=job)),
             patch("api.routes.db.count_unfinished_segments", new=AsyncMock(return_value=4)),
         ):
-            response = self.client.get(
-                "/api/jobs/empty-partial-job/download",
-                headers={"X-App-Secret": "unit-test-secret"},
-            )
+            response = self.client.get("/api/jobs/empty-partial-job/download")
 
         self.assertEqual(response.status_code, 409)
 

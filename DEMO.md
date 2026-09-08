@@ -9,7 +9,7 @@ not connected to FastAPI, SQLite, an AI provider, or a credential store.
 - API calls are replaced by an in-memory browser adapter;
 - selected files are never sent; their browser `File` object is retained only
   in volatile memory so a demo export keeps the original container and extension;
-- provider keys and the application token are disabled;
+- provider keys are disabled;
 - simulated changes disappear on reload;
 - the interface language selector supports the same maintained English, French, Spanish, and German locales as the self-hosted product;
 - built-in Markdown and text previews are generated locally from fictional
