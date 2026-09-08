@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-09-08
+
 ### Removed
 
 - Drop the forced Docker application token. TraDoc is a trusted-LAN self-hosted translator: the UI and API no longer require `APP_SECRET` or `X-App-Secret`. An older secret in `.env` or `data/.app_secret` is ignored and can be deleted.
@@ -67,7 +69,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Earlier development remains available in Git history; this changelog does not invent releases that were never deliberately published.
 
-[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.2...v0.1.3
