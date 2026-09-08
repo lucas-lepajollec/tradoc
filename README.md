@@ -65,7 +65,7 @@ services:
     container_name: tradoc
     restart: unless-stopped
     ports:
-      - "${TRADOC_BIND_ADDRESS:-127.0.0.1}:2507:8000"
+      - "2507:8000"
     environment:
       ENV: production
       DATA_DIR: /app/data
@@ -91,9 +91,15 @@ services:
 docker compose up -d
 ```
 
-Open `http://127.0.0.1:2507`. The repository's Compose file builds the current checkout; the example above uses the published GHCR image.
+Open `http://127.0.0.1:2507` on the host, or `http://<host-ip>:2507` from the LAN. The repository's default Compose file pulls the published GHCR image.
 
-Set `TRADOC_BIND_ADDRESS=0.0.0.0` only for deliberate trusted-LAN exposure and use HTTPS before leaving that network. Before updating, stop TraDoc, make a consistent copy or snapshot of the complete `./data` directory, record the current image digest, and start the service again. Pull, recreate, and verify `/health`; roll back by restoring the matching data snapshot and setting `TRADOC_IMAGE` to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update. TraDoc records its SQLite schema and refuses to open data created by a newer unsupported application version rather than attempting an unsafe downgrade.
+Docker publishes the port on the host interfaces by default. Use `127.0.0.1:2507:8000` for localhost-only publication, and use HTTPS before leaving a trusted network. Before updating, stop TraDoc, make a consistent copy or snapshot of the complete `./data` directory, record the current image digest, and start the service again. Pull, recreate, and verify `/health`; roll back by restoring the matching data snapshot and setting `TRADOC_IMAGE` to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update. TraDoc records its SQLite schema and refuses to open data created by a newer unsupported application version rather than attempting an unsafe downgrade.
+
+To build the current checkout instead of pulling the published image:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
+```
 
 ### Local development
 

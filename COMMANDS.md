@@ -126,7 +126,7 @@ main.py translate --help
 ## Docker
 
 ```bash
-docker compose up -d --build
+docker compose -f docker-compose.yml -f docker-compose.build.yml up -d --build
 docker compose logs -f tradoc
 docker compose down
 ```
