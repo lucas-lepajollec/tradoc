@@ -52,8 +52,6 @@ Create `.env`:
 ```dotenv
 APP_SECRET=replace-with-a-long-random-secret
 LLM_ENDPOINT=http://host.docker.internal:1234/v1
-LLM_API_KEY=replace-with-your-provider-key
-LLM_MODEL=replace-with-your-model
 ```
 
 Create `docker-compose.yml`:
@@ -62,38 +60,26 @@ Create `docker-compose.yml`:
 services:
   tradoc:
     image: ${TRADOC_IMAGE:-ghcr.io/lucas-lepajollec/tradoc:latest}
-    container_name: tradoc
+    container_name: tradoc-server
     restart: unless-stopped
     ports:
-      - "2507:8000"
+      - "2507:2507"
     environment:
-      ENV: production
-      DATA_DIR: /app/data
       APP_SECRET: ${APP_SECRET:?Define APP_SECRET in .env}
-      LLM_ENDPOINT: ${LLM_ENDPOINT}
-      LLM_API_KEY: ${LLM_API_KEY}
-      LLM_MODEL: ${LLM_MODEL}
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-http://host.docker.internal:1234/v1}
     volumes:
       - ./data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    read_only: true
-    tmpfs:
-      - /tmp:size=128m,uid=1000,gid=1000,mode=1770
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    init: true
 ```
 
 ```bash
 docker compose up -d
 ```
 
-Open `http://127.0.0.1:2507` on the host, or `http://<host-ip>:2507` from the LAN. The repository's default Compose file pulls the published GHCR image.
+Open `http://<server-ip>:2507` from the LAN, or `http://localhost:2507` on the Docker host. The repository's default Compose file pulls the published GHCR image.
 
-Docker publishes the port on the host interfaces by default. Use `127.0.0.1:2507:8000` for localhost-only publication, and use HTTPS before leaving a trusted network. Before updating, stop TraDoc, make a consistent copy or snapshot of the complete `./data` directory, record the current image digest, and start the service again. Pull, recreate, and verify `/health`; roll back by restoring the matching data snapshot and setting `TRADOC_IMAGE` to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update. TraDoc records its SQLite schema and refuses to open data created by a newer unsupported application version rather than attempting an unsafe downgrade.
+TraDoc uses port `2507` both on the NAS and inside the container. Before updating, stop TraDoc, make a consistent copy or snapshot of the complete `./data` directory, record the current image digest, and start the service again. Pull, recreate, and verify `/health`; roll back by restoring the matching data snapshot and setting `TRADOC_IMAGE` to the previous version or `sha-<full-commit>` tag. Never run `docker compose down -v` or delete `./data` as part of a normal update. TraDoc records its SQLite schema and refuses to open data created by a newer unsupported application version rather than attempting an unsafe downgrade.
 
 To build the current checkout instead of pulling the published image:
 

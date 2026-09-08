@@ -1,5 +1,4 @@
-# Configuration Docker Compose pour TraDoc (Exemple NAS / Production)
-# Ce fichier permet de déployer l'image pré-construite de TraDoc depuis GitHub Container Registry (ghcr.io).
+# Copy-ready TraDoc example for a NAS or homelab.
 
 services:
   tradoc:
@@ -7,33 +6,11 @@ services:
     container_name: tradoc-server
     restart: unless-stopped
     ports:
-      # Port exposé sur la machine hôte : port interne de l'application
-      - "2507:8000"
+      - "2507:2507"
     environment:
-      - ENV=production
-      - DATA_DIR=/app/data
-      - APP_SECRET=${APP_SECRET:?Définissez APP_SECRET dans le fichier .env}
-      - ALLOWED_ORIGINS=
-      - LLM_ENDPOINT=http://192.168.x.x:1234/v1
-      - LLM_API_KEY=lm-studio
-      - LLM_MODEL=qwen3.5-9b
-      - API_TYPE=lm-studio
-      - CHUNK_TOKEN_SIZE=1000
-      - TEMPERATURE=0.15
+      APP_SECRET: ${APP_SECRET:?Define APP_SECRET in the .env file}
+      LLM_ENDPOINT: ${LLM_ENDPOINT:-http://host.docker.internal:1234/v1}
     volumes:
-      # Stockage persistant de la base SQLite et des fichiers traduits
       - ./data:/app/data
-    read_only: true
-    tmpfs:
-      - /tmp:size=128m,uid=1000,gid=1000,mode=1770
-    security_opt:
-      - no-new-privileges:true
-    cap_drop:
-      - ALL
-    init: true
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 20s
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

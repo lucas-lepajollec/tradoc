@@ -40,9 +40,9 @@ RUN groupadd -g 1000 tradocgroup && \
 
 USER tradocuser
 
-EXPOSE 8000
+EXPOSE 2507
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD curl --fail --silent --show-error http://127.0.0.1:8000/health >/dev/null || exit 1
+  CMD curl --fail --silent --show-error http://127.0.0.1:2507/health >/dev/null || exit 1
 
-CMD ["python", "main.py", "serve", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "main.py", "serve", "--host", "0.0.0.0", "--port", "2507"]
