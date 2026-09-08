@@ -1,13 +1,13 @@
 services:
   tradoc:
     image: ghcr.io/lucas-lepajollec/tradoc:latest
-    container_name: tradoc-server
-    restart: unless-stopped
     ports:
       - "2507:2507"
     env_file:
-      - .env
+      - path: .env
+        required: false
     volumes:
       - ./data:/app/data
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    restart: unless-stopped

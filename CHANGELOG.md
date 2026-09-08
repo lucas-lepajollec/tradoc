@@ -6,6 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+
+- Make `.env` optional for Docker installs and generate a stable application secret inside persistent storage when operators do not provide one.
+- Let Docker Compose derive the stack and container names, and remove the obsolete duplicate Compose example now that the default file pulls GHCR directly.
+
 ## [0.1.4] - 2026-09-08
 
 ### Changed
@@ -16,7 +21,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
-- Use the established port `2507` both on the NAS and inside the production container.
+- Use the established port `2507` both on the Docker host and inside the production container.
 - Simplify the copy-ready Compose configuration while preserving persistent data, the required application secret and host access for a local model endpoint.
 
 ## [0.1.2] - 2026-09-08
