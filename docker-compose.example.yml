@@ -8,7 +8,7 @@ services:
     restart: unless-stopped
     ports:
       # Port exposé sur la machine hôte : port interne de l'application
-      - "${TRADOC_BIND_ADDRESS:-127.0.0.1}:2507:8000"
+      - "2507:8000"
     environment:
       - ENV=production
       - DATA_DIR=/app/data

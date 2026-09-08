@@ -1,13 +1,10 @@
 services:
   tradoc:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: tradoc:local
+    image: ${TRADOC_IMAGE:-ghcr.io/lucas-lepajollec/tradoc:latest}
     container_name: tradoc-server
     restart: unless-stopped
     ports:
-      - "${TRADOC_BIND_ADDRESS:-127.0.0.1}:2507:8000"
+      - "2507:8000"
     environment:
       - ENV=production
       - DATA_DIR=/app/data
