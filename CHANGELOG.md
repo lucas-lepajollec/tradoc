@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-08
+
 ### Changed
 
 - Make `.env` optional for Docker installs and generate a stable application secret inside persistent storage when operators do not provide one.
@@ -61,7 +63,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Earlier development remains available in Git history; this changelog does not invent releases that were never deliberately published.
 
-[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.1...v0.1.2
