@@ -26,10 +26,17 @@ EPUB, PDF, DOCX, Markdown, and plain text share one project workflow with checkp
 
 ## Product preview
 
-| Translation workspace | Editorial inspection |
+Every project, segment, glossary entry, and provider profile below is fictional isolated-demo data. Screenshots use the English interface with the demo intro dialog closed.
+
+| Editorial inspection | Terminology glossaries |
 | --- | --- |
-| Import a document, choose languages, select a provider/model, and prepare or start the project. | Review source and translated segments, monitor progress, resume jobs, retry failures, and export. |
-| <img src="docs/assets/screenshots/tradoc-demo-dashboard.png" alt="TraDoc translation workspace" width="640" /> | <img src="docs/assets/screenshots/tradoc-demo-inspector.png" alt="TraDoc segment inspector and progress tracking" width="640" /> |
+| Review source and translated segments, monitor progress, resume jobs, retry failures, and export. | Keep names, places, and project-specific rules consistent across a long document. |
+| <img src="docs/assets/screenshots/tradoc-demo-inspector.png" alt="TraDoc segment inspector and progress tracking" width="640" /> | <img src="docs/assets/screenshots/tradoc-demo-glossary.png" alt="TraDoc glossary editor with fictional literary terms" width="640" /> |
+
+| Provider settings | Translation sandbox |
+| --- | --- |
+| Configure local or remote OpenAI-compatible profiles without storing real credentials in the demo. | Test a model on a short excerpt before starting a full document job. |
+| <img src="docs/assets/screenshots/tradoc-demo-settings.png" alt="TraDoc settings with fictional provider profiles" width="640" /> | <img src="docs/assets/screenshots/tradoc-demo-sandbox.png" alt="TraDoc live sandbox and prompt preview" width="640" /> |
 
 ## Highlights
 

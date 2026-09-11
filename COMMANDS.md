@@ -63,6 +63,15 @@ npm --prefix web run dev:demo
 
 Open <http://127.0.0.1:2505>.
 
+Regenerate the README screenshot set from the isolated demo with:
+
+```shell
+npm --prefix web run demo:capture
+```
+
+The capture uses English, closes the intro dialog, and writes PNG files to
+`docs/assets/screenshots/`.
+
 ## Trusted-LAN development
 
 Use only on a trusted private network:

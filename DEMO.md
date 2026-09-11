@@ -31,6 +31,23 @@ Python backend.
 Use `npm run dev:demo:lan` only for testing from another device on a trusted
 local network.
 
+## Reproducible documentation screenshots
+
+Generate the README screenshot set from an isolated local demo server with:
+
+```bash
+cd web
+npm ci
+npx playwright install chromium
+npm run demo:capture
+```
+
+The script starts its own demo server on `127.0.0.1:2512`, forces English
+(`?lang=en`), closes the public-demo intro dialog before the first capture, and
+refuses to reuse an existing server so a personal TraDoc instance cannot be
+photographed accidentally. The compact demo chip in the corner may remain
+visible. Use `TRADOC_CAPTURE_PORT` if port `2512` is unavailable.
+
 Build and preview the static artifact:
 
 ```bash
