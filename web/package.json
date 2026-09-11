@@ -20,7 +20,8 @@
     "preview:demo": "vite preview --host 127.0.0.1 --port 2505",
     "preview:demo:lan": "vite preview --host 0.0.0.0 --port 2505",
     "test:e2e": "playwright test",
-    "test:e2e:demo": "playwright test --config playwright.demo.config.js"
+    "test:e2e:demo": "playwright test --config playwright.demo.config.js",
+    "demo:capture": "node scripts/capture-demo.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.344.0",
