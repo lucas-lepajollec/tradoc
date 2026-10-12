@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+- Refresh the compatible source-map-js patch and Tailwind 3 maintenance version; the Tailwind 4 migration remains separate.
+
 ### Changed
 
 - Refresh README product screenshots from the isolated English public demo, with the intro dialog closed and additional views of the inspector, glossary, settings, and sandbox.
