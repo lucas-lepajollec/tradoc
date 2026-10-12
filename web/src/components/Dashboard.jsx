@@ -266,14 +266,14 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
       {!endpointStatus && (
         <div className="card-chill p-4 border border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-500/5 text-zinc-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
           <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
-            <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0 mt-0.5 sm:mt-0" />
+            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5 sm:mt-0" />
             <span className="leading-relaxed">
               <strong className="text-white">{t('nav.unreachableBanner', lang)}</strong> {t('nav.checkServerUrl', lang)} <code className="bg-black/50 px-2 py-0.5 rounded text-zinc-300 font-mono inline-block break-all max-w-full">{settings.endpoint}</code>.
             </span>
           </div>
           <button
             onClick={() => setActiveTab('settings')}
-            className="btn-chill px-3 py-1.5 text-[11px] font-bold text-zinc-200 hover:text-white flex-shrink-0 self-end sm:self-auto"
+            className="btn-chill px-3 py-1.5 text-[11px] font-bold text-zinc-200 hover:text-white shrink-0 self-end sm:self-auto"
           >
             {t('nav.configureIp', lang)}
           </button>
@@ -289,7 +289,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
           <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
             <div>
               <h2 className="font-semibold text-base text-white tracking-tight flex items-center space-x-2">
-                <UploadCloud className="w-5 h-5 text-white flex-shrink-0" />
+                <UploadCloud className="w-5 h-5 text-white shrink-0" />
                 <span>{t('dashboard.importTitle', lang)}</span>
               </h2>
               <p className="text-xs text-[#888] mt-0.5">{t('dashboard.importSubtitle', lang)}</p>
@@ -301,7 +301,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
           {error && (
             <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 border-l-4 border-l-rose-500 text-zinc-200 text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
               <span>{error}</span>
             </div>
           )}
@@ -313,11 +313,11 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               onClick={() => setJobMode('translation')}
               className={`py-2 px-2 sm:px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-1.5 text-[11px] sm:text-xs border ${
                 jobMode === 'translation'
-                  ? 'bg-white/10 text-white border-white/15 shadow-sm backdrop-blur-md'
+                  ? 'bg-white/10 text-white border-white/15 shadow-xs backdrop-blur-md'
                   : 'bg-transparent text-[#888] border-transparent hover:text-white hover:bg-white/[0.02]'
               }`}
             >
-              <BookOpen className="w-3.5 h-3.5 flex-shrink-0" />
+              <BookOpen className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{t('dashboard.translationMode', lang)}</span>
             </button>
             <button
@@ -325,11 +325,11 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               onClick={() => setJobMode('proofreading')}
               className={`py-2 px-2 sm:px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-1.5 text-[11px] sm:text-xs border ${
                 jobMode === 'proofreading'
-                  ? 'bg-white/10 text-white border-white/15 shadow-sm backdrop-blur-md'
+                  ? 'bg-white/10 text-white border-white/15 shadow-xs backdrop-blur-md'
                   : 'bg-transparent text-[#888] border-transparent hover:text-white hover:bg-white/[0.02]'
               }`}
             >
-              <Layers className="w-3.5 h-3.5 flex-shrink-0" />
+              <Layers className="w-3.5 h-3.5 shrink-0" />
               <span className="truncate">{t('dashboard.proofreadMode', lang)}</span>
             </button>
           </div>

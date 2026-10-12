@@ -655,7 +655,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                   onClick={() => selectJobOptimistic(j)}
                   className={`project-switcher-item group p-3.5 rounded-xl cursor-pointer transition-all duration-150 flex items-center justify-between border ${
                     isSelected
-                      ? 'bg-white/[0.09] border-white/[0.16] text-white font-semibold shadow-sm'
+                      ? 'bg-white/[0.09] border-white/[0.16] text-white font-semibold shadow-xs'
                       : 'bg-white/[0.02] border-white/[0.06] text-zinc-400 hover:text-white hover:bg-white/[0.06] hover:border-white/[0.12]'
                   }`}
                   title={j.file_name}
@@ -665,7 +665,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     <p className="text-[10px] text-zinc-500 font-mono mt-0.5">{percent}% ({j.completed_chunks}/{j.total_chunks} segs)</p>
                   </div>
                   
-                  <div className="flex items-center space-x-1 flex-shrink-0">
+                  <div className="flex items-center space-x-1 shrink-0">
                     <button
                       onClick={(e) => handleDeleteJob(e, j.id, j.file_name)}
                       className="text-zinc-600 hover:text-rose-400 p-1 transition-colors"
@@ -803,7 +803,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                       {job.file_name}
                     </h2>
 
-                    <div className="flex flex-wrap items-center gap-1.5 flex-shrink-0">
+                    <div className="flex flex-wrap items-center gap-1.5 shrink-0">
                       {/* 1. Type de Fichier */}
                       <span className="px-2.5 py-0.5 rounded-md bg-white/[0.06] border border-white/[0.1] text-zinc-300 text-[9px] uppercase font-bold font-mono">
                         {job.file_type}
@@ -832,7 +832,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                   </div>
 
                   {/* Config & Details Links */}
-                  <div className="flex items-center space-x-3 flex-shrink-0 self-start sm:self-center">
+                  <div className="flex items-center space-x-3 shrink-0 self-start sm:self-center">
                     {job.status === 'PROCESSING' ? (
                       <span className="text-[10px] text-[#666] italic font-mono">
                         {l(lang, '(Pause the project to edit its settings)', '(Mettez le projet en pause pour modifier sa configuration)', '(Pausa el proyecto para editar su configuración)', '(Pausiere das Projekt, um seine Einstellungen zu bearbeiten)')}
@@ -1079,7 +1079,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                         <button
                           type="button"
                           onClick={handleResync}
-                          className="px-2 py-0.5 text-[9px] font-semibold bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#60a5fa] rounded-md transition-all flex-shrink-0"
+                          className="px-2 py-0.5 text-[9px] font-semibold bg-[#2563eb]/10 border border-[#2563eb]/20 hover:bg-[#2563eb]/20 text-[#60a5fa] rounded-md transition-all shrink-0"
                         >
                           {l(lang, 'Resync', 'Resynchroniser', 'Resincronizar', 'Neu synchronisieren')}
                         </button>
@@ -1100,7 +1100,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                           value={jumpInput}
                           onChange={(e) => setJumpInput(e.target.value)}
                           aria-label={l(lang, 'Segment number', 'Numéro du segment', 'Número de segmento', 'Segmentnummer')}
-                          className="w-10 bg-transparent border-b border-white/10 hover:border-white/30 focus:border-[#2563eb] text-center text-xs font-mono text-white outline-none pb-0.5"
+                          className="w-10 bg-transparent border-b border-white/10 hover:border-white/30 focus:border-[#2563eb] text-center text-xs font-mono text-white outline-hidden pb-0.5"
                         />
                         <span className="text-xs text-zinc-500 font-mono">/ {segments.length}</span>
                       </form>

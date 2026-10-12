@@ -52,6 +52,9 @@ Every project, segment, glossary entry, and provider profile below is fictional 
 
 ## Quick start
 
+The interface requires Safari 16.4+, Chrome 111+ or Firefox 128+ after the Tailwind CSS 4 migration.
+
+
 ### Docker Compose
 
 Requirements: Docker Engine with Compose `2.24.0` or newer, and host port `2507`.

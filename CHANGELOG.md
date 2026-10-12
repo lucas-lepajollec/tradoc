@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+- Migrate the frontend to Tailwind CSS 4 through its Vite plugin, preserving existing theme tokens, small shadows/radii and focus behavior; remove the vulnerable Tailwind 3 build chain.
+- Keep the source-map-js security patch and grouped maintenance policy. Modern browser support requires Safari 16.4+, Chrome 111+ or Firefox 128+.
+
 ### Changed
 
 - Refresh README product screenshots from the isolated English public demo, with the intro dialog closed and additional views of the inspector, glossary, settings, and sandbox.

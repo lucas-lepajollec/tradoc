@@ -6,6 +6,7 @@ This guide complements the README with reproducible development and operation co
 
 - Python 3.11 or newer
 - Node.js 22 and npm
+- Browser: Safari 16.4+, Chrome 111+ or Firefox 128+ (Tailwind CSS 4)
 - Docker Engine with Compose v2 only for the container workflow
 
 ## Initial installation

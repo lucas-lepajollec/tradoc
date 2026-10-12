@@ -153,7 +153,7 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
 
       {error && (
         <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 border-l-4 border-l-rose-500 text-zinc-200 text-xs flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 text-rose-500 flex-shrink-0" />
+          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
           <span>{error}</span>
         </div>
       )}
