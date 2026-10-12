@@ -136,7 +136,7 @@ export default function DemoExperience({ lang }) {
             </div>
           </div>
 
-          <h2 ref={titleRef} id="lh-demo-title" tabIndex={-1} className="max-w-xl text-[1.7rem] font-semibold tracking-tight outline-none sm:text-4xl">
+          <h2 ref={titleRef} id="lh-demo-title" tabIndex={-1} className="max-w-xl text-[1.7rem] font-semibold tracking-tight outline-hidden sm:text-4xl">
             {copy.title}
           </h2>
           <p id="lh-demo-body" className="mt-3 max-w-xl text-sm leading-6 text-white/55 sm:text-[15px]">

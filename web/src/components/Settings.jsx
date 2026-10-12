@@ -376,7 +376,7 @@ export default function Settings({
                 key={tab.id}
                 type="button"
                 onClick={() => setActiveSubTab(tab.id)}
-                className={`settings-tab flex-1 min-w-max flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-colors duration-100 outline-none focus:outline-none focus:ring-0 ${
+                className={`settings-tab flex-1 min-w-max flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-colors duration-100 outline-hidden focus:outline-hidden focus:ring-0 ${
                   isActive
                     ? 'bg-white/[0.08] text-white font-semibold border border-white/[0.12]'
                     : 'text-[#888] hover:text-white hover:bg-white/[0.04] border border-transparent'
@@ -413,7 +413,7 @@ export default function Settings({
                       key={prov.id}
                       type="button"
                       onClick={() => handleProviderSelect(prov)}
-                      className={`provider-card rounded-xl border transition-colors duration-100 outline-none focus:outline-none focus:ring-0 ${
+                      className={`provider-card rounded-xl border transition-colors duration-100 outline-hidden focus:outline-hidden focus:ring-0 ${
                         isSelected
                           ? 'bg-white/[0.08] border-white/[0.18] text-white font-semibold'
                           : 'bg-black/30 border-white/[0.08] text-[#888] hover:text-[#ededed] hover:bg-white/[0.02]'
@@ -421,7 +421,7 @@ export default function Settings({
                     >
                       <div className={`w-8 h-8 rounded-xl flex items-center justify-center p-1.5 overflow-hidden ${isSelected ? 'bg-white/[0.12]' : 'bg-white/5'}`}>
                         {prov.logoUrl ? (
-                          <img src={prov.logoUrl} alt={prov.name} className="w-5 h-5 object-contain rounded-sm" />
+                          <img src={prov.logoUrl} alt={prov.name} className="w-5 h-5 object-contain rounded-xs" />
                         ) : (
                           <Icon />
                         )}
@@ -437,7 +437,7 @@ export default function Settings({
                 <div className={`p-4 rounded-xl border text-xs flex items-start space-x-3 text-zinc-200 ${
                   testResult.success ? 'bg-emerald-500/10 border-emerald-500/20 border-l-4 border-l-emerald-500' : 'bg-rose-500/10 border-rose-500/20 border-l-4 border-l-rose-500'
                 }`}>
-                  {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 flex-shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-500 mt-0.5 flex-shrink-0" />}
+                  {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />}
                   <div>
                     <p className="font-semibold text-white">{testResult.message}</p>
                     {testResult.models?.length > 0 && (
