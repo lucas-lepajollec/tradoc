@@ -24,17 +24,17 @@
     "demo:capture": "node scripts/capture-demo.mjs"
   },
   "dependencies": {
-    "lucide-react": "^0.344.0",
+    "lucide-react": "^0.577.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"
   },
   "devDependencies": {
-    "@playwright/test": "^1.62.1",
+    "@playwright/test": "^1.64.0",
     "@tailwindcss/vite": "4.3.3",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
-    "@vitejs/plugin-react": "^6.0.5",
+    "@vitejs/plugin-react": "^6.1.2",
     "tailwindcss": "4.3.3",
-    "vite": "^8.2.1"
+    "vite": "^8.3.4"
   }
 }
