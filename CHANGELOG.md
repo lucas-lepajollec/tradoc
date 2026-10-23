@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.8] - 2026-10-23
+
+The database gains new columns and an `api_clients` table on first start; the changes are additive, so rolling back to the 0.1.7 image keeps working data intact. Integration keys are stored only as hashes in the data directory.
+
 ### Added
 
 - Integration API for other apps (`/api/v1`): an app connected under Settings → Integrations sends a document, follows its progress and downloads the rebuilt translation with a `tdk_` bearer key; each connection only sees its own projects, which also appear in TraDoc tagged "via <app>". Keys are shown once and stored hashed; disconnecting revokes them. See `docs/integration-api.md`. Database changes are additive (new columns and table), so rolling back to 0.1.7 keeps working.
@@ -101,7 +105,8 @@ No database or configuration migration is required. Provider keys and endpoints 
 
 Earlier development remains available in Git history; this changelog does not invent releases that were never deliberately published.
 
-[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.7...HEAD
+[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.8...HEAD
+[0.1.8]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.7...v0.1.8
 [0.1.7]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.4...v0.1.5
