@@ -1,4 +1,4 @@
-"""Versioned API for other apps (for example Bunko) that use TraDoc as an engine.
+"""Versioned API for other self-hosted apps that use TraDoc as an engine.
 
 Every request carries ``Authorization: Bearer tdk_…`` for a connection created
 in Settings › Integrations. A connection only sees the projects it created;

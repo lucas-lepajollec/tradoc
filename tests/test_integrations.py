@@ -13,7 +13,7 @@ from core.config import settings
 
 
 class IntegrationApiTests(unittest.TestCase):
-    """The /api/v1 surface other apps (for example Bunko) use, on an isolated database."""
+    """The /api/v1 surface other self-hosted apps use, on an isolated database."""
 
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
@@ -36,7 +36,7 @@ class IntegrationApiTests(unittest.TestCase):
         settings.DATA_DIR = self.previous_data_dir
         self.temp.cleanup()
 
-    def connect(self, name="Bunko", provider="ollama", model="qwen2.5:7b"):
+    def connect(self, name="Library app", provider="ollama", model="qwen2.5:7b"):
         response = self.client.post(
             "/api/integrations",
             json={"name": name, "default_provider": provider, "default_model": model},
@@ -65,21 +65,21 @@ class IntegrationApiTests(unittest.TestCase):
     def test_connected_app_creates_follows_and_deletes_a_translation(self):
         client, headers = self.connect()
         info = self.client.get("/api/v1/info", headers=headers).json()
-        self.assertEqual(info["client"]["name"], "Bunko")
+        self.assertEqual(info["client"]["name"], "Library app")
         self.assertEqual(info["default"], {"provider": "ollama", "model": "qwen2.5:7b"})
 
-        created = self.upload(headers, external_ref="bunko-book-42")
+        created = self.upload(headers, external_ref="book-42")
         self.assertEqual(created.status_code, 202, created.text)
         translation = created.json()
         self.assertEqual(translation["status"], "pending")
         self.assertEqual(translation["provider"], "ollama")
         self.assertEqual(translation["model"], "qwen2.5:7b")
-        self.assertEqual(translation["external_ref"], "bunko-book-42")
+        self.assertEqual(translation["external_ref"], "book-42")
         self.assertGreater(translation["progress"]["total"], 0)
 
         # The project also exists in TraDoc's own interface, tagged with its origin.
         job = self.client.get(f"/api/jobs/{translation['id']}").json()
-        self.assertEqual(job["client_name"], "Bunko")
+        self.assertEqual(job["client_name"], "Library app")
         self.assertEqual(job["client_id"], client["id"])
 
         listed = self.client.get("/api/v1/translations", headers=headers).json()
@@ -110,9 +110,9 @@ class IntegrationApiTests(unittest.TestCase):
         self.assertTrue(run_job.await_count <= 1)
 
     def test_a_connection_only_sees_its_own_translations(self):
-        _, bunko = self.connect("Bunko")
+        _, library = self.connect("Library app")
         _, other = self.connect("Other app")
-        translation = self.upload(bunko).json()
+        translation = self.upload(library).json()
         self.assertEqual(self.client.get(f"/api/v1/translations/{translation['id']}", headers=other).status_code, 404)
         self.assertEqual(self.client.delete(f"/api/v1/translations/{translation['id']}", headers=other).status_code, 404)
         self.assertEqual(self.client.get("/api/v1/translations", headers=other).json(), [])
@@ -127,7 +127,7 @@ class IntegrationApiTests(unittest.TestCase):
         client, headers = self.connect()
         self.assertEqual(self.client.get("/api/v1/info", headers=headers).status_code, 200)
         listed = self.client.get("/api/integrations").json()
-        self.assertEqual([item["name"] for item in listed], ["Bunko"])
+        self.assertEqual([item["name"] for item in listed], ["Library app"])
         self.assertIsNotNone(listed[0]["last_used_at"])
         self.assertEqual(self.client.delete(f"/api/integrations/{client['id']}").status_code, 200)
         self.assertEqual(self.client.get("/api/v1/info", headers=headers).status_code, 401)

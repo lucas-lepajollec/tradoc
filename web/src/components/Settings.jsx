@@ -85,9 +85,9 @@ export default function Settings({
   useEffect(() => { loadCredentialMeta(); }, []);
   const isConnected = (providerId) => Boolean(credentialMeta[providerId]?.has_api_key || (isLocalProvider(providerId) && credentialMeta[providerId]?.endpoint));
 
-  // Integrations: other apps (for example Bunko) using TraDoc as their engine.
+  // Integrations: other self-hosted apps using TraDoc as their engine.
   const [integrations, setIntegrations] = useState([]);
-  const [integrationName, setIntegrationName] = useState('Bunko');
+  const [integrationName, setIntegrationName] = useState('');
   const [integrationProvider, setIntegrationProvider] = useState(settings.apiType || '');
   const [integrationModel, setIntegrationModel] = useState(settings.model || '');
   const [issuedToken, setIssuedToken] = useState(null);
@@ -647,7 +647,7 @@ export default function Settings({
           <section aria-label={l(lang, 'Integrations', 'Intégrations', 'Integraciones', 'Integrationen')} className="card flex flex-col gap-[22px] p-6">
             <div className="flex flex-col gap-1">
               <h2 className="section-title">{l(lang, 'Let other apps use TraDoc', 'Laisser d’autres apps utiliser TraDoc', 'Permitir que otras apps usen TraDoc', 'Andere Apps TraDoc nutzen lassen')}</h2>
-              <p className="m-0 text-[13px] text-sec">{l(lang, 'Connect an app such as Bunko: it sends a book, TraDoc translates it with its engine and returns the file. Those projects also appear in TraDoc, tagged with the app’s name.', 'Connectez une app comme Bunko : elle envoie un livre, TraDoc le traduit avec son moteur et renvoie le fichier. Ces projets apparaissent aussi dans TraDoc, avec le nom de l’app.', 'Conecta una app como Bunko: envía un libro, TraDoc lo traduce con su motor y devuelve el archivo. Esos proyectos también aparecen en TraDoc con el nombre de la app.', 'Verbinde eine App wie Bunko: Sie sendet ein Buch, TraDoc übersetzt es mit seiner Engine und gibt die Datei zurück. Diese Projekte erscheinen auch in TraDoc, mit dem Namen der App.')}</p>
+              <p className="m-0 text-[13px] text-sec">{l(lang, 'Connect another self-hosted app, for example a library or reading app: it sends a book, TraDoc translates it with its engine and returns the file. Those projects also appear in TraDoc, tagged with the app’s name.', 'Connectez une autre app auto-hébergée, par exemple une app de bibliothèque ou de lecture : elle envoie un livre, TraDoc le traduit avec son moteur et renvoie le fichier. Ces projets apparaissent aussi dans TraDoc, avec le nom de l’app.', 'Conecta otra app autoalojada, por ejemplo una app de biblioteca o de lectura: envía un libro, TraDoc lo traduce con su motor y devuelve el archivo. Esos proyectos también aparecen en TraDoc con el nombre de la app.', 'Verbinde eine andere selbst gehostete App, zum Beispiel eine Bibliotheks- oder Lese-App: Sie sendet ein Buch, TraDoc übersetzt es mit seiner Engine und gibt die Datei zurück. Diese Projekte erscheinen auch in TraDoc, mit dem Namen der App.')}</p>
             </div>
 
             <div className="field">
@@ -666,7 +666,7 @@ export default function Settings({
               <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
                 <label className="field">
                   <span className="field-label">{l(lang, 'App name', 'Nom de l’app', 'Nombre de la app', 'App-Name')}</span>
-                  <input className="input input-on-card" value={integrationName} maxLength={60} onChange={(event) => setIntegrationName(event.target.value)} />
+                  <input className="input input-on-card" value={integrationName} maxLength={60} placeholder={l(lang, 'My library', 'Ma bibliothèque', 'Mi biblioteca', 'Meine Bibliothek')} onChange={(event) => setIntegrationName(event.target.value)} />
                 </label>
                 <div className="field">
                   <span className="field-label">{l(lang, 'Default model', 'Modèle par défaut', 'Modelo predeterminado', 'Standardmodell')}</span>
