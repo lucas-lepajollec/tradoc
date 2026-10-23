@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { ChevronRight, Menu, X } from 'lucide-react';
 import { l, t } from '../i18n/translations';
 import ModelSelect from './ModelSelect';
+import Select from './Select';
 
 const NAV_ITEMS = [
   { id: 'dashboard', key: 'nav.projects' },
@@ -50,10 +51,13 @@ export default function TopBar({
     : l(lang, 'Service offline', 'Service hors ligne', 'Servicio sin conexión', 'Dienst offline');
 
   const profileSelect = (className) => onSelectPreset && (
-    <select aria-label={profileLabel} className={className} value={activePresetId || ''} onChange={(event) => onSelectPreset(event.target.value)}>
-      <option value="">{noProfile}</option>
-      {presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
-    </select>
+    <Select
+      ariaLabel={profileLabel}
+      className={className}
+      value={activePresetId || ''}
+      onChange={onSelectPreset}
+      options={[{ value: '', label: noProfile }, ...presets.map((preset) => ({ value: preset.id, label: preset.name }))]}
+    />
   );
 
   const modelSelect = (className) => onSelectModel && (
@@ -88,10 +92,10 @@ export default function TopBar({
             <span className={`dot mx-2 ${endpointStatus ? 'is-online' : ''}`} title={statusLabel} />
             <span className="sr-only">{statusLabel}</span>
             <span className="runtime-profile inline-flex items-center gap-0.5">
-              {profileSelect('bare-select text-sec font-normal')}
+              {profileSelect('!font-normal text-sec')}
               <span className="sep" aria-hidden="true" />
             </span>
-            {modelSelect('bare-select')}
+            {modelSelect('')}
           </div>
         </div>
       </div>

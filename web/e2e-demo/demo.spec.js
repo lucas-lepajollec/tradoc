@@ -72,10 +72,17 @@ test('switches projects from the review list', async ({ page }, testInfo) => {
 
 test('lists models of every connected provider and switches provider on pick', async ({ page }) => {
   await enterDemo(page);
-  const model = page.getByRole('combobox', { name: /^Model/ }).last();
-  await expect(model.locator('optgroup')).toHaveCount(2);
-  await model.selectOption('ollama::demo-local-model');
+  const model = page.getByRole('combobox', { name: 'Model' }).last();
+  await model.click();
+  const list = page.getByRole('listbox', { name: 'Model' });
+  await expect(list.getByRole('group')).toHaveCount(2);
+  const box = await list.boundingBox();
+  const viewport = page.viewportSize();
+  expect(box.x).toBeGreaterThanOrEqual(0);
+  expect(box.x + box.width).toBeLessThanOrEqual(viewport.width);
+  await list.getByRole('option', { name: 'demo-local-model' }).click();
   await expect(page.getByRole('button', { name: /^Ollama \/ Local ·/ })).toBeVisible();
-  await model.selectOption('openai::demo-proofreader');
+  await model.click();
+  await page.getByRole('listbox', { name: 'Model' }).getByRole('option', { name: 'demo-proofreader' }).click();
   await expect(page.getByRole('button', { name: /^OpenAI ·/ })).toBeVisible();
 });

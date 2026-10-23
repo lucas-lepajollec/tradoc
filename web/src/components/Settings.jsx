@@ -4,6 +4,7 @@ import { isDemoMode, testConnection, saveProviderCredentials, fetchCredentialMet
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 import { sanitizeProviderConfigs } from '../utils/persistence';
 import { PROVIDERS, isLocalProvider } from '../providers';
+import Select from './Select';
 
 const DEFAULT_LITERARY_PROMPT = `You are a professional literary translator. Translate the supplied source text into the target language configured for this project, using fluent, natural prose suitable for publication.
 
@@ -374,10 +375,17 @@ export default function Settings({
                     aria-label={t('settings.searchModelPlaceholder', lang)}
                   />
                 )}
-                <select id="settings-model" className="input" value={model} onChange={(event) => setModel(event.target.value)}>
-                  {!filteredModels.includes(model) && model && <option value={model}>{model} (Custom)</option>}
-                  {filteredModels.map((item) => <option key={item} value={item}>{item}</option>)}
-                </select>
+                <Select
+                  id="settings-model"
+                  className="input"
+                  ariaLabel={t('settings.activeModel', lang)}
+                  value={model}
+                  onChange={setModel}
+                  options={[
+                    ...(!filteredModels.includes(model) && model ? [{ value: model, label: `${model} (Custom)` }] : []),
+                    ...filteredModels.map((item) => ({ value: item, label: item })),
+                  ]}
+                />
               </div>
               <label className="field">
                 <span className="field-label">{t('settings.customEndpoint', lang)}</span>
@@ -461,10 +469,17 @@ export default function Settings({
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-medium">{t('settings.systemPromptTitle', lang)}</span>
                 <div className="flex items-center gap-1.5">
-                  <select aria-label={t('settings.systemPromptTitle', lang)} className="chip-select !pr-2 font-medium text-fg" value={selectedPromptKey} onChange={(event) => handlePromptPresetChange(event.target.value)}>
-                    <option value="literary">{l(lang, 'Literary default prompt', 'Prompt littéraire par défaut', 'Prompt literario predeterminado', 'Standardprompt für literarische Texte')}</option>
-                    {Object.keys(customPromptPresets).map((key) => <option key={key} value={key}>{key}</option>)}
-                  </select>
+                  <span className="chip-select !pl-2 !pr-1">
+                    <Select
+                      ariaLabel={t('settings.systemPromptTitle', lang)}
+                      value={selectedPromptKey}
+                      onChange={handlePromptPresetChange}
+                      options={[
+                        { value: 'literary', label: l(lang, 'Literary default prompt', 'Prompt littéraire par défaut', 'Prompt literario predeterminado', 'Standardprompt für literarische Texte') },
+                        ...Object.keys(customPromptPresets).map((key) => ({ value: key, label: key })),
+                      ]}
+                    />
+                  </span>
                   {selectedPromptKey !== 'literary' && (
                     <button type="button" className="icon-btn is-plain" onClick={() => handleDeletePromptPreset(selectedPromptKey)} aria-label={t('settings.deletePresetBtn', lang)}>
                       <Trash2 aria-hidden="true" />
@@ -510,15 +525,21 @@ export default function Settings({
                 <span>{l(lang, 'Pre-selected for every new document.', 'Présélectionnées pour chaque nouveau document.', 'Preseleccionados para cada documento nuevo.', 'Für jedes neue Dokument vorausgewählt.')}</span>
               </span>
               <div className="chip-select !px-1">
-                <select aria-label={l(lang, 'Default source language', 'Langue source par défaut', 'Idioma de origen predeterminado', 'Standard-Ausgangssprache')} value={sourceLang} onChange={(event) => setSourceLang(event.target.value)}>
-                  {AVAILABLE_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
-                </select>
+                <Select
+                  ariaLabel={l(lang, 'Default source language', 'Langue source par défaut', 'Idioma de origen predeterminado', 'Standard-Ausgangssprache')}
+                  value={sourceLang}
+                  onChange={setSourceLang}
+                  options={AVAILABLE_LANGUAGES.map((language) => ({ value: language.code, label: languageLabel(language.code, lang) }))}
+                />
                 <button type="button" className="icon-btn is-plain !size-7" onClick={swapDefaultLanguages} aria-label={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}>
                   <ArrowLeftRight className="!size-3.5" aria-hidden="true" />
                 </button>
-                <select aria-label={l(lang, 'Default target language', 'Langue cible par défaut', 'Idioma de destino predeterminado', 'Standard-Zielsprache')} value={targetLang} onChange={(event) => setTargetLang(event.target.value)}>
-                  {AVAILABLE_LANGUAGES.filter((language) => language.code !== 'auto').map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
-                </select>
+                <Select
+                  ariaLabel={l(lang, 'Default target language', 'Langue cible par défaut', 'Idioma de destino predeterminado', 'Standard-Zielsprache')}
+                  value={targetLang}
+                  onChange={setTargetLang}
+                  options={AVAILABLE_LANGUAGES.filter((language) => language.code !== 'auto').map((language) => ({ value: language.code, label: languageLabel(language.code, lang) }))}
+                />
               </div>
             </div>
           </section>

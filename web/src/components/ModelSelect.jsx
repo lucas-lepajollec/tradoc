@@ -1,21 +1,19 @@
 import React from 'react';
 import { encodeModelChoice } from '../providers';
+import Select from './Select';
 
-// A native select listing the models of every connected provider, grouped by
-// provider. The value encodes "provider::model" so a pick can switch provider.
-export default function ModelSelect({ groups = [], provider, model, onChange, className = '', ...props }) {
+// Lists the models of every connected provider, grouped by provider. The value
+// encodes "provider::model" so a pick can switch provider.
+export default function ModelSelect({ groups = [], provider, model, onChange, className = '', 'aria-label': ariaLabel, ...props }) {
   const value = encodeModelChoice(provider, model);
   const known = groups.some((group) => group.provider === provider && group.models.includes(model));
-  const options = (group) => group.models.map((item) => (
-    <option key={encodeModelChoice(group.provider, item)} value={encodeModelChoice(group.provider, item)}>{item}</option>
-  ));
+  const grouped = groups.length > 1;
+  const options = groups.flatMap((group) => group.models.map((item) => ({
+    value: encodeModelChoice(group.provider, item),
+    label: item,
+    group: grouped ? group.label : undefined,
+  })));
+  if (!known && model) options.unshift({ value, label: model });
 
-  return (
-    <select {...props} className={className} value={value} onChange={(event) => onChange(event.target.value)}>
-      {!known && model && <option value={value}>{model}</option>}
-      {groups.length > 1
-        ? groups.map((group) => <optgroup key={group.provider} label={group.label}>{options(group)}</optgroup>)
-        : groups.flatMap(options)}
-    </select>
-  );
+  return <Select {...props} ariaLabel={ariaLabel} className={className} value={value} options={options} onChange={onChange} />;
 }
