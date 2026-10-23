@@ -199,8 +199,6 @@
   .seg-outline > button[aria-current="page"] { background: var(--nav-sel); color: var(--text); }
   .seg-scroll { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; }
   .seg-scroll::-webkit-scrollbar { display: none; }
-  .project-rail { scroll-snap-type: x mandatory; scrollbar-width: thin; }
-  @media (min-width: 640px) { .project-rail { flex-wrap: wrap; overflow-x: visible; } }
 
   /* Pill holding a label and a native select */
   .chip-select {

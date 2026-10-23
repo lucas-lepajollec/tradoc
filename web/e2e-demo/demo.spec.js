@@ -52,3 +52,14 @@ test('returns a complete French translation in the sandbox', async ({ page }, te
   await expect(page.getByText(/Mon cher monsieur Bennet/)).toBeVisible();
   await expect(page.locator('.sandbox-document-output')).not.toContainText('However little known');
 });
+
+test('switches projects from the review screen', async ({ page }) => {
+  await enterDemo(page);
+  await page.getByText('Northanger Abbey — Sample.md').first().click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Northanger Abbey — Sample.md' })).toBeVisible();
+  await page.getByRole('button', { name: /Current project/ }).click();
+  await page.getByRole('listitem').filter({ hasText: 'A Voyage to the Moon' }).getByRole('button').click();
+  await expect(page.getByRole('heading', { level: 2, name: 'A Voyage to the Moon — Sample.txt' })).toBeVisible();
+  await page.getByRole('button', { name: 'Previous project' }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Northanger Abbey — Sample.md' })).toBeVisible();
+});

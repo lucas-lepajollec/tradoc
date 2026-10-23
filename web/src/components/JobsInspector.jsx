@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Play, Pause, RefreshCw, Download, ChevronRight, ChevronLeft, Copy, Check, Trash2, Sliders, X } from 'lucide-react';
+import { Play, Pause, RefreshCw, Download, ChevronRight, ChevronLeft, ChevronDown, Copy, Check, Search, Trash2, Sliders, X } from 'lucide-react';
 import { fetchJobs, fetchJobDetail, fetchJobSegments, startJob, pauseJob, retryJob, deleteJob, updateJobConfig, downloadJob, subscribeToEvents } from '../api';
 import { l, languageLabel, localeTag, t } from '../i18n/translations';
 import { readableSegment } from '../utils/readableSegment';
@@ -628,6 +628,45 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     return () => document.removeEventListener('keydown', closeOnEscape);
   }, [isEditingConfig]);
 
+  const [switcherOpen, setSwitcherOpen] = useState(false);
+  const [projectQuery, setProjectQuery] = useState('');
+  const switcherRef = useRef(null);
+  const switcherListRef = useRef(null);
+
+  useEffect(() => {
+    if (!switcherOpen) return undefined;
+    const closeOutside = (event) => {
+      if (switcherRef.current && !switcherRef.current.contains(event.target)) setSwitcherOpen(false);
+    };
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setSwitcherOpen(false);
+    };
+    document.addEventListener('mousedown', closeOutside);
+    document.addEventListener('keydown', closeOnEscape);
+    return () => {
+      document.removeEventListener('mousedown', closeOutside);
+      document.removeEventListener('keydown', closeOnEscape);
+    };
+  }, [switcherOpen]);
+
+  const currentJobIndex = jobs.findIndex((item) => item.id === job?.id);
+  const filteredJobs = jobs.filter((item) => item.file_name.toLowerCase().includes(projectQuery.trim().toLowerCase()));
+  const jobPercent = (item) => (item.total_chunks > 0 ? Math.round((item.completed_chunks / item.total_chunks) * 100) : 0);
+  const pickJob = (item) => {
+    selectJobOptimistic(item);
+    setSwitcherOpen(false);
+    setProjectQuery('');
+  };
+  const moveFocusInList = (event) => {
+    if (!['ArrowDown', 'ArrowUp'].includes(event.key)) return;
+    event.preventDefault();
+    const options = Array.from(switcherListRef.current?.querySelectorAll('button') || []);
+    if (options.length === 0) return;
+    const index = options.indexOf(document.activeElement);
+    const next = event.key === 'ArrowDown' ? Math.min(options.length - 1, index + 1) : Math.max(0, index - 1);
+    options[index === -1 ? 0 : next].focus();
+  };
+
   const jobStatusLabel = (status) => (
     status === 'PROCESSING' ? t('dashboard.processing', lang)
       : status === 'COMPLETED' ? t('dashboard.completed', lang)
@@ -650,43 +689,95 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     <div className="page">
       <h1 className="sr-only">{l(lang, 'Inspect and review', 'Inspection et révision', 'Inspección y revisión', 'Prüfen und überarbeiten')}</h1>
 
-      <section aria-labelledby="project-list-title" className="flex flex-col gap-2.5">
-        <div className="flex items-baseline justify-between gap-3">
-          <h2 id="project-list-title" className="section-title">
-            {l(lang, 'Projects', 'Projets', 'Proyectos', 'Projekte')} <span className="font-normal text-sec">{jobs.length}</span>
-          </h2>
-          <span className="text-[13px] text-sec" title={l(lang, 'Projects currently running', 'Projets actuellement en cours', 'Proyectos actualmente en curso', 'Derzeit laufende Projekte')}>
-            {activeJobCount} {l(lang, 'running', 'en cours', 'en curso', 'laufend')}
-          </span>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="flex min-w-0 flex-1 items-center gap-1.5 max-sm:basis-full">
+          <button
+            type="button"
+            className="icon-btn"
+            disabled={currentJobIndex <= 0}
+            onClick={() => pickJob(jobs[currentJobIndex - 1])}
+            aria-label={l(lang, 'Previous project', 'Projet précédent', 'Proyecto anterior', 'Vorheriges Projekt')}
+          >
+            <ChevronLeft aria-hidden="true" />
+          </button>
+          <div ref={switcherRef} className="relative min-w-0 flex-1 sm:max-w-[460px]">
+            <button
+              type="button"
+              aria-expanded={switcherOpen}
+              onClick={() => setSwitcherOpen(!switcherOpen)}
+              onKeyDown={(event) => {
+                if (event.key === 'ArrowDown') {
+                  event.preventDefault();
+                  setSwitcherOpen(true);
+                }
+              }}
+              className="flex h-11 w-full min-w-0 items-center gap-2.5 rounded-full border border-line bg-card pl-4 pr-3 text-left hover:bg-well"
+            >
+              <span className="sr-only">{l(lang, 'Current project', 'Projet en cours', 'Proyecto actual', 'Aktuelles Projekt')}:</span>
+              <span className="min-w-0 flex-1 truncate font-semibold">{job?.file_name || t('inspector.projectsList', lang)}</span>
+              {job && <span className="text-[13px] tabular-nums text-sec">{jobPercent(job)} %</span>}
+              <ChevronDown className={`size-4 flex-none text-sec transition-transform ${switcherOpen ? 'rotate-180' : ''}`} aria-hidden="true" />
+            </button>
+
+            {switcherOpen && (
+              <div className="absolute left-0 right-0 top-[calc(100%+6px)] z-30 overflow-hidden rounded-2xl border border-line bg-card sm:min-w-[380px]" onKeyDown={moveFocusInList}>
+                {jobs.length > 5 && (
+                  <label className="flex items-center gap-2 border-b border-line px-3.5">
+                    <Search className="size-4 flex-none text-sec" aria-hidden="true" />
+                    <input
+                      autoFocus
+                      type="search"
+                      value={projectQuery}
+                      onChange={(event) => setProjectQuery(event.target.value)}
+                      placeholder={l(lang, 'Search projects', 'Rechercher un projet', 'Buscar un proyecto', 'Projekt suchen')}
+                      aria-label={l(lang, 'Search projects', 'Rechercher un projet', 'Buscar un proyecto', 'Projekt suchen')}
+                      className="h-11 min-w-0 flex-1 border-0 bg-transparent outline-none"
+                    />
+                  </label>
+                )}
+                <ul ref={switcherListRef} aria-label={t('inspector.projectsList', lang)} className="m-0 max-h-[min(60vh,360px)] list-none overflow-y-auto p-1.5">
+                  {filteredJobs.length === 0 ? (
+                    <li className="px-3 py-4 text-center text-[13px] text-sec">{l(lang, 'No matching project', 'Aucun projet correspondant', 'Ningún proyecto coincide', 'Kein passendes Projekt')}</li>
+                  ) : filteredJobs.map((item) => {
+                    const isSelected = job?.id === item.id;
+                    return (
+                      <li key={item.id}>
+                        <button
+                          type="button"
+                          autoFocus={jobs.length <= 5 && isSelected}
+                          aria-current={isSelected ? 'true' : undefined}
+                          onClick={() => pickJob(item)}
+                          className={`flex w-full items-center gap-3 rounded-xl border-0 px-3 py-2.5 text-left hover:bg-well focus-visible:bg-well ${isSelected ? 'bg-[var(--accent-soft)]' : 'bg-transparent'}`}
+                        >
+                          <span className="tag flex-none max-sm:hidden">{item.file_type?.toUpperCase()}</span>
+                          <span className="flex min-w-0 flex-1 flex-col">
+                            <span className="line-clamp-2 break-words font-medium">{item.file_name}</span>
+                            <span className={`status ${statusClass(item.status)}`}>{jobStatusLabel(item.status)}</span>
+                          </span>
+                          <span className="flex-none text-[13px] font-medium tabular-nums text-sec">{jobPercent(item)} %</span>
+                          {isSelected && <Check className="size-4 flex-none text-accent-text" aria-hidden="true" />}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            )}
+          </div>
+          <button
+            type="button"
+            className="icon-btn"
+            disabled={currentJobIndex === -1 || currentJobIndex >= jobs.length - 1}
+            onClick={() => pickJob(jobs[currentJobIndex + 1])}
+            aria-label={l(lang, 'Next project', 'Projet suivant', 'Proyecto siguiente', 'Nächstes Projekt')}
+          >
+            <ChevronRight aria-hidden="true" />
+          </button>
         </div>
-        <ul className="project-rail m-0 flex list-none gap-2.5 overflow-x-auto p-0 pb-1">
-          {jobs.map((item) => {
-            const isSelected = job?.id === item.id;
-            const percent = item.total_chunks > 0 ? Math.round((item.completed_chunks / item.total_chunks) * 100) : 0;
-            return (
-              <li key={item.id} className="flex-[0_0_min(78vw,280px)] snap-start sm:flex-[1_0_240px] sm:max-w-[320px]">
-                <button
-                  type="button"
-                  aria-current={isSelected ? 'true' : undefined}
-                  onClick={() => selectJobOptimistic(item)}
-                  title={item.file_name}
-                  className={`flex h-full w-full flex-col gap-2.5 rounded-2xl border p-3.5 text-left transition-colors ${isSelected ? 'border-[var(--accent-btn)] bg-[var(--accent-soft)]' : 'border-line bg-card hover:bg-well'}`}
-                >
-                  <span className="flex w-full items-center gap-2">
-                    <span className="tag">{item.file_type?.toUpperCase()}</span>
-                    <span className={`status ${statusClass(item.status)}`}>{jobStatusLabel(item.status)}</span>
-                  </span>
-                  <span className="w-full truncate text-[14px] font-semibold">{item.file_name}</span>
-                  <span className="flex w-full items-center gap-2">
-                    <span className={`progress flex-1 !h-1 ${item.status === 'COMPLETED' ? 'is-done' : ''}`}><span style={{ width: `${percent}%` }} /></span>
-                    <span className="text-[12px] tabular-nums text-sec">{item.completed_chunks}/{item.total_chunks}</span>
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-      </section>
+        <span className="text-[13px] text-sec" title={l(lang, 'Projects currently running', 'Projets actuellement en cours', 'Proyectos actualmente en curso', 'Derzeit laufende Projekte')}>
+          {currentJobIndex >= 0 ? `${currentJobIndex + 1} / ${jobs.length}` : jobs.length} · {activeJobCount} {l(lang, 'running', 'en cours', 'en curso', 'laufend')}
+        </span>
+      </div>
 
       {job ? (
         <>
