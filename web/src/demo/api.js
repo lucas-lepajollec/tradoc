@@ -154,6 +154,14 @@ export async function request(path, options = {}) {
   if (path === '/jobs' && method === 'GET') return clone(jobs);
   if (path === '/glossaries' && method === 'GET') return Object.keys(glossaries);
   if (path === '/settings/credentials' && method === 'GET') return {};
+  if (path === '/settings/model-catalog') {
+    return {
+      providers: [
+        { provider: 'openai', endpoint: 'https://api.openai.com/v1', models: ['demo-literary-model', 'demo-proofreader'], error: null },
+        { provider: 'ollama', endpoint: 'http://localhost:11434', models: ['demo-local-model'], error: null },
+      ],
+    };
+  }
   if (path === '/settings/test-connection') {
     return {
       success: true,
@@ -253,6 +261,8 @@ export async function request(path, options = {}) {
     } else if (action === 'update-config') {
       const body = options.body;
       if (body?.get?.('model')) job.model = body.get('model');
+      if (body?.get?.('api_type')) job.api_type = body.get('api_type');
+      if (body?.get?.('endpoint')) job.endpoint = body.get('endpoint');
       if (body?.get?.('concurrency')) job.concurrency = Number(body.get('concurrency'));
       if (body?.get?.('temperature')) job.temperature = Number(body.get('temperature'));
     } else if (action === 'clone-for-proofread') {

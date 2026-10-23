@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import DemoExperience from './components/DemoExperience';
 import TopBar from './components/TopBar';
 import Dashboard from './components/Dashboard';
@@ -7,9 +7,10 @@ import Settings from './components/Settings';
 import GlossaryManager from './components/GlossaryManager';
 import TestSandboxModal from './components/TestSandboxModal';
 import SetupWizard from './components/SetupWizard';
-import { fetchInterfaceSettings, isDemoMode, saveInterfaceLanguage, testConnection } from './api';
+import { fetchInterfaceSettings, fetchModelCatalog, isDemoMode, saveInterfaceLanguage, testConnection } from './api';
+import { buildModelGroups, decodeModelChoice, findProvider, isLocalProvider } from './providers';
 import { INTERFACE_LANGUAGES, l, t } from './i18n/translations';
-import { sanitizePersistedPreset, sanitizePersistedSettings } from './utils/persistence';
+import { sanitizePersistedPreset, sanitizePersistedSettings, sanitizeProviderConfigs } from './utils/persistence';
 
 const DEFAULT_PRESETS = [];
 
@@ -162,6 +163,23 @@ export default function App() {
 
   const [endpointStatus, setEndpointStatus] = useState(false);
   const [availableModels, setAvailableModels] = useState([]);
+  // Models of every connected provider, so menus are not limited to the active one.
+  const [modelCatalog, setModelCatalog] = useState([]);
+
+  const loadModelCatalog = useCallback(() => {
+    fetchModelCatalog()
+      .then((result) => setModelCatalog(Array.isArray(result?.providers) ? result.providers : []))
+      .catch((error) => console.error('Model catalog failed:', error));
+  }, []);
+
+  useEffect(() => {
+    loadModelCatalog();
+  }, [loadModelCatalog]);
+
+  const modelGroups = useMemo(
+    () => buildModelGroups(modelCatalog, settings.apiType, availableModels, settings.model),
+    [modelCatalog, settings.apiType, availableModels, settings.model],
+  );
 
   useEffect(() => {
     checkEndpointHealth();
@@ -207,8 +225,10 @@ export default function App() {
   }, [settings, presets]);
 
   const updateSettings = (newSettings) => {
+    if (newSettings.apiType !== settings.apiType) setAvailableModels([]);
     setSettings(newSettings);
     localStorage.setItem('tradoc_settings', JSON.stringify(sanitizePersistedSettings(newSettings)));
+    loadModelCatalog();
 
     testConnection(newSettings.endpoint, newSettings.apiKey, newSettings.apiType)
       .then(res => {
@@ -273,9 +293,48 @@ export default function App() {
     }
   };
 
-  const handleSelectModel = (newModel) => {
-    const updated = { ...settings, model: newModel };
-    updateSettings(updated);
+  const readProviderConfigs = () => {
+    try {
+      const parsed = JSON.parse(localStorage.getItem('tradoc_provider_configs') || '{}');
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed) ? sanitizeProviderConfigs(parsed) : {};
+    } catch {
+      return {};
+    }
+  };
+
+  // A model menu value may belong to another provider: switch to it with that
+  // provider's remembered endpoint and limits, keeping the current ones on file.
+  const handleSelectModel = (choice) => {
+    const { provider, model } = decodeModelChoice(choice, settings.apiType);
+    if (!model) return;
+    if (!provider || provider === settings.apiType) {
+      updateSettings({ ...settings, model });
+      return;
+    }
+    const configs = readProviderConfigs();
+    configs[settings.apiType] = {
+      endpoint: settings.endpoint,
+      model: settings.model,
+      concurrency: settings.concurrency,
+      chunkSize: settings.chunkSize,
+    };
+    try {
+      localStorage.setItem('tradoc_provider_configs', JSON.stringify(sanitizeProviderConfigs(configs)));
+    } catch {
+      // The switch still applies for this session.
+    }
+    const saved = configs[provider] || {};
+    const local = isLocalProvider(provider);
+    const catalogEntry = modelCatalog.find((entry) => entry.provider === provider);
+    updateSettings({
+      ...settings,
+      apiType: provider,
+      apiKey: '',
+      endpoint: saved.endpoint || catalogEntry?.endpoint || findProvider(provider)?.defaultUrl || settings.endpoint,
+      model,
+      concurrency: saved.concurrency || (local ? 1 : 4),
+      chunkSize: saved.chunkSize || (local ? 1000 : 7000),
+    });
   };
 
   return (
@@ -290,6 +349,8 @@ export default function App() {
         onSelectPreset={handleApplyPreset}
         currentModel={settings.model}
         availableModels={availableModels}
+        modelGroups={modelGroups}
+        currentProvider={settings.apiType}
         onSelectModel={handleSelectModel}
       />
 
@@ -302,6 +363,7 @@ export default function App() {
               settings={settings}
               endpointStatus={endpointStatus}
               availableModels={availableModels}
+              modelGroups={modelGroups}
               setActiveTab={handleSetActiveTab}
               lang={lang}
               onSelectModel={handleSelectModel}
@@ -315,16 +377,15 @@ export default function App() {
               selectedJobId={selectedJobId}
               onSelectJob={handleSelectJob}
               settings={settings}
-              availableModels={availableModels}
+              modelGroups={modelGroups}
               lang={lang}
-              onSelectModel={handleSelectModel}
             />
           </div>
           )}
 
           {activeTab === 'sandbox' && (
           <div>
-            <TestSandboxModal settings={settings} availableModels={availableModels} lang={lang} onSelectModel={handleSelectModel} />
+            <TestSandboxModal settings={settings} availableModels={availableModels} modelGroups={modelGroups} lang={lang} onSelectModel={handleSelectModel} />
           </div>
           )}
 

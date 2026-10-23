@@ -69,3 +69,13 @@ test('switches projects from the review list', async ({ page }, testInfo) => {
   await list.getByRole('button', { name: /Northanger Abbey/ }).click();
   await expect(page.getByRole('heading', { level: 2, name: 'Northanger Abbey — Sample.md' })).toBeVisible();
 });
+
+test('lists models of every connected provider and switches provider on pick', async ({ page }) => {
+  await enterDemo(page);
+  const model = page.getByRole('combobox', { name: /^Model/ }).last();
+  await expect(model.locator('optgroup')).toHaveCount(2);
+  await model.selectOption('ollama::demo-local-model');
+  await expect(page.getByRole('button', { name: /^Ollama \/ Local ·/ })).toBeVisible();
+  await model.selectOption('openai::demo-proofreader');
+  await expect(page.getByRole('button', { name: /^OpenAI ·/ })).toBeVisible();
+});
