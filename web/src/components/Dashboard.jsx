@@ -404,6 +404,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                   <div className="flex items-center gap-2">
                     <span className="tag">{job.file_type.toUpperCase()}</span>
                     <span className={`status ${statusClass(job.status)}`}>{statusLabel(job.status)}</span>
+                    {job.client_name && <span className="tag" title={job.external_ref || undefined}>{l(lang, `via ${job.client_name}`, `via ${job.client_name}`, `vía ${job.client_name}`, `über ${job.client_name}`)}</span>}
                     <button
                       type="button"
                       className="icon-btn is-plain ml-auto !size-8"

@@ -1,9 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Check, ArrowLeftRight, Eye, EyeOff } from 'lucide-react';
-import { isDemoMode, testConnection, saveProviderCredentials, fetchCredentialMetadata } from '../api';
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Check, Copy, ArrowLeftRight, Eye, EyeOff } from 'lucide-react';
+import { isDemoMode, testConnection, saveProviderCredentials, fetchCredentialMetadata, fetchIntegrations, createIntegration, deleteIntegration } from '../api';
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 import { sanitizeProviderConfigs } from '../utils/persistence';
-import { PROVIDERS, isLocalProvider } from '../providers';
+import { PROVIDERS, decodeModelChoice, isLocalProvider, providerName } from '../providers';
+import ModelSelect from './ModelSelect';
 import Select from './Select';
 
 const DEFAULT_LITERARY_PROMPT = `You are a professional literary translator. Translate the supplied source text into the target language configured for this project, using fluent, natural prose suitable for publication.
@@ -25,6 +26,7 @@ export default function Settings({
   setLang,
   theme = 'system',
   setTheme,
+  modelGroups = [],
   presets = [],
   activePresetId = '',
   onApplyPreset,
@@ -82,6 +84,41 @@ export default function Settings({
   const loadCredentialMeta = () => fetchCredentialMetadata().then((meta) => setCredentialMeta(meta || {})).catch(() => {});
   useEffect(() => { loadCredentialMeta(); }, []);
   const isConnected = (providerId) => Boolean(credentialMeta[providerId]?.has_api_key || (isLocalProvider(providerId) && credentialMeta[providerId]?.endpoint));
+
+  // Integrations: other apps (for example Bunko) using TraDoc as their engine.
+  const [integrations, setIntegrations] = useState([]);
+  const [integrationName, setIntegrationName] = useState('Bunko');
+  const [integrationProvider, setIntegrationProvider] = useState(settings.apiType || '');
+  const [integrationModel, setIntegrationModel] = useState(settings.model || '');
+  const [issuedToken, setIssuedToken] = useState(null);
+  const [copiedValue, setCopiedValue] = useState('');
+  const apiBaseUrl = typeof window === 'undefined' ? '/api/v1' : `${window.location.origin}/api/v1`;
+  const loadIntegrations = () => fetchIntegrations().then((items) => setIntegrations(Array.isArray(items) ? items : [])).catch(() => {});
+  useEffect(() => { loadIntegrations(); }, []);
+  const copyValue = (value) => {
+    navigator.clipboard?.writeText(value);
+    setCopiedValue(value);
+    setTimeout(() => setCopiedValue(''), 2000);
+  };
+  const handleCreateIntegration = async () => {
+    if (!integrationName.trim()) return;
+    try {
+      const result = await createIntegration({ name: integrationName.trim(), defaultProvider: integrationProvider, defaultModel: integrationModel });
+      setIssuedToken({ name: result.client.name, token: result.token });
+      await loadIntegrations();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
+  const handleDeleteIntegration = async (client) => {
+    if (!window.confirm(l(lang, `Disconnect “${client.name}”? Its token stops working immediately.`, `Déconnecter « ${client.name} » ? Sa clé cesse de fonctionner immédiatement.`, `¿Desconectar «${client.name}»? Su clave deja de funcionar de inmediato.`, `„${client.name}“ trennen? Sein Schlüssel funktioniert sofort nicht mehr.`))) return;
+    try {
+      await deleteIntegration(client.id);
+      await loadIntegrations();
+    } catch (error) {
+      alert(error.message);
+    }
+  };
 
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
@@ -287,6 +324,7 @@ export default function Settings({
     { id: 'translation', label: t('settings.tabTranslation', lang) },
     { id: 'global', label: t('settings.tabGlobal', lang) },
     { id: 'presets', label: t('settings.tabPresets', lang) },
+    { id: 'integrations', label: l(lang, 'Integrations', 'Intégrations', 'Integraciones', 'Integrationen') },
   ];
   const interfaceLanguages = [
     ['en', t('settings.langEnglish', lang).replace(/\s*\(.*\)$/, '')],
@@ -601,6 +639,96 @@ export default function Settings({
                     </li>
                   );
                 })}
+              </ul>
+            )}
+          </section>
+        )}
+        {activeSubTab === 'integrations' && (
+          <section aria-label={l(lang, 'Integrations', 'Intégrations', 'Integraciones', 'Integrationen')} className="card flex flex-col gap-[22px] p-6">
+            <div className="flex flex-col gap-1">
+              <h2 className="section-title">{l(lang, 'Let other apps use TraDoc', 'Laisser d’autres apps utiliser TraDoc', 'Permitir que otras apps usen TraDoc', 'Andere Apps TraDoc nutzen lassen')}</h2>
+              <p className="m-0 text-[13px] text-sec">{l(lang, 'Connect an app such as Bunko: it sends a book, TraDoc translates it with its engine and returns the file. Those projects also appear in TraDoc, tagged with the app’s name.', 'Connectez une app comme Bunko : elle envoie un livre, TraDoc le traduit avec son moteur et renvoie le fichier. Ces projets apparaissent aussi dans TraDoc, avec le nom de l’app.', 'Conecta una app como Bunko: envía un libro, TraDoc lo traduce con su motor y devuelve el archivo. Esos proyectos también aparecen en TraDoc con el nombre de la app.', 'Verbinde eine App wie Bunko: Sie sendet ein Buch, TraDoc übersetzt es mit seiner Engine und gibt die Datei zurück. Diese Projekte erscheinen auch in TraDoc, mit dem Namen der App.')}</p>
+            </div>
+
+            <div className="field">
+              <span className="field-label">{l(lang, 'API address to enter in the other app', 'Adresse de l’API à saisir dans l’autre app', 'Dirección de la API para la otra app', 'API-Adresse für die andere App')}</span>
+              <div className="flex gap-2">
+                <code className="input flex min-w-0 flex-1 items-center overflow-x-auto whitespace-nowrap text-[13px]">{apiBaseUrl}</code>
+                <button type="button" className="btn btn-secondary !h-10 !rounded-xl" onClick={() => copyValue(apiBaseUrl)}>
+                  {copiedValue === apiBaseUrl ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                  {copiedValue === apiBaseUrl ? l(lang, 'Copied', 'Copié', 'Copiado', 'Kopiert') : l(lang, 'Copy', 'Copier', 'Copiar', 'Kopieren')}
+                </button>
+              </div>
+            </div>
+
+            <div className="well flex flex-col gap-3 p-4">
+              <strong className="font-semibold">{l(lang, 'New connection', 'Nouvelle connexion', 'Nueva conexión', 'Neue Verbindung')}</strong>
+              <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,220px),1fr))] gap-3">
+                <label className="field">
+                  <span className="field-label">{l(lang, 'App name', 'Nom de l’app', 'Nombre de la app', 'App-Name')}</span>
+                  <input className="input input-on-card" value={integrationName} maxLength={60} onChange={(event) => setIntegrationName(event.target.value)} />
+                </label>
+                <div className="field">
+                  <span className="field-label">{l(lang, 'Default model', 'Modèle par défaut', 'Modelo predeterminado', 'Standardmodell')}</span>
+                  <ModelSelect
+                    aria-label={l(lang, 'Default model', 'Modèle par défaut', 'Modelo predeterminado', 'Standardmodell')}
+                    className="input input-on-card"
+                    groups={modelGroups}
+                    provider={integrationProvider}
+                    model={integrationModel}
+                    onChange={(choice) => {
+                      const picked = decodeModelChoice(choice, integrationProvider);
+                      setIntegrationProvider(picked.provider);
+                      setIntegrationModel(picked.model);
+                    }}
+                  />
+                </div>
+              </div>
+              <div>
+                <button type="button" className="btn btn-primary" onClick={handleCreateIntegration} disabled={!integrationName.trim()}>
+                  {l(lang, 'Create the connection', 'Créer la connexion', 'Crear la conexión', 'Verbindung erstellen')}
+                </button>
+              </div>
+            </div>
+
+            {issuedToken && (
+              <div role="status" className="flex flex-col gap-2 rounded-2xl border border-[var(--accent-btn)] bg-[var(--accent-soft)] p-4">
+                <strong className="font-semibold">{l(lang, `Key for ${issuedToken.name}`, `Clé pour ${issuedToken.name}`, `Clave para ${issuedToken.name}`, `Schlüssel für ${issuedToken.name}`)}</strong>
+                <span className="text-[13px] text-sec">{l(lang, 'Copy it now and paste it into the app: it will not be shown again.', 'Copiez-la maintenant et collez-la dans l’app : elle ne sera plus affichée.', 'Cópiala ahora y pégala en la app: no se volverá a mostrar.', 'Kopiere ihn jetzt und füge ihn in der App ein: Er wird nicht erneut angezeigt.')}</span>
+                <div className="flex gap-2">
+                  <code className="input input-on-card flex min-w-0 flex-1 items-center overflow-x-auto whitespace-nowrap text-[13px]">{issuedToken.token}</code>
+                  <button type="button" className="btn btn-secondary !h-10 !rounded-xl bg-card" onClick={() => copyValue(issuedToken.token)}>
+                    {copiedValue === issuedToken.token ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                    {copiedValue === issuedToken.token ? l(lang, 'Copied', 'Copié', 'Copiado', 'Kopiert') : l(lang, 'Copy', 'Copier', 'Copiar', 'Kopieren')}
+                  </button>
+                </div>
+                <button type="button" className="btn btn-link self-start" onClick={() => setIssuedToken(null)}>{l(lang, 'Done', 'Terminé', 'Hecho', 'Fertig')}</button>
+              </div>
+            )}
+
+            {integrations.length === 0 ? (
+              <div className="well px-4 py-6 text-center text-[13px] text-sec">{l(lang, 'No connected app yet.', 'Aucune app connectée pour l’instant.', 'Todavía no hay apps conectadas.', 'Noch keine verbundene App.')}</div>
+            ) : (
+              <ul className="m-0 flex list-none flex-col p-0">
+                {integrations.map((client) => (
+                  <li key={client.id} className="setting-row">
+                    <span className="setting-copy">
+                      <strong>{client.name}</strong>
+                      <span>
+                        {client.default_model
+                          ? `${providerName(client.default_provider)} · ${client.default_model}`
+                          : l(lang, 'No default model', 'Aucun modèle par défaut', 'Sin modelo predeterminado', 'Kein Standardmodell')}
+                        {' · '}
+                        {client.last_used_at
+                          ? l(lang, `last used ${new Date(client.last_used_at).toLocaleString()}`, `dernière utilisation ${new Date(client.last_used_at).toLocaleString()}`, `último uso ${new Date(client.last_used_at).toLocaleString()}`, `zuletzt genutzt ${new Date(client.last_used_at).toLocaleString()}`)
+                          : l(lang, 'never used', 'jamais utilisée', 'nunca usada', 'nie genutzt')}
+                      </span>
+                    </span>
+                    <button type="button" className="btn btn-secondary btn-sm" onClick={() => handleDeleteIntegration(client)}>
+                      {l(lang, 'Disconnect', 'Déconnecter', 'Desconectar', 'Trennen')}
+                    </button>
+                  </li>
+                ))}
               </ul>
             )}
           </section>

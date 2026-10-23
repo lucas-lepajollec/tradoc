@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+
+- Integration API for other apps (`/api/v1`): an app connected under Settings → Integrations sends a document, follows its progress and downloads the rebuilt translation with a `tdk_` bearer key; each connection only sees its own projects, which also appear in TraDoc tagged "via <app>". Keys are shown once and stored hashed; disconnecting revokes them. See `docs/integration-api.md`. Database changes are additive (new columns and table), so rolling back to 0.1.7 keeps working.
+
 ### Fixed
 
 - Replace every native dropdown with a themed list that always opens inside the window (it no longer spills onto a second screen with long model names), truncates long entries, keeps provider groups and keyboard navigation, and draws no outline or box when clicked.

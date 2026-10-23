@@ -408,6 +408,7 @@ export default function App() {
               setLang={handleSetLang}
               theme={theme}
               setTheme={handleSetTheme}
+              modelGroups={modelGroups}
               presets={presets}
               activePresetId={activePresetId}
               onApplyPreset={handleApplyPreset}
