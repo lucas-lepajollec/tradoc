@@ -1,0 +1,147 @@
+import React, { useEffect, useState } from 'react';
+import { ChevronRight, Menu, X } from 'lucide-react';
+import { l, t } from '../i18n/translations';
+
+const NAV_ITEMS = [
+  { id: 'dashboard', key: 'nav.projects' },
+  { id: 'jobs', key: 'nav.inspector' },
+  { id: 'sandbox', key: 'nav.sandbox' },
+  { id: 'glossary', key: 'nav.glossaries' },
+  { id: 'wizard', key: 'nav.vram' },
+  { id: 'settings', key: 'nav.settings' },
+];
+
+export default function TopBar({
+  activeTab,
+  setActiveTab,
+  endpointStatus,
+  lang = 'en',
+  presets = [],
+  activePresetId = '',
+  onSelectPreset,
+  currentModel = '',
+  availableModels = [],
+  onSelectModel,
+}) {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return undefined;
+    const closeOnEscape = (event) => {
+      if (event.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('keydown', closeOnEscape);
+    return () => document.removeEventListener('keydown', closeOnEscape);
+  }, [menuOpen]);
+
+  const go = (id) => {
+    setActiveTab(id);
+    setMenuOpen(false);
+  };
+
+  const noProfile = l(lang, 'No profile', 'Aucun profil', 'Sin perfil', 'Kein Profil');
+  const noModel = l(lang, 'No model', 'Aucun modèle', 'Sin modelo', 'Kein Modell');
+  const profileLabel = t('nav.presetSelect', lang);
+  const modelLabel = l(lang, 'Active model', 'Modèle actif', 'Modelo activo', 'Aktives Modell');
+  const statusLabel = endpointStatus
+    ? l(lang, 'Service ready', 'Service prêt', 'Servicio listo', 'Dienst bereit')
+    : l(lang, 'Service offline', 'Service hors ligne', 'Servicio sin conexión', 'Dienst offline');
+
+  const modelOptions = availableModels.length > 0
+    ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
+    : <option value={currentModel}>{currentModel || noModel}</option>;
+
+  const profileSelect = (className) => onSelectPreset && (
+    <select aria-label={profileLabel} className={className} value={activePresetId || ''} onChange={(event) => onSelectPreset(event.target.value)}>
+      <option value="">{noProfile}</option>
+      {presets.map((preset) => <option key={preset.id} value={preset.id}>{preset.name}</option>)}
+    </select>
+  );
+
+  const modelSelect = (className) => onSelectModel && (
+    <select aria-label={modelLabel} className={className} value={currentModel} onChange={(event) => onSelectModel(event.target.value)}>
+      {modelOptions}
+    </select>
+  );
+
+  const brand = (
+    <button type="button" className="brand" onClick={() => go('dashboard')}>
+      <img src="/logo.svg" alt="" />
+      {t('nav.appName', lang)}
+    </button>
+  );
+
+  return (
+    <header className="topbar">
+      <div className="topbar-desktop">
+        <div>{brand}</div>
+        <nav aria-label={l(lang, 'Main navigation', 'Navigation principale', 'Navegación principal', 'Hauptnavigation')} className="seg seg-outline justify-center">
+          {NAV_ITEMS.map((item) => (
+            <button
+              key={item.id}
+              type="button"
+              aria-current={activeTab === item.id ? 'page' : undefined}
+              onClick={() => go(item.id)}
+            >
+              {t(item.key, lang)}
+            </button>
+          ))}
+        </nav>
+        <div className="flex justify-end">
+          <div className="runtime-chip">
+            <span className={`dot mx-2 ${endpointStatus ? 'is-online' : ''}`} title={statusLabel} />
+            <span className="sr-only">{statusLabel}</span>
+            {profileSelect('bare-select text-sec font-normal')}
+            <span className="sep" aria-hidden="true" />
+            {modelSelect('bare-select')}
+          </div>
+        </div>
+      </div>
+
+      <div className="topbar-mobile">
+        <div className="flex items-center justify-between gap-3 px-4 py-3">
+          {brand}
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-9 max-w-[150px] items-center gap-2 rounded-full border border-line px-3 text-[13px] font-medium">
+              <span className={`dot ${endpointStatus ? 'is-online' : ''}`} />
+              <span className="sr-only">{statusLabel}</span>
+              <span className="truncate">{currentModel || noModel}</span>
+            </span>
+            <button
+              type="button"
+              className="icon-btn !h-11 !w-11"
+              aria-expanded={menuOpen}
+              aria-label={menuOpen
+                ? l(lang, 'Close navigation menu', 'Fermer le menu de navigation', 'Cerrar el menú de navegación', 'Navigationsmenü schließen')
+                : l(lang, 'Open navigation menu', 'Ouvrir le menu de navigation', 'Abrir el menú de navegación', 'Navigationsmenü öffnen')}
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              {menuOpen ? <X /> : <Menu />}
+            </button>
+          </div>
+        </div>
+        {menuOpen && (
+          <div className="mobile-menu">
+            <nav aria-label={l(lang, 'Main navigation', 'Navigation principale', 'Navegación principal', 'Hauptnavigation')} className="flex flex-col gap-0.5">
+              {NAV_ITEMS.map((item) => (
+                <button
+                  key={item.id}
+                  type="button"
+                  className="mobile-menu-item"
+                  aria-current={activeTab === item.id ? 'page' : undefined}
+                  onClick={() => go(item.id)}
+                >
+                  {t(item.key, lang)}
+                  <ChevronRight aria-hidden="true" />
+                </button>
+              ))}
+            </nav>
+            <div className="divider mx-2 my-1.5" />
+            {onSelectPreset && <label className="mobile-menu-row">{profileLabel}{profileSelect('')}</label>}
+            {onSelectModel && <label className="mobile-menu-row">{modelLabel}{modelSelect('')}</label>}
+          </div>
+        )}
+      </div>
+    </header>
+  );
+}

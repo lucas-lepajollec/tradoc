@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { TestTube, Play, FileText, AlertCircle, RefreshCw, Upload, Copy, Check, RotateCcw } from 'lucide-react';
+import { AlertCircle, ArrowRight, RefreshCw, Upload, Copy, Check, RotateCcw } from 'lucide-react';
 import { testTranslation, extractSandboxSample } from '../api';
 import { AVAILABLE_LANGUAGES, l, languageLabel, localeTag, t } from '../i18n/translations';
 import { readableSegment } from '../utils/readableSegment';
@@ -108,194 +108,117 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const resultStatus = loading
+    ? { label: l(lang, 'Processing', 'En cours', 'En curso', 'In Arbeit'), className: 'is-running' }
+    : result
+      ? { label: l(lang, 'Translated', 'Traduit', 'Traducido', 'Übersetzt'), className: 'is-done' }
+      : { label: l(lang, 'Waiting', 'En attente', 'En espera', 'Wartet'), className: '' };
+
   return (
-    <div className="sandbox-page space-y-6">
-      
-      {/* Top Header Card */}
-      <div className="page-intro flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <p className="page-kicker">{l(lang, 'Instant test', 'Essai instantané', 'Prueba instantánea', 'Soforttest')}</p>
-          <h1>{t('sandbox.title', lang)}</h1>
+          <h1>{t('nav.sandbox', lang)}</h1>
           <p>{t('sandbox.desc', lang)}</p>
         </div>
-
-        {/* Quick Controls */}
-        <div className="flex items-center space-x-2 w-full sm:w-auto justify-end">
-          <input
-            type="file"
-            accept=".epub"
-            ref={fileInputRef}
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-          
+        <div className="flex items-center gap-2">
+          <input type="file" accept=".epub" ref={fileInputRef} onChange={handleFileUpload} className="sr-only" tabIndex={-1} aria-hidden="true" />
           <button
             type="button"
+            className="btn btn-secondary"
             onClick={() => fileInputRef.current?.click()}
             disabled={extracting}
-            className="btn-chill px-3.5 py-1.5 text-xs flex items-center space-x-2 rounded-xl transition-all"
             title={l(lang, 'Import the first excerpt from an .epub file', 'Importer le premier extrait d’un fichier .epub', 'Importar el primer fragmento de un archivo .epub', 'Ersten Auszug aus einer .epub-Datei importieren')}
           >
-            {extracting ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-            <span>{extracting ? l(lang, 'Extracting…', 'Extraction…', 'Extrayendo…', 'Wird extrahiert…') : l(lang, 'Import EPUB', 'Importer un EPUB', 'Importar EPUB', 'EPUB importieren')}</span>
+            {extracting ? <RefreshCw className="animate-spin" aria-hidden="true" /> : <Upload aria-hidden="true" />}
+            {extracting ? l(lang, 'Extracting…', 'Extraction…', 'Extrayendo…', 'Wird extrahiert…') : l(lang, 'Import EPUB', 'Importer un EPUB', 'Importar EPUB', 'EPUB importieren')}
           </button>
-
-          <button
-            type="button"
-            onClick={() => setSampleText(DEFAULT_UNIVERSAL_SAMPLE)}
-            className="p-1.5 text-zinc-400 hover:text-white rounded-xl bg-white/[0.02] hover:bg-white/[0.06] border border-white/[0.08] transition-all"
-            title={t('sandbox.resetExcerpt', lang)}
-          >
-            <RotateCcw className="w-4 h-4" />
+          <button type="button" className="icon-btn" onClick={() => setSampleText(DEFAULT_UNIVERSAL_SAMPLE)} aria-label={t('sandbox.resetExcerpt', lang)} title={t('sandbox.resetExcerpt', lang)}>
+            <RotateCcw aria-hidden="true" />
           </button>
         </div>
       </div>
 
       {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 border-l-4 border-l-rose-500 text-zinc-200 text-xs flex items-center space-x-2">
-          <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
+        <div role="alert" className="notice">
+          <AlertCircle aria-hidden="true" />
           <span>{error}</span>
         </div>
       )}
 
-      <section className="sandbox-settings-card">
-        <div className="sandbox-settings-heading">
-          <span>{l(lang, 'Test configuration', 'Configuration du test', 'Configuración de la prueba', 'Testkonfiguration')}</span>
-          <strong>{l(lang, 'Sandbox settings', 'Paramètres du bac à sable', 'Ajustes del entorno de prueba', 'Einstellungen der Testumgebung')}</strong>
+      <div className="card card-lg overflow-hidden">
+        <div className="pane-grid">
+          <section className="pane" aria-label={l(lang, 'Source text', 'Texte source', 'Texto de origen', 'Ausgangstext')}>
+            <div className="pane-head">
+              <span><strong className="font-medium text-fg">{sourceLanguageName}</strong> · {sourceCode.toUpperCase()}</span>
+              <span>{sourceTokens.toLocaleString(localeTag(lang))} {l(lang, 'tokens sent', 'tokens envoyés', 'tokens enviados', 'gesendete Tokens')}</span>
+            </div>
+            <textarea
+              rows={12}
+              value={displayedSourceText}
+              onChange={(event) => setSampleText(event.target.value)}
+              placeholder={l(lang, 'Enter an excerpt or import a book…', 'Saisissez un extrait ou chargez un livre…', 'Escribe un fragmento o importa un libro…', 'Auszug eingeben oder Buch importieren…')}
+              aria-label={l(lang, 'Source text', 'Texte source', 'Texto de origen', 'Ausgangstext')}
+              className="pane-text"
+            />
+            <div className="pane-foot">{displayedSourceText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</div>
+          </section>
+
+          <section className="pane" aria-label={l(lang, 'Translation', 'Traduction', 'Traducción', 'Übersetzung')}>
+            <div className="pane-head">
+              <span className="flex flex-wrap items-center gap-2.5">
+                <span><strong className="font-medium text-fg">{targetLanguageName}</strong> · {targetCode.toUpperCase()}</span>
+                <span className={`status ${resultStatus.className}`} aria-live="polite">{resultStatus.label}</span>
+              </span>
+              <span className="flex items-center gap-2.5">
+                {targetTokens.toLocaleString(localeTag(lang))} {l(lang, 'tokens received', 'tokens reçus', 'tokens recibidos', 'empfangene Tokens')}
+                {result && (
+                  <button type="button" className="btn btn-secondary !h-7 !px-2.5 !text-[12px]" onClick={handleCopyResult}>
+                    {copied ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                    {copied ? t('inspector.copied', lang) : t('sandbox.copyResult', lang)}
+                  </button>
+                )}
+              </span>
+            </div>
+            <div className={`pane-text sandbox-document-output ${result ? '' : 'is-empty'}`}>
+              {result ? displayedResultText : l(lang, 'Waiting for translation…', 'En attente de traduction…', 'Esperando la traducción…', 'Warte auf die Übersetzung…')}
+            </div>
+            <div className="pane-foot">{displayedResultText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</div>
+          </section>
         </div>
 
-        <div className="sandbox-settings-controls">
-          <label className="sandbox-model-control">
-            <span>{t('dashboard.model', lang)}</span>
+        <div className="flex flex-wrap items-center gap-2 border-t border-line bg-toolbar p-2.5">
+          <label className="chip-select">
+            {t('dashboard.model', lang)}
             <select
               value={selectedModel || settings.model || ''}
-              onChange={(e) => {
-                const model = e.target.value;
-                setSelectedModel(model);
-                if (onSelectModel) onSelectModel(model);
+              onChange={(event) => {
+                setSelectedModel(event.target.value);
+                if (onSelectModel) onSelectModel(event.target.value);
               }}
             >
-              {!selectedModel && settings.model && <option value="">{t('dashboard.model', lang)}: {settings.model}</option>}
               {availableModels.length > 0
                 ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
                 : <option value={settings.model}>{settings.model}</option>}
             </select>
           </label>
-
-          <label className="sandbox-temperature-setting">
-            <span>{l(lang, 'Temperature', 'Température', 'Temperatura', 'Temperatur')} <b>{Number(selectedTemperature).toFixed(2)}</b></span>
-            <div>
-              <input
-                type="range"
-                min="0"
-                max="2"
-                step="0.05"
-                value={selectedTemperature}
-                onChange={(event) => setSelectedTemperature(parseFloat(event.target.value))}
-              />
-            </div>
+          <label className="chip-select gap-2.5 !pr-3.5">
+            {l(lang, 'Temperature', 'Température', 'Temperatura', 'Temperatur')}
+            <input type="range" min="0" max="2" step="0.05" value={selectedTemperature} onChange={(event) => setSelectedTemperature(parseFloat(event.target.value))} className="w-[120px]" />
+            <span className="min-w-8 font-medium tabular-nums text-fg">{Number(selectedTemperature).toFixed(2)}</span>
           </label>
-
-          <button
-            type="button"
-            onClick={handleRunTest}
-            disabled={loading || !sampleText || extracting}
-            className="primary-action sandbox-run-button"
-          >
-            {loading ? <RefreshCw className="animate-spin" /> : <Play />}
-            <span>{loading ? l(lang, 'Processing…', 'Traduction en cours…', 'Procesando…', 'Wird verarbeitet…') : l(lang, 'Run test', 'Lancer le test', 'Ejecutar prueba', 'Test ausführen')}</span>
+          <button type="button" className="switch-row px-3" role="switch" aria-checked={showRawText} onClick={() => setShowRawText(!showRawText)}>
+            {l(lang, 'Raw text', 'Texte brut', 'Texto sin procesar', 'Rohtext')}
+            <span className="switch" aria-checked={showRawText} aria-hidden="true" />
+          </button>
+          <span className="flex-1" />
+          <button type="button" className="btn btn-primary" onClick={handleRunTest} disabled={loading || !sampleText || extracting}>
+            {loading ? <RefreshCw className="animate-spin" aria-hidden="true" /> : null}
+            {loading ? l(lang, 'Processing…', 'Traduction en cours…', 'Procesando…', 'Wird verarbeitet…') : l(lang, 'Run test', 'Lancer le test', 'Ejecutar prueba', 'Test ausführen')}
+            {!loading && <ArrowRight aria-hidden="true" />}
           </button>
         </div>
-      </section>
-
-      <div className="sandbox-workbench segment-workbench">
-        <div className="segment-toolbar">
-          <div className="segment-workbench-title">
-            <FileText />
-            <div>
-              <span>{l(lang, 'Translation workspace', 'Atelier de traduction', 'Espacio de traducción', 'Übersetzungsarbeitsbereich')}</span>
-              <h3>{l(lang, 'Test inspector', 'Inspecteur de test', 'Inspector de la prueba', 'Testinspektor')}</h3>
-            </div>
-          </div>
-
-          <div className="segment-toolbar-controls">
-            <button
-              type="button"
-              className={`segment-view-toggle ${showRawText ? 'is-active' : ''}`}
-              onClick={() => setShowRawText(!showRawText)}
-              aria-pressed={showRawText}
-            >
-              <span className="segment-toggle-track"><i /></span>
-              <span>{l(lang, 'Raw text', 'Texte brut', 'Texto sin procesar', 'Rohtext')}</span>
-            </button>
-          </div>
-        </div>
-
-        <div className="segment-compare sandbox-compare">
-          <section className="translation-pane source-pane sandbox-pane">
-            <header className="translation-pane-header">
-              <div className="translation-language">
-                <span>{l(lang, 'Source text', 'Texte source', 'Texto de origen', 'Ausgangstext')}</span>
-                <strong>{sourceLanguageName}<small>{sourceCode.toUpperCase()}</small></strong>
-              </div>
-              <div className="translation-pane-meta">
-                <span className="translation-token-count">{sourceTokens.toLocaleString(localeTag(lang))} {l(lang, 'tokens sent', 'tokens envoyés', 'tokens enviados', 'gesendete Tokens')}</span>
-              </div>
-            </header>
-
-            <textarea
-              rows={12}
-              value={displayedSourceText}
-              onChange={(e) => setSampleText(e.target.value)}
-              placeholder={l(lang, 'Enter an excerpt or import a book…', 'Saisissez un extrait ou chargez un livre…', 'Escribe un fragmento o importa un libro…', 'Auszug eingeben oder Buch importieren…')}
-              className="document-text sandbox-document-editor"
-            />
-
-            <footer className="translation-pane-footer sandbox-pane-footer">
-              <span>{displayedSourceText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</span>
-            </footer>
-          </section>
-
-          <section className="translation-pane target-pane sandbox-pane">
-            <header className="translation-pane-header">
-              <div className="translation-language">
-                <span>{l(lang, 'Translation', 'Traduction', 'Traducción', 'Übersetzung')}</span>
-                <strong>{targetLanguageName}<small>{targetCode.toUpperCase()}</small></strong>
-              </div>
-              <div className="translation-pane-meta">
-                <span className={`translation-status ${result ? 'status-done' : loading ? 'status-processing' : ''}`}>
-                  <i />
-                  {loading ? l(lang, 'Processing', 'En cours', 'En curso', 'In Arbeit') : result ? l(lang, 'Translated', 'Traduit', 'Traducido', 'Übersetzt') : l(lang, 'Waiting', 'En attente', 'En espera', 'Wartet')}
-                </span>
-                <span className="translation-token-count">{targetTokens.toLocaleString(localeTag(lang))} {l(lang, 'tokens received', 'tokens reçus', 'tokens recibidos', 'empfangene Tokens')}</span>
-                {result && (
-                  <button
-                    type="button"
-                    onClick={handleCopyResult}
-                    className="translation-copy"
-                    title={t('sandbox.copyResult', lang)}
-                  >
-                    {copied ? <Check /> : <Copy />}
-                  </button>
-                )}
-              </div>
-            </header>
-
-            <div className="document-text sandbox-document-output">
-              {result ? displayedResultText : (
-                <span className="translation-empty">
-                  {l(lang, 'Waiting for translation…', 'En attente de traduction…', 'Esperando la traducción…', 'Warte auf die Übersetzung…')}
-                </span>
-              )}
-            </div>
-
-            <footer className="translation-pane-footer sandbox-pane-footer">
-              <span>{displayedResultText.length.toLocaleString(localeTag(lang))} {l(lang, 'characters', 'caractères', 'caracteres', 'Zeichen')}</span>
-            </footer>
-          </section>
-        </div>
       </div>
-
     </div>
   );
 }

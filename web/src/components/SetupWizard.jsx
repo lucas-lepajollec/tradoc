@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { Cpu, Cloud, BookOpen, FileText, Library, Bookmark, Sparkles, ArrowRight, TrendingDown } from 'lucide-react';
 import { l, localeTag, t } from '../i18n/translations';
 
 export default function SetupWizard({ settings, onSaveSettings, setActiveTab, lang = 'en' }) {
@@ -55,84 +54,128 @@ export default function SetupWizard({ settings, onSaveSettings, setActiveTab, la
   };
 
   const presets = [
-    { pages: 50, label: t('wizard.novella', lang), icon: FileText },
-    { pages: 300, label: t('wizard.novel', lang), icon: BookOpen },
-    { pages: 800, label: t('wizard.thickBook', lang), icon: Library },
-    { pages: 2500, label: t('wizard.fullSeries', lang), icon: Bookmark },
+    { pages: 50, label: t('wizard.novella', lang) },
+    { pages: 300, label: t('wizard.novel', lang) },
+    { pages: 800, label: t('wizard.thickBook', lang) },
+    { pages: 2500, label: t('wizard.fullSeries', lang) },
   ];
+  const modes = [
+    { id: 'local', title: l(lang, 'On your machine', 'Sur votre machine', 'En tu equipo', 'Auf deinem Rechner'), detail: `${t('wizard.localDesc', lang)} · ${t('wizard.localBadge', lang)}` },
+    { id: 'cloud', title: l(lang, 'Through a provider', 'Via un fournisseur', 'Mediante un proveedor', 'Über einen Anbieter'), detail: `${t('wizard.cloudDesc', lang)} · ${t('wizard.cloudBadge', lang)}` },
+  ];
+  const cachingHint = cachingEligible
+    ? l(lang, 'Explicit Anthropic caching for the repeated system prompt', 'Cache Anthropic explicite sur le prompt système répété', 'Caché explícito de Anthropic para el prompt de sistema repetido', 'Expliziter Anthropic-Cache für den wiederholten Systemprompt')
+    : cachingSupported
+      ? l(lang, 'Prompt too short to guarantee a cache hit', 'Prompt trop court pour garantir une mise en cache', 'El prompt es demasiado corto para garantizar el uso de la caché', 'Prompt zu kurz für einen garantierten Cache-Treffer')
+      : l(lang, 'Available with an Anthropic provider', 'Disponible avec un fournisseur Anthropic', 'Disponible con un proveedor Anthropic', 'Mit einem Anthropic-Anbieter verfügbar');
 
   return (
-    <div className="estimator-page page-stack">
-      <header className="page-intro">
-        <p className="page-kicker">{l(lang, 'Planning', 'Planification', 'Planificación', 'Planung')}</p>
-        <h1>{l(lang, 'Estimate a translation', 'Estimer une traduction', 'Estimar una traducción', 'Übersetzung schätzen')}</h1>
-        <p>{l(lang, 'Configure your document and instantly get a clear volume and cost estimate.', 'Configurez votre ouvrage et obtenez immédiatement une estimation lisible du volume et du coût.', 'Configura el documento y obtén de inmediato una estimación clara del volumen y el coste.', 'Konfiguriere dein Dokument und erhalte sofort eine verständliche Umfangs- und Kostenschätzung.')}</p>
-      </header>
+    <div className="page">
+      <div className="page-head">
+        <div>
+          <h1>{l(lang, 'Estimate a translation', 'Estimer une traduction', 'Estimar una traducción', 'Übersetzung schätzen')}</h1>
+          <p>{l(lang, 'Configure your document and instantly get a clear volume and cost estimate.', 'Configurez votre ouvrage et obtenez immédiatement une estimation lisible du volume et du coût.', 'Configura el documento y obtén de inmediato una estimación clara del volumen y el coste.', 'Konfiguriere dein Dokument und erhalte sofort eine verständliche Umfangs- und Kostenschätzung.')}</p>
+        </div>
+      </div>
 
-      <div className="estimator-shell">
-        <div className="estimator-form">
-          <section className="form-section">
-            <div className="section-heading"><span>01</span><div><h2>{t('wizard.executionEnv', lang)}</h2><p>{l(lang, 'Choose where translation will run.', 'Choisissez où la traduction sera exécutée.', 'Elige dónde se ejecutará la traducción.', 'Wähle aus, wo die Übersetzung ausgeführt wird.')}</p></div></div>
-            <div className="choice-grid">
-              <button type="button" onClick={() => setMode('local')} className={`choice-card ${mode === 'local' ? 'is-selected' : ''}`}>
-                <span className="choice-icon"><Cpu /></span><div><em>{l(lang, 'On your machine', 'Sur votre machine', 'En tu equipo', 'Auf deinem Rechner')}</em><strong>{t('wizard.localServer', lang)}</strong><small>{t('wizard.localDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.localBadge', lang)}</span>
-              </button>
-              <button type="button" onClick={() => setMode('cloud')} className={`choice-card ${mode === 'cloud' ? 'is-selected' : ''}`}>
-                <span className="choice-icon"><Cloud /></span><div><em>{l(lang, 'Through a provider', 'Via un fournisseur', 'Mediante un proveedor', 'Über einen Anbieter')}</em><strong>{t('wizard.cloudApi', lang)}</strong><small>{t('wizard.cloudDesc', lang)}</small></div><span className="choice-foot"><i />{t('wizard.cloudBadge', lang)}</span>
-              </button>
-            </div>
-          </section>
-
-          <section className="form-section">
-            <div className="section-heading"><span>02</span><div><h2>{t('wizard.bookSizeTitle', lang)}</h2><p>{l(lang, 'Set the approximate document length.', 'Indiquez la longueur approximative du document.', 'Indica la longitud aproximada del documento.', 'Gib die ungefähre Dokumentlänge an.')}</p></div></div>
-            <div className="page-control">
-              <div className="page-amount">
-                <span>{l(lang, 'Document length', 'Longueur du document', 'Longitud del documento', 'Dokumentlänge')}</span>
-                <div><input type="number" min="20" max="3000" value={pages} style={{ width: `${Math.max(3, String(pages).length) * 15}px` }} onChange={(e) => setPages(Math.max(20, Math.min(3000, parseInt(e.target.value, 10) || 20)))} /><strong>{t('wizard.pagesUnit', lang)}</strong></div>
-                <small>~{wordsCount.toLocaleString(localeTag(lang))} {l(lang, 'estimated words', 'mots estimés', 'palabras estimadas', 'geschätzte Wörter')}</small>
-              </div>
-              <div className="page-slider">
-                <input type="range" min={20} max={3000} step={10} value={pages} onChange={(e) => setPages(parseInt(e.target.value, 10))} />
-                <div><span>20 p.</span><span>3 000 p.</span></div>
-              </div>
-            </div>
-            <div className="preset-row">
-              {presets.map(({ pages: presetPages, label, icon: Icon }) => (
-                <button type="button" key={presetPages} onClick={() => setPages(presetPages)} className={pages === presetPages ? 'is-selected' : ''}><Icon /><span>{label}</span><small>{presetPages} p.</small></button>
+      <div className="flex flex-wrap items-start gap-5">
+        <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
+          <section aria-labelledby="estimate-env" className="card flex flex-col gap-3.5 px-6 py-5">
+            <h2 id="estimate-env" className="section-title">{l(lang, 'Where will it run?', 'Où sera-t-elle exécutée ?', '¿Dónde se ejecutará?', 'Wo läuft sie?')}</h2>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,240px),1fr))] gap-2.5">
+              {modes.map((item) => (
+                <button key={item.id} type="button" aria-pressed={mode === item.id} onClick={() => setMode(item.id)} className="tile flex-col !items-start gap-1 !rounded-2xl p-4">
+                  <span className="font-semibold">{item.title}</span>
+                  <span className="text-[13px] text-sec">{item.detail}</span>
+                </button>
               ))}
             </div>
           </section>
 
-          <section className="form-section">
-            <div className="section-heading"><span>03</span><div><h2>{t('wizard.fineTuningTitle', lang)}</h2><p>{l(lang, 'Adjust only if you know your model limits.', 'Ajustez uniquement si vous connaissez les limites de votre modèle.', 'Ajusta estos valores solo si conoces los límites del modelo.', 'Passe diese Werte nur an, wenn du die Grenzen deines Modells kennst.')}</p></div></div>
-            <div className="field-grid">
-              <label><span>{t('wizard.chunkSize', lang)}</span><input type="number" min="200" max="10000" step="250" value={chunkSize} onChange={(e) => setChunkSize(Math.max(200, Math.min(10000, parseInt(e.target.value, 10) || 1000)))} /></label>
-              <label><span>{t('wizard.concurrencySlots', lang)}</span><input type="number" min="1" max="16" value={concurrency} onChange={(e) => setConcurrency(parseInt(e.target.value, 10) || 1)} /></label>
-              {mode === 'cloud' && <>
-                <label><span>{t('wizard.inputPrice', lang)}</span><input type="number" step="0.05" value={inputPrice} onChange={(e) => setInputPrice(parseFloat(e.target.value) || 0)} /></label>
-                <label><span>{t('wizard.outputPrice', lang)}</span><input type="number" step="0.05" value={outputPrice} onChange={(e) => setOutputPrice(parseFloat(e.target.value) || 0)} /></label>
-                <button type="button" role="switch" aria-checked={enableCaching} className={`cache-toggle-card ${enableCaching ? 'is-active' : ''}`} onClick={() => setEnableCaching(!enableCaching)}>
-                  <span className="cache-icon"><Sparkles /></span>
-                  <span className="cache-copy"><strong>Prompt Caching</strong><small>{cachingEligible ? l(lang, 'Explicit Anthropic caching for the repeated system prompt', 'Cache Anthropic explicite sur le prompt système répété', 'Caché explícito de Anthropic para el prompt de sistema repetido', 'Expliziter Anthropic-Cache für den wiederholten Systemprompt') : cachingSupported ? l(lang, 'Prompt too short to guarantee a cache hit', 'Prompt trop court pour garantir une mise en cache', 'El prompt es demasiado corto para garantizar el uso de la caché', 'Prompt zu kurz für einen garantierten Cache-Treffer') : l(lang, 'Available with an Anthropic provider', 'Disponible avec un fournisseur Anthropic', 'Disponible con un proveedor Anthropic', 'Mit einem Anthropic-Anbieter verfügbar')}</small></span>
-                  <span className="cache-switch"><i /></span>
+          <section aria-labelledby="estimate-length" className="card flex flex-col gap-3.5 px-6 py-5">
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <h2 id="estimate-length" className="section-title">{l(lang, 'Document length', 'Longueur du document', 'Longitud del documento', 'Dokumentlänge')}</h2>
+              <span className="text-[13px] text-sec">~{wordsCount.toLocaleString(localeTag(lang))} {l(lang, 'estimated words', 'mots estimés', 'palabras estimadas', 'geschätzte Wörter')}</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {presets.map((preset) => (
+                <button
+                  key={preset.pages}
+                  type="button"
+                  aria-pressed={pages === preset.pages}
+                  onClick={() => setPages(preset.pages)}
+                  className={`btn btn-sm ${pages === preset.pages ? 'btn-solid' : 'btn-secondary'}`}
+                >
+                  {preset.label}
                 </button>
+              ))}
+            </div>
+            <div className="flex items-center gap-3.5">
+              <input type="range" min={20} max={3000} step={10} value={pages} onChange={(event) => setPages(parseInt(event.target.value, 10))} className="flex-1" aria-label={l(lang, 'Document length', 'Longueur du document', 'Longitud del documento', 'Dokumentlänge')} />
+              <label className="flex items-center gap-1.5 font-semibold tabular-nums">
+                <input
+                  type="number"
+                  min="20"
+                  max="3000"
+                  value={pages}
+                  onChange={(event) => setPages(Math.max(20, Math.min(3000, parseInt(event.target.value, 10) || 20)))}
+                  className="input !h-9 !w-20 text-right"
+                />
+                {t('wizard.pagesUnit', lang)}
+              </label>
+            </div>
+          </section>
+
+          <section aria-labelledby="estimate-plan" className="card flex flex-col gap-3.5 px-6 py-5">
+            <div>
+              <h2 id="estimate-plan" className="section-title">{l(lang, 'Planning', 'Planification', 'Planificación', 'Planung')}</h2>
+              <p className="m-0 mt-0.5 text-[13px] text-sec">{l(lang, 'Adjust only if you know your model limits.', 'Ajustez uniquement si vous connaissez les limites de votre modèle.', 'Ajusta estos valores solo si conoces los límites del modelo.', 'Passe diese Werte nur an, wenn du die Grenzen deines Modells kennst.')}</p>
+            </div>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,180px),1fr))] gap-3">
+              <label className="field"><span className="field-label">{t('wizard.chunkSize', lang)}</span><input className="input" type="number" min="200" max="10000" step="250" value={chunkSize} onChange={(event) => setChunkSize(Math.max(200, Math.min(10000, parseInt(event.target.value, 10) || 1000)))} /></label>
+              <label className="field"><span className="field-label">{t('wizard.concurrencySlots', lang)}</span><input className="input" type="number" min="1" max="16" value={concurrency} onChange={(event) => setConcurrency(parseInt(event.target.value, 10) || 1)} /></label>
+              {mode === 'cloud' && <>
+                <label className="field"><span className="field-label">{t('wizard.inputPrice', lang)}</span><input className="input" type="number" step="0.05" value={inputPrice} onChange={(event) => setInputPrice(parseFloat(event.target.value) || 0)} /></label>
+                <label className="field"><span className="field-label">{t('wizard.outputPrice', lang)}</span><input className="input" type="number" step="0.05" value={outputPrice} onChange={(event) => setOutputPrice(parseFloat(event.target.value) || 0)} /></label>
               </>}
             </div>
+            {mode === 'cloud' && (
+              <div className="well flex items-center justify-between gap-3 px-3.5 py-3">
+                <span className="setting-copy"><strong id="prompt-caching-label">Prompt caching</strong><span>{cachingHint}</span></span>
+                <button type="button" role="switch" aria-checked={enableCaching} aria-labelledby="prompt-caching-label" className="switch" onClick={() => setEnableCaching(!enableCaching)} />
+              </div>
+            )}
           </section>
         </div>
 
-        <aside className="estimate-receipt">
-          <div className="receipt-heading"><Sparkles /><span>{t('wizard.resultsTitle', lang)}</span></div>
-          <div className="cost-display"><small>{t('wizard.estimatedCost', lang)}</small><strong>{mode === 'local' ? '0,00 €' : `$${totalCost}`}</strong><p>{mode === 'local' ? t('wizard.freeLocal', lang) : `${inputPrice}$ input · ${outputPrice}$ output`}</p></div>
-          <dl>
-            <div><dt>{t('wizard.estimatedVolume', lang)}</dt><dd>~{wordsCount.toLocaleString(localeTag(lang))} {l(lang, 'words', 'mots', 'palabras', 'Wörter')}</dd></div>
-            <div><dt>{t('wizard.totalTokens', lang)}</dt><dd>~{totalTokens.toLocaleString()}</dd></div>
-            <div><dt>{t('wizard.chunksUnit', lang)}</dt><dd>{totalRequests}</dd></div>
-            <div><dt>{l(lang, 'Execution', 'Exécution', 'Ejecución', 'Ausführung')}</dt><dd>{mode === 'local' ? t('wizard.localServer', lang) : t('wizard.cloudApi', lang)}</dd></div>
+        <aside aria-labelledby="estimate-result" className="card flex min-w-0 flex-[1_1_320px] flex-col gap-[18px] p-6">
+          <h2 id="estimate-result" className="section-title">{t('wizard.resultsTitle', lang)}</h2>
+          <div className="flex flex-col gap-0.5">
+            <span className="text-[13px] text-sec">{t('wizard.estimatedCost', lang)}</span>
+            <span className="text-[40px] font-semibold leading-[1.1] tracking-[-0.04em] tabular-nums">{mode === 'local' ? '0,00 €' : `$${totalCost}`}</span>
+            <span className="text-[13px] text-sec">{mode === 'local' ? t('wizard.freeLocal', lang) : `${inputPrice}$ input · ${outputPrice}$ output`}</span>
+          </div>
+          <dl className="m-0 flex flex-col">
+            {[
+              [t('wizard.estimatedVolume', lang), `~${wordsCount.toLocaleString(localeTag(lang))} ${l(lang, 'words', 'mots', 'palabras', 'Wörter')}`],
+              [t('wizard.totalTokens', lang), `~${totalTokens.toLocaleString(localeTag(lang))}`],
+              [t('wizard.chunksUnit', lang), totalRequests.toLocaleString(localeTag(lang))],
+              [l(lang, 'Execution', 'Exécution', 'Ejecución', 'Ausführung'), mode === 'local' ? t('wizard.localServer', lang) : t('wizard.cloudApi', lang)],
+            ].map(([rawLabel, value]) => {
+              const label = rawLabel.replace(/\s*:\s*$/, '');
+              return (
+              <div key={label} className="flex justify-between gap-3 border-t border-line py-2.5">
+                <dt className="text-sec">{label.charAt(0).toUpperCase() + label.slice(1)}</dt>
+                <dd className="m-0 text-right font-medium tabular-nums">{value}</dd>
+              </div>
+              );
+            })}
           </dl>
-          {mode === 'cloud' && enableCaching && cachingEligible && parseFloat(cachingSavings) > 0 && <div className="saving-note"><TrendingDown />{l(lang, 'Estimated savings', 'Économie estimée', 'Ahorro estimado', 'Geschätzte Ersparnis')}: {cachingSavings}$</div>}
-          <p className="receipt-note">{t('wizard.disclaimer', lang)}</p>
-          <button type="button" onClick={handleApplySettings} className="primary-button">{t('wizard.applySettings', lang)}<ArrowRight /></button>
+          {mode === 'cloud' && enableCaching && cachingEligible && parseFloat(cachingSavings) > 0 && (
+            <p className="m-0 text-[13px] text-good">{l(lang, 'Estimated savings', 'Économie estimée', 'Ahorro estimado', 'Geschätzte Ersparnis')}: {cachingSavings}$</p>
+          )}
+          <button type="button" onClick={handleApplySettings} className="btn btn-primary btn-lg">{t('wizard.applySettings', lang)}</button>
+          <p className="m-0 text-[12px] text-sec">{t('wizard.disclaimer', lang)}</p>
         </aside>
       </div>
     </div>

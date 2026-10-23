@@ -89,21 +89,21 @@ export default function DemoExperience({ lang }) {
   return (
     <>
       <div className={`lh-demo-chip pointer-events-none fixed bottom-4 right-4 z-[80] ${isGuideOpen ? 'invisible' : ''}`}>
-        <div className="pointer-events-auto flex items-center rounded-full border border-white/[0.08] bg-[#14171d]/92 p-1 text-white shadow-[0_12px_40px_rgba(0,0,0,0.45)] backdrop-blur-xl">
+        <div className="pointer-events-auto flex items-center rounded-full border border-line bg-card p-1 text-fg">
           <button
             type="button"
             onClick={() => setGuideOpen(true)}
-            className="flex min-h-9 items-center gap-2 rounded-full px-3 text-[11px] font-semibold tracking-[0.14em] uppercase text-white/90 transition-colors hover:bg-white/8"
+            className="flex min-h-9 items-center gap-2 rounded-full px-3 text-[12px] font-semibold text-fg transition-colors hover:bg-well"
             aria-label={copy.info}
           >
             <span>{copy.chip}</span>
-            <HelpCircle size={14} className="text-white/45" aria-hidden="true" />
+            <HelpCircle size={14} className="text-sec" aria-hidden="true" />
           </button>
-          <span className="h-4 w-px bg-white/12" aria-hidden="true" />
+          <span className="h-4 w-px bg-line" aria-hidden="true" />
           <button
             type="button"
             onClick={resetDemo}
-            className="grid size-9 place-items-center rounded-full text-white/55 transition-colors hover:bg-white/10 hover:text-white"
+            className="grid size-9 place-items-center rounded-full text-sec transition-colors hover:bg-well hover:text-fg"
             aria-label={copy.resetAria}
             title={copy.reset}
           >
@@ -126,47 +126,47 @@ export default function DemoExperience({ lang }) {
         onClose={closeGuide}
         aria-labelledby="lh-demo-title"
         aria-describedby="lh-demo-body"
-        className="lh-demo-dialog m-auto max-h-[calc(100dvh-1.5rem)] w-[min(92vw,640px)] max-w-none overflow-x-hidden overflow-y-auto rounded-[28px] border border-white/[0.08] bg-[#14171d] p-0 text-white shadow-[0_30px_120px_rgba(0,0,0,0.72)] backdrop:bg-black/72"
+        className="lh-demo-dialog m-auto max-h-[calc(100dvh-1.5rem)] w-[min(92vw,640px)] max-w-none overflow-x-hidden overflow-y-auto rounded-[24px] border border-line bg-card p-0 text-fg"
       >
         <div className="relative overflow-hidden px-5 py-6 sm:px-8 sm:py-8">
           <div className="mb-5 flex items-center justify-between gap-3">
-            <div className="inline-flex items-center gap-2 rounded-full border border-white/[0.08] bg-white/[0.04] px-3 py-1.5 text-[10px] font-semibold tracking-[0.16em] uppercase text-white/70">
+            <div className="inline-flex items-center gap-2 rounded-full bg-well px-3 py-1.5 text-[12px] font-medium text-sec">
               <ShieldCheck size={13} aria-hidden="true" />
               {copy.public}
             </div>
           </div>
 
-          <h2 ref={titleRef} id="lh-demo-title" tabIndex={-1} className="max-w-xl text-[1.7rem] font-semibold tracking-tight outline-hidden sm:text-4xl">
+          <h2 ref={titleRef} id="lh-demo-title" tabIndex={-1} className="max-w-xl text-[1.7rem] font-semibold tracking-[-0.03em] outline-hidden sm:text-4xl">
             {copy.title}
           </h2>
-          <p id="lh-demo-body" className="mt-3 max-w-xl text-sm leading-6 text-white/55 sm:text-[15px]">
+          <p id="lh-demo-body" className="mt-3 max-w-xl text-sm leading-6 text-sec sm:text-[15px]">
             {copy.body}
           </p>
 
           <div className="mt-6 grid gap-2 sm:grid-cols-3 sm:gap-3">
             {cards.map((card) => (
-              <div key={card.title} className="lh-demo-card rounded-2xl bg-white/[0.03] p-3.5">
-                <h3 className="text-[11px] font-semibold tracking-[0.08em] uppercase text-white/80">{card.title}</h3>
-                <p className="mt-2 text-xs leading-5 text-white/[0.42]">{card.text}</p>
+              <div key={card.title} className="lh-demo-card rounded-2xl bg-well p-3.5">
+                <h3 className="text-[13px] font-semibold text-fg">{card.title}</h3>
+                <p className="mt-1.5 text-xs leading-5 text-sec">{card.text}</p>
               </div>
             ))}
           </div>
 
-          <p className="lh-demo-limits mt-5 rounded-2xl bg-white/[0.025] px-4 py-3 text-xs leading-5 text-white/[0.42]">
+          <p className="lh-demo-limits mt-5 rounded-2xl bg-well px-4 py-3 text-xs leading-5 text-sec">
             {copy.limits}
           </p>
 
-          <nav className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs text-white/50" aria-label={copy.public}>
-            <a className="underline decoration-white/20 underline-offset-4 hover:text-white" href={LINKS.site} target="_blank" rel="noreferrer">{copy.site}</a>
-            <a className="underline decoration-white/20 underline-offset-4 hover:text-white" href={LINKS.docs} target="_blank" rel="noreferrer">{copy.docs}</a>
-            <a className="underline decoration-white/20 underline-offset-4 hover:text-white" href={LINKS.source} target="_blank" rel="noreferrer">{copy.source}</a>
+          <nav className="mt-5 flex flex-wrap gap-x-4 gap-y-2 text-xs text-sec" aria-label={copy.public}>
+            <a className="underline decoration-line underline-offset-4 hover:text-fg" href={LINKS.site} target="_blank" rel="noreferrer">{copy.site}</a>
+            <a className="underline decoration-line underline-offset-4 hover:text-fg" href={LINKS.docs} target="_blank" rel="noreferrer">{copy.docs}</a>
+            <a className="underline decoration-line underline-offset-4 hover:text-fg" href={LINKS.source} target="_blank" rel="noreferrer">{copy.source}</a>
           </nav>
 
           <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
             <button
               type="button"
               onClick={resetDemo}
-              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-white/[0.08] px-4 text-sm text-white/60 transition-colors hover:bg-white/5 hover:text-white sm:order-1"
+              className="btn btn-secondary btn-lg sm:order-1"
             >
               <RotateCcw size={15} aria-hidden="true" />
               {copy.reset}
@@ -174,7 +174,7 @@ export default function DemoExperience({ lang }) {
             <button
               type="button"
               onClick={closeGuide}
-              className="min-h-11 rounded-xl bg-white px-6 text-sm font-semibold text-[#0b0e13] transition-colors hover:bg-white/90 sm:order-2"
+              className="btn btn-primary btn-lg sm:order-2"
             >
               {copy.continue}
             </button>

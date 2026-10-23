@@ -35,7 +35,7 @@ test('keeps the demo banner and navigation usable', async ({ page }, testInfo) =
   if (testInfo.project.name === 'mobile') {
     await page.getByRole('button', { name: 'Open navigation menu' }).click();
   }
-  await page.getByRole('button', { name: /^Glossary$/i }).click();
+  await page.getByRole('button', { name: /^Glossaries$/i }).click();
   await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
   await expect(page.getByText('regency_fiction').first()).toBeVisible();
 });
@@ -45,7 +45,7 @@ test('returns a complete French translation in the sandbox', async ({ page }, te
   if (testInfo.project.name === 'mobile') {
     await page.getByRole('button', { name: 'Open navigation menu' }).click();
   }
-  await page.getByRole('button', { name: /^Test$/i }).click();
+  await page.getByRole('button', { name: /^Sandbox$/i }).click();
   await page.getByRole('button', { name: 'Run test' }).click();
   await expect(page.getByText(/Il est une vérité universellement reconnue/)).toBeVisible();
   await expect(page.getByText(/Si peu que l’on connaisse les sentiments/)).toBeVisible();

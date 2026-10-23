@@ -128,7 +128,7 @@ try {
   browser = await chromium.launch({ headless: true });
   const desktop = await browser.newContext({
     viewport: { width: 1440, height: 900 },
-    colorScheme: 'dark',
+    colorScheme: 'light',
     locale: 'en-US',
     timezoneId: 'Europe/Paris',
     reducedMotion: 'reduce',
@@ -145,15 +145,15 @@ try {
   await page.getByRole('heading', { name: 'Inspect and review' }).waitFor({ timeout: 20_000 });
   await capture(page, 'tradoc-demo-inspector');
 
-  await page.getByRole('button', { name: /^Glossary$/i }).click();
+  await page.getByRole('button', { name: /^Glossaries$/i }).click();
   await page.getByRole('heading', { name: 'Translation glossaries' }).waitFor({ timeout: 20_000 });
   await capture(page, 'tradoc-demo-glossary');
 
   await page.getByRole('button', { name: /^Settings$/i }).click();
-  await page.getByRole('heading', { name: 'GPU & LLM Engine Configuration' }).waitFor({ timeout: 20_000 });
+  await page.getByRole('heading', { name: 'Settings', exact: true }).waitFor({ timeout: 20_000 });
   await capture(page, 'tradoc-demo-settings');
 
-  await page.getByRole('button', { name: /^Test$/i }).click();
+  await page.getByRole('button', { name: /^Sandbox$/i }).click();
   await page.getByRole('button', { name: 'Run test' }).waitFor({ timeout: 20_000 });
   await capture(page, 'tradoc-demo-sandbox');
   await desktop.close();

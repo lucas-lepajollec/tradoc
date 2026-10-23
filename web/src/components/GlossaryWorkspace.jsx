@@ -1,5 +1,5 @@
 import React from 'react';
-import { BookMarked, Plus, Trash2, Save, Copy, Check, Upload, Sparkles, HelpCircle, FileCode, ArrowDown } from 'lucide-react';
+import { ArrowRight, Check, Copy, Plus, Trash2, Upload, X } from 'lucide-react';
 import { l } from '../i18n/translations';
 
 export default function GlossaryWorkspace({
@@ -8,82 +8,144 @@ export default function GlossaryWorkspace({
   fileInputRef, aiPrompt, onCreate, onSelect, onDelete, onCopyPrompt, onFileUpload,
   onParsePaste, onAddItem, onItemChange, onRemoveItem, onSave,
 }) {
+  const tools = [
+    ['import', l(lang, 'Import', 'Importer', 'Importar', 'Importieren')],
+    ['prompt', l(lang, 'AI prompt', 'Prompt IA', 'Prompt de IA', 'KI-Prompt')],
+    ['guide', l(lang, 'Guide', 'Guide', 'Guía', 'Leitfaden')],
+  ];
+  const guide = [
+    [l(lang, 'Source term', 'Terme source', 'Término de origen', 'Ausgangsbegriff'), l(lang, 'The exact form found in the document.', 'La forme exacte rencontrée dans le document.', 'La forma exacta que aparece en el documento.', 'Die exakte Form im Dokument.')],
+    [l(lang, 'Target translation', 'Traduction cible', 'Traducción de destino', 'Zielübersetzung'), l(lang, 'The form TraDoc must always use.', 'La forme que TraDoc doit toujours utiliser.', 'La forma que TraDoc debe utilizar siempre.', 'Die Form, die TraDoc immer verwenden soll.')],
+    [l(lang, 'Instruction', 'Directive', 'Instrucción', 'Anweisung'), l(lang, 'A short rule provided to the model.', 'Une règle courte donnée au modèle.', 'Una regla breve para el modelo.', 'Eine kurze Regel für das Modell.')],
+  ];
+
   return (
-    <div className="glossary-v2 page-stack">
-      <header className="page-intro glossary-v2-header">
+    <div className="page">
+      <div className="page-head">
         <div>
-          <p className="page-kicker">{l(lang, 'Terminology consistency', 'Cohérence terminologique', 'Coherencia terminológica', 'Terminologische Konsistenz')}</p>
           <h1>{l(lang, 'Translation glossaries', 'Glossaires de traduction', 'Glosarios de traducción', 'Übersetzungsglossare')}</h1>
           <p>{l(lang, 'Centralize names, places, and rules that must remain consistent throughout the document.', 'Centralisez les noms, lieux et règles qui doivent rester cohérents dans tout le document.', 'Centraliza los nombres, lugares y reglas que deben mantenerse coherentes en todo el documento.', 'Verwalte Namen, Orte und Regeln zentral, damit sie im gesamten Dokument konsistent bleiben.')}</p>
         </div>
-        <button type="button" className="primary-action" onClick={onCreate}><Plus />{l(lang, 'New glossary', 'Nouveau glossaire', 'Nuevo glosario', 'Neues Glossar')}</button>
-      </header>
+        <button type="button" className="btn btn-primary" onClick={onCreate}><Plus aria-hidden="true" />{l(lang, 'New glossary', 'Nouveau glossaire', 'Nuevo glosario', 'Neues Glossar')}</button>
+      </div>
 
-      <nav className="glossary-strip" aria-label={l(lang, 'Available glossaries', 'Glossaires disponibles', 'Glosarios disponibles', 'Verfügbare Glossare')}>
-        {glossaries.length === 0 ? (
-          <button type="button" className="glossary-empty-tab" onClick={onCreate}><Plus /><span>{l(lang, 'Create your first glossary', 'Créer votre premier glossaire', 'Crea tu primer glosario', 'Erstelle dein erstes Glossar')}</span></button>
-        ) : glossaries.map((name) => (
-          <div key={name} className={`glossary-tab ${selectedName === name ? 'is-active' : ''}`}>
-            <button type="button" onClick={() => onSelect(name)}><BookMarked /><span>{name}</span></button>
-            <button type="button" className="tab-delete" onClick={() => onDelete(name)} title={l(lang, 'Delete', 'Supprimer', 'Eliminar', 'Löschen')}><Trash2 /></button>
-          </div>
-        ))}
-      </nav>
-
-      <section className="glossary-bulk-card">
-        <div className="tools-heading">
-          <div className="bulk-heading-copy">
-            <Sparkles />
-            <div>
-              <span>{l(lang, 'Add multiple terms', 'Ajouter plusieurs termes', 'Añadir varios términos', 'Mehrere Begriffe hinzufügen')}</span>
-              <p>{l(lang, 'Import a list or quickly prepare entries with the assistant.', 'Importez une liste ou préparez rapidement des entrées avec l’assistant.', 'Importa una lista o prepara entradas rápidamente con el asistente.', 'Importiere eine Liste oder bereite Einträge schnell mit dem Assistenten vor.')}</p>
-            </div>
-          </div>
-          <div className="tool-tabs">
-            <button type="button" className={activeTool === 'prompt' ? 'is-active' : ''} onClick={() => setActiveTool(activeTool === 'prompt' ? null : 'prompt')}><Sparkles />{l(lang, 'AI prompt', 'Prompt IA', 'Prompt de IA', 'KI-Prompt')}</button>
-            <button type="button" className={activeTool === 'import' ? 'is-active' : ''} onClick={() => setActiveTool(activeTool === 'import' ? null : 'import')}><FileCode />{l(lang, 'Import', 'Importer', 'Importar', 'Importieren')}</button>
-            <button type="button" className={activeTool === 'guide' ? 'is-active' : ''} onClick={() => setActiveTool(activeTool === 'guide' ? null : 'guide')}><HelpCircle />{l(lang, 'Guide', 'Guide', 'Guía', 'Leitfaden')}</button>
-          </div>
-        </div>
-
-        {activeTool === 'prompt' && <div className="tool-panel prompt-panel"><div><p>{l(lang, 'Copy this prompt with a document excerpt to extract its terminology automatically.', 'Copiez ce prompt avec un extrait du document pour extraire automatiquement sa terminologie.', 'Copia este prompt junto con un fragmento del documento para extraer automáticamente su terminología.', 'Kopiere diesen Prompt zusammen mit einem Dokumentauszug, um dessen Terminologie automatisch zu extrahieren.')}</p><button type="button" onClick={onCopyPrompt}>{copiedPrompt ? <Check /> : <Copy />}{copiedPrompt ? l(lang, 'Copied', 'Copié', 'Copiado', 'Kopiert') : l(lang, 'Copy prompt', 'Copier le prompt', 'Copiar prompt', 'Prompt kopieren')}</button></div><pre>{aiPrompt}</pre></div>}
-
-        {activeTool === 'import' && <div className="tool-panel import-panel">
-          <div className="import-copy"><p>{l(lang, 'One term per line: Source | Translation | Note', 'Une ligne par terme : Source | Traduction | Note', 'Un término por línea: Origen | Traducción | Nota', 'Ein Begriff pro Zeile: Ausgangstext | Übersetzung | Hinweis')}</p><input type="file" accept=".csv,.txt,.json" ref={fileInputRef} onChange={onFileUpload} className="hidden" /><button type="button" onClick={() => fileInputRef.current?.click()}><Upload />{l(lang, 'Choose file', 'Choisir un fichier', 'Elegir archivo', 'Datei auswählen')}</button></div>
-          <textarea rows={5} value={pasteText} onChange={(e) => setPasteText(e.target.value)} placeholder={'Arthur Pendragon | Arthur Pendragon | Ne pas traduire\nCamelot | Camelot | Nom du royaume'} />
-          <button type="button" className="primary-action import-submit" disabled={!pasteText.trim()} onClick={onParsePaste}><ArrowDown />{l(lang, 'Add these terms', 'Ajouter ces termes', 'Añadir estos términos', 'Diese Begriffe hinzufügen')}</button>
-        </div>}
-
-        {activeTool === 'guide' && <div className="tool-panel guide-panel"><article><strong>01</strong><div><h3>{l(lang, 'Source term', 'Terme source', 'Término de origen', 'Ausgangsbegriff')}</h3><p>{l(lang, 'The exact form found in the document.', 'La forme exacte rencontrée dans le document.', 'La forma exacta que aparece en el documento.', 'Die exakte Form im Dokument.')}</p></div></article><article><strong>02</strong><div><h3>{l(lang, 'Target translation', 'Traduction cible', 'Traducción de destino', 'Zielübersetzung')}</h3><p>{l(lang, 'The form TraDoc must always use.', 'La forme que TraDoc doit toujours utiliser.', 'La forma que TraDoc debe utilizar siempre.', 'Die Form, die TraDoc immer verwenden soll.')}</p></div></article><article><strong>03</strong><div><h3>{l(lang, 'Instruction', 'Directive', 'Instrucción', 'Anweisung')}</h3><p>{l(lang, 'A short rule provided to the model.', 'Une règle courte donnée au modèle.', 'Una regla breve para el modelo.', 'Eine kurze Regel für das Modell.')}</p></div></article></div>}
-      </section>
-
-      <form onSubmit={onSave} className="glossary-canvas">
-        <div className="glossary-canvas-header">
-          <div className="glossary-title-fields">
-            <label><span>{l(lang, 'Glossary name', 'Nom du glossaire', 'Nombre del glosario', 'Glossarname')}</span><input value={nameInput} onChange={(e) => setNameInput(e.target.value)} placeholder="fantasy_terms" /></label>
-            <label><span>{l(lang, 'Description', 'Description', 'Descripción', 'Beschreibung')}</span><input value={descInput} onChange={(e) => setDescInput(e.target.value)} placeholder={l(lang, 'Characters, places, and terminology', 'Personnages, lieux et terminologie', 'Personajes, lugares y terminología', 'Figuren, Orte und Terminologie')} /></label>
-          </div>
-          <div className="glossary-save-area">
-            {message && <span className="save-message"><Check />{message}</span>}
-            <button type="submit" className="primary-action"><Save />{l(lang, 'Save', 'Enregistrer', 'Guardar', 'Speichern')}</button>
-          </div>
-        </div>
-
-        <section className="terminology-editor">
-          <div className="terminology-heading"><div><h2>{l(lang, 'Terminology', 'Terminologie', 'Terminología', 'Terminologie')}</h2><span>{items.length} {l(lang, items.length === 1 ? 'term' : 'terms', items.length > 1 ? 'termes' : 'terme', items.length === 1 ? 'término' : 'términos', items.length === 1 ? 'Begriff' : 'Begriffe')}</span></div><button type="button" onClick={onAddItem}><Plus />{l(lang, 'Add term', 'Ajouter un terme', 'Añadir término', 'Begriff hinzufügen')}</button></div>
-          <div className="term-table">
-            <div className="term-table-head"><span>{l(lang, 'Source', 'Source', 'Origen', 'Ausgangstext')}</span><span>{l(lang, 'Translation', 'Traduction', 'Traducción', 'Übersetzung')}</span><span>{l(lang, 'Instruction', 'Directive', 'Instrucción', 'Anweisung')}</span><span /></div>
-            {items.length === 0 ? <div className="term-empty"><BookMarked /><strong>{l(lang, 'No terms yet', 'Aucun terme pour le moment', 'Aún no hay términos', 'Noch keine Begriffe')}</strong><p>{l(lang, 'Add a row or use the import tools above.', 'Ajoutez une ligne ou utilisez les outils d’import ci-dessus.', 'Añade una fila o utiliza las herramientas de importación anteriores.', 'Füge eine Zeile hinzu oder nutze die Importwerkzeuge oben.')}</p></div> : items.map((item, index) => (
-              <div className="term-row" key={index}>
-                <input value={item.source} onChange={(e) => onItemChange(index, 'source', e.target.value)} placeholder={l(lang, 'Original term', 'Terme original', 'Término original', 'Originalbegriff')} />
-                <input value={item.target} onChange={(e) => onItemChange(index, 'target', e.target.value)} placeholder={l(lang, 'Preferred translation', 'Traduction retenue', 'Traducción preferida', 'Bevorzugte Übersetzung')} />
-                <input value={item.note || ''} onChange={(e) => onItemChange(index, 'note', e.target.value)} placeholder={l(lang, 'Optional instruction', 'Consigne optionnelle', 'Instrucción opcional', 'Optionale Anweisung')} />
-                <button type="button" onClick={() => onRemoveItem(index)} title={l(lang, 'Delete row', 'Supprimer la ligne', 'Eliminar fila', 'Zeile löschen')}><Trash2 /></button>
+      <div className="flex flex-wrap items-start gap-5">
+        <nav aria-label={l(lang, 'Available glossaries', 'Glossaires disponibles', 'Glosarios disponibles', 'Verfügbare Glossare')} className="flex min-w-0 flex-[1_1_240px] flex-col gap-1">
+          {glossaries.length === 0 ? (
+            <button type="button" className="btn btn-secondary justify-start" onClick={onCreate}>
+              <Plus aria-hidden="true" />{l(lang, 'Create your first glossary', 'Créer votre premier glossaire', 'Crea tu primer glosario', 'Erstelle dein erstes Glossar')}
+            </button>
+          ) : glossaries.map((name) => {
+            const isActive = selectedName === name;
+            return (
+              <div key={name} className={`flex items-center gap-1 rounded-[14px] border p-1 ${isActive ? 'border-line bg-card' : 'border-transparent'}`}>
+                <button type="button" aria-current={isActive ? 'true' : undefined} onClick={() => onSelect(name)} className="min-w-0 flex-1 truncate rounded-[10px] border-0 bg-transparent px-2.5 py-2 text-left font-medium hover:bg-well">
+                  {name}
+                </button>
+                <button type="button" className="icon-btn is-plain !size-8" onClick={() => onDelete(name)} aria-label={`${l(lang, 'Delete', 'Supprimer', 'Eliminar', 'Löschen')} — ${name}`}>
+                  <Trash2 aria-hidden="true" />
+                </button>
               </div>
-            ))}
-          </div>
-        </section>
-      </form>
+            );
+          })}
+        </nav>
+
+        <div className="flex min-w-0 flex-[999_1_560px] flex-col gap-4">
+          <form onSubmit={onSave} className="card">
+            <div className="flex flex-wrap items-end gap-3 px-6 py-5">
+              <label className="field flex-[1_1_200px]">
+                <span className="field-label">{l(lang, 'Glossary name', 'Nom du glossaire', 'Nombre del glosario', 'Glossarname')}</span>
+                <input className="input" value={nameInput} onChange={(event) => setNameInput(event.target.value)} placeholder="fantasy_terms" />
+              </label>
+              <label className="field flex-[3_1_300px]">
+                <span className="field-label">{l(lang, 'Description', 'Description', 'Descripción', 'Beschreibung')}</span>
+                <input className="input" value={descInput} onChange={(event) => setDescInput(event.target.value)} placeholder={l(lang, 'Characters, places, and terminology', 'Personnages, lieux et terminologie', 'Personajes, lugares y terminología', 'Figuren, Orte und Terminologie')} />
+              </label>
+              <button type="submit" className="btn btn-primary btn-lg">{l(lang, 'Save', 'Enregistrer', 'Guardar', 'Speichern')}</button>
+            </div>
+            {message && (
+              <p role="status" className="mx-6 mb-4 mt-0 flex items-center gap-2 text-[13px] text-good"><Check className="size-4" aria-hidden="true" />{message}</p>
+            )}
+
+            <div className="flex items-center justify-between border-t border-line px-6 py-3">
+              <h2 className="section-title">
+                {l(lang, 'Terminology', 'Terminologie', 'Terminología', 'Terminologie')} <span className="font-normal text-sec">{items.length}</span>
+              </h2>
+              <button type="button" className="btn btn-secondary btn-sm" onClick={onAddItem}><Plus aria-hidden="true" />{l(lang, 'Add term', 'Ajouter un terme', 'Añadir término', 'Begriff hinzufügen')}</button>
+            </div>
+
+            {items.length === 0 ? (
+              <div className="mx-3 mb-3 rounded-[14px] bg-well px-4 py-8 text-center">
+                <strong className="font-medium">{l(lang, 'No terms yet', 'Aucun terme pour le moment', 'Aún no hay términos', 'Noch keine Begriffe')}</strong>
+                <p className="m-0 mt-1 text-[13px] text-sec">{l(lang, 'Add a row or use the import tools below.', 'Ajoutez une ligne ou utilisez les outils d’import ci-dessous.', 'Añade una fila o utiliza las herramientas de importación de abajo.', 'Füge eine Zeile hinzu oder nutze die Importwerkzeuge unten.')}</p>
+              </div>
+            ) : (
+              <ul className="m-0 flex list-none flex-col gap-1.5 px-3 pb-3">
+                {items.map((item, index) => (
+                  <li key={index} className="flex flex-wrap items-center gap-1.5 rounded-[14px] bg-well p-1.5">
+                    <input className="input input-on-card min-w-0 flex-[1_1_160px] font-medium" aria-label={l(lang, 'Source term', 'Terme source', 'Término de origen', 'Ausgangsbegriff')} value={item.source} onChange={(event) => onItemChange(index, 'source', event.target.value)} placeholder={l(lang, 'Original term', 'Terme original', 'Término original', 'Originalbegriff')} />
+                    <ArrowRight className="size-3.5 flex-none text-sec" aria-hidden="true" />
+                    <input className="input input-on-card min-w-0 flex-[1_1_160px] font-medium" aria-label={l(lang, 'Target translation', 'Traduction cible', 'Traducción de destino', 'Zielübersetzung')} value={item.target} onChange={(event) => onItemChange(index, 'target', event.target.value)} placeholder={l(lang, 'Preferred translation', 'Traduction retenue', 'Traducción preferida', 'Bevorzugte Übersetzung')} />
+                    <input className="input min-w-0 flex-[2_1_200px] !bg-transparent text-sec" aria-label={l(lang, 'Instruction', 'Directive', 'Instrucción', 'Anweisung')} value={item.note || ''} onChange={(event) => onItemChange(index, 'note', event.target.value)} placeholder={l(lang, 'Optional instruction', 'Consigne optionnelle', 'Instrucción opcional', 'Optionale Anweisung')} />
+                    <button type="button" className="icon-btn is-plain" onClick={() => onRemoveItem(index)} aria-label={l(lang, 'Delete row', 'Supprimer la ligne', 'Eliminar fila', 'Zeile löschen')}>
+                      <X aria-hidden="true" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </form>
+
+          <section aria-labelledby="bulk-title" className="card">
+            <div className="flex flex-wrap items-center justify-between gap-2.5 py-3.5 pl-6 pr-3.5">
+              <div>
+                <h2 id="bulk-title" className="section-title">{l(lang, 'Add multiple terms', 'Ajouter plusieurs termes', 'Añadir varios términos', 'Mehrere Begriffe hinzufügen')}</h2>
+                <p className="m-0 mt-0.5 text-[13px] text-sec">{l(lang, 'Import a list or quickly prepare entries with the assistant.', 'Importez une liste ou préparez rapidement des entrées avec l’assistant.', 'Importa una lista o prepara entradas rápidamente con el asistente.', 'Importiere eine Liste oder bereite Einträge schnell mit dem Assistenten vor.')}</p>
+              </div>
+              <div className="seg" role="tablist" aria-label={l(lang, 'Add multiple terms', 'Ajouter plusieurs termes', 'Añadir varios términos', 'Mehrere Begriffe hinzufügen')}>
+                {tools.map(([id, label]) => (
+                  <button key={id} type="button" role="tab" aria-selected={activeTool === id} onClick={() => setActiveTool(activeTool === id ? null : id)}>{label}</button>
+                ))}
+              </div>
+            </div>
+
+            {activeTool === 'import' && (
+              <div className="flex flex-col gap-2.5 px-6 pb-5">
+                <label className="field">
+                  <span className="field-label">{l(lang, 'One term per line: Source | Translation | Note', 'Une ligne par terme : Source | Traduction | Note', 'Un término por línea: Origen | Traducción | Nota', 'Ein Begriff pro Zeile: Ausgangstext | Übersetzung | Hinweis')}</span>
+                  <textarea className="input" rows={5} value={pasteText} onChange={(event) => setPasteText(event.target.value)} placeholder={'Arthur Pendragon | Arthur Pendragon | Keep unchanged\nCamelot | Camelot | Kingdom name'} />
+                </label>
+                <div className="flex flex-wrap justify-between gap-2">
+                  <input type="file" accept=".csv,.txt,.json" ref={fileInputRef} onChange={onFileUpload} className="sr-only" tabIndex={-1} aria-hidden="true" />
+                  <button type="button" className="btn btn-secondary" onClick={() => fileInputRef.current?.click()}><Upload aria-hidden="true" />{l(lang, 'Choose file', 'Choisir un fichier', 'Elegir archivo', 'Datei auswählen')} (TXT, CSV, JSON)</button>
+                  <button type="button" className="btn btn-solid" disabled={!pasteText.trim()} onClick={onParsePaste}>{l(lang, 'Add these terms', 'Ajouter ces termes', 'Añadir estos términos', 'Diese Begriffe hinzufügen')}</button>
+                </div>
+              </div>
+            )}
+
+            {activeTool === 'prompt' && (
+              <div className="flex flex-col gap-2.5 px-6 pb-5">
+                <p className="m-0 text-[13px] text-sec">{l(lang, 'Copy this prompt with a document excerpt to extract its terminology automatically.', 'Copiez ce prompt avec un extrait du document pour extraire automatiquement sa terminologie.', 'Copia este prompt junto con un fragmento del documento para extraer automáticamente su terminología.', 'Kopiere diesen Prompt zusammen mit einem Dokumentauszug, um dessen Terminologie automatisch zu extrahieren.')}</p>
+                <pre className="well m-0 max-h-64 overflow-auto whitespace-pre-wrap px-4 py-3.5 font-sans text-[13px] leading-relaxed">{aiPrompt}</pre>
+                <div>
+                  <button type="button" className="btn btn-secondary" onClick={onCopyPrompt}>
+                    {copiedPrompt ? <Check aria-hidden="true" /> : <Copy aria-hidden="true" />}
+                    {copiedPrompt ? l(lang, 'Copied', 'Copié', 'Copiado', 'Kopiert') : l(lang, 'Copy prompt', 'Copier le prompt', 'Copiar prompt', 'Prompt kopieren')}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTool === 'guide' && (
+              <ol className="m-0 flex flex-col gap-2 px-6 pb-5 pl-11 text-[14px]">
+                {guide.map(([title, text]) => (
+                  <li key={title}><strong className="font-semibold">{title}</strong> — {text}</li>
+                ))}
+              </ol>
+            )}
+          </section>
+        </div>
+      </div>
     </div>
   );
 }
