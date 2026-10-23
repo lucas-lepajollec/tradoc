@@ -568,7 +568,7 @@ class CheckpointDatabase:
 
         return await self._run(operation)
 
-    # Integration clients: other apps (for example Bunko) that use TraDoc as an
+    # Integration clients: other self-hosted apps that use TraDoc as an
     # engine. Only a SHA-256 hash of each token is stored.
     @staticmethod
     def _hash_token(token: str) -> str:

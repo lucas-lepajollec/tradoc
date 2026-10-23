@@ -2,12 +2,12 @@
 
 Other self-hosted apps can use TraDoc as their translation engine: they send a document, TraDoc translates it with its own pipeline (segmentation, glossaries, checkpoints, reconstruction) and returns the rebuilt file. Every project created this way also appears in the TraDoc interface, tagged "via <app name>".
 
-The first planned client is Bunko: a "Translate" action on a book sends its EPUB to TraDoc and imports the translated EPUB back, without exporting and re-importing by hand.
+A typical client is a self-hosted library or reading app: a "Translate" action on a book sends its EPUB to TraDoc and imports the translated EPUB back, without exporting and re-importing by hand.
 
 ## Connect an app
 
 1. In TraDoc, open **Settings → Integrations**.
-2. Name the connection (for example `Bunko`) and choose its default model. Any connected provider works; see [Providers](https://docs.tradoc.lucas-homelab.fr/docs/configure/providers).
+2. Name the connection (for example `My library`) and choose its default model. Any connected provider works; see [Providers](https://docs.tradoc.lucas-homelab.fr/docs/configure/providers).
 3. Select **Create the connection** and copy the key. It starts with `tdk_` and is shown only once; TraDoc stores only its SHA-256 hash.
 4. In the other app, enter the **API address** shown on the same page (for example `http://tradoc.local:2507/api/v1`) and the key.
 
@@ -55,7 +55,7 @@ All paths are relative to `/api/v1`. Responses are JSON unless stated otherwise.
 | `provider` | no | connection default | Provider id, for example `ollama`, `lm-studio`, `deepseek`, `openai`. |
 | `model` | no | connection default | Required when the connection has no default model for the chosen provider (`422` otherwise). |
 | `glossary` | no | none | Name of a TraDoc glossary. |
-| `external_ref` | no | none | Your own identifier (200 characters max), returned on every response; for example the Bunko book id. |
+| `external_ref` | no | none | Your own identifier (200 characters max), returned on every response; for example your book id. |
 | `start` | no | `true` | `false` only prepares the project. |
 
 Local providers (LM Studio, Ollama) run with 1 parallel request and 1,000-token segments, remote providers with 4 requests and 6,000-token segments, at temperature 0.15. The project can be tuned afterwards in TraDoc.
@@ -72,7 +72,7 @@ Returns `202` with a translation:
   "target_lang": "fr",
   "provider": "deepseek",
   "model": "deepseek-chat",
-  "external_ref": "bunko-book-42",
+  "external_ref": "book-42",
   "created_at": "2026-10-23T18:20:11",
   "completed_at": null
 }
@@ -96,7 +96,7 @@ curl -s -H "Authorization: Bearer $KEY" "$TRADOC/info"
 
 ID=$(curl -s -H "Authorization: Bearer $KEY" \
   -F file=@the-time-machine.epub -F source_lang=en -F target_lang=fr \
-  -F external_ref=bunko-book-42 "$TRADOC/translations" | jq -r .id)
+  -F external_ref=book-42 "$TRADOC/translations" | jq -r .id)
 
 # Poll every 15–30 seconds until "completed" (or "failed").
 curl -s -H "Authorization: Bearer $KEY" "$TRADOC/translations/$ID" | jq '.status, .progress'

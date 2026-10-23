@@ -95,9 +95,9 @@ test('creates and disconnects an app integration', async ({ page }, testInfo) =>
   await page.getByRole('button', { name: /^Settings$/i }).click();
   await page.getByRole('tab', { name: 'Integrations' }).click();
   await expect(page.getByText('/api/v1')).toBeVisible();
-  await page.getByLabel('App name').fill('Bunko');
+  await page.getByLabel('App name').fill('My library');
   await page.getByRole('button', { name: 'Create the connection' }).click();
-  await expect(page.getByText('Key for Bunko')).toBeVisible();
+  await expect(page.getByText('Key for My library')).toBeVisible();
   await expect(page.getByText(/^tdk_demo00/)).toBeVisible();
   page.once('dialog', (dialog) => dialog.accept());
   await page.getByRole('button', { name: 'Disconnect' }).click();
