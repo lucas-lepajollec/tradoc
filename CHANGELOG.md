@@ -6,8 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
-- Migrate the frontend to Tailwind CSS 4 through its Vite plugin, preserving existing theme tokens, small shadows/radii and focus behavior; remove the vulnerable Tailwind 3 build chain.
-- Keep the source-map-js security patch and grouped maintenance policy. Modern browser support requires Safari 16.4+, Chrome 111+ or Firefox 128+.
+## [0.1.7] - 2026-10-23
+
+No database or configuration migration is required. Provider keys and endpoints already stored on the server are reused as-is, and rolling back to the 0.1.6 image keeps working data intact. The interface now needs Safari 16.4+, Chrome 111+ or Firefox 128+.
 
 ### Added
 
@@ -21,8 +22,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 
+- Migrate the frontend to Tailwind CSS 4 through its Vite plugin, preserving existing theme tokens, small shadows/radii and focus behavior; remove the vulnerable Tailwind 3 build chain.
+- Keep the source-map-js security patch and grouped maintenance policy. Modern browser support requires Safari 16.4+, Chrome 111+ or Firefox 128+.
 - Redesign the whole interface: a centered top navigation (a menu button on phones) replaces the sidebar, the dashboard puts document import first, and every screen uses one self-hosted typeface (Inter), borderless surfaces without drop shadows, pill controls and switches. Light is the default and dark follows the system. Every existing action is kept.
 - Rename navigation entries: Inspector & Tracking becomes Review, Test becomes Sandbox, and the settings tabs become Providers & models, Translation, Interface & languages and Profiles. Status labels are no longer uppercase.
+- Update the Vite development server to 8.3.5 to clear its high-severity advisories (development tooling only).
 - Stop loading Google Fonts from the page; the interface no longer contacts a third-party font host and pinch-zoom is allowed again on phones.
 - Refresh README product screenshots from the isolated English public demo, with the intro dialog closed and additional views of the inspector, glossary, settings, and sandbox.
 
@@ -89,7 +93,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 Earlier development remains available in Git history; this changelog does not invent releases that were never deliberately published.
 
-[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.7...HEAD
+[0.1.7]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.6...v0.1.7
 [0.1.6]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/lucas-lepajollec/tradoc/compare/v0.1.3...v0.1.4
