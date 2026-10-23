@@ -86,6 +86,76 @@ class ApiSecurityTests(unittest.TestCase):
         self.assertEqual(response.json()["models"], ["model-a", "model-b"])
         self.assertEqual(fake_client.fetch_count, 1)
 
+    def test_model_catalog_lists_every_configured_provider(self):
+        class FakeClient:
+            def __init__(self, models):
+                self.models = models
+
+            async def __aenter__(self):
+                return self
+
+            async def __aexit__(self, exc_type, exc, traceback):
+                return None
+
+            async def fetch_models(self):
+                if isinstance(self.models, Exception):
+                    raise self.models
+                return self.models
+
+        clients = {
+            "ollama": FakeClient(["qwen2.5:7b"]),
+            "deepseek": FakeClient(["deepseek-chat", "deepseek-reasoner"]),
+            "openai": FakeClient(ValueError("unreachable")),
+        }
+        metadata = {
+            "ollama": {"has_api_key": False, "endpoint": "http://127.0.0.1:11434"},
+            "deepseek": {"has_api_key": True, "endpoint": "https://api.deepseek.com/v1"},
+            "kimi": {"has_api_key": False, "endpoint": None},
+        }
+        previous_type = settings.API_TYPE
+        settings.API_TYPE = "openai"
+        try:
+            with (
+                patch("api.routes.credential_store.metadata", return_value=metadata),
+                patch("api.routes._new_client", new=AsyncMock(side_effect=lambda provider, *_args, **_kwargs: clients[provider])),
+            ):
+                response = self.client.get("/api/settings/model-catalog")
+        finally:
+            settings.API_TYPE = previous_type
+
+        self.assertEqual(response.status_code, 200)
+        entries = {entry["provider"]: entry for entry in response.json()["providers"]}
+        self.assertEqual(set(entries), {"ollama", "deepseek", "openai"})
+        self.assertEqual(entries["ollama"]["models"], ["qwen2.5:7b"])
+        self.assertEqual(entries["deepseek"]["models"], ["deepseek-chat", "deepseek-reasoner"])
+        self.assertEqual(entries["openai"]["models"], [])
+        self.assertEqual(entries["openai"]["error"], "unreachable")
+        self.assertNotIn("api_key", str(response.json()))
+
+    def test_job_config_can_switch_to_another_provider(self):
+        job = JobRecord(
+            id="job-1", file_name="book.epub", file_type="epub", source_lang="en", target_lang="fr",
+            model="qwen2.5:7b", status="PAUSED", total_chunks=4, completed_chunks=1,
+            api_type="ollama", endpoint="http://127.0.0.1:11434", created_at="2026-10-23T12:00:00",
+        )
+        with (
+            patch("api.routes.db.get_job", new=AsyncMock(return_value=job)),
+            patch("api.routes._provider_values", return_value=("https://api.deepseek.com/v1", "secret")),
+            patch("api.routes.validate_llm_endpoint", new=AsyncMock(side_effect=lambda endpoint, _provider: endpoint)),
+            patch("api.routes.db.update_job_config", new=AsyncMock(return_value=True)) as update,
+        ):
+            response = self.client.post(
+                "/api/jobs/job-1/update-config",
+                data={"model": "deepseek-chat", "api_type": "DeepSeek"},
+            )
+
+        self.assertEqual(response.status_code, 200)
+        update.assert_awaited_once()
+        kwargs = update.await_args.kwargs
+        self.assertEqual(kwargs["model"], "deepseek-chat")
+        self.assertEqual(kwargs["api_type"], "deepseek")
+        self.assertEqual(kwargs["endpoint"], "https://api.deepseek.com/v1")
+
     def test_interface_language_is_read_and_saved_server_side(self):
         with patch("api.routes.db.get_app_setting", new=AsyncMock(return_value="de")):
             response = self.client.get("/api/settings/interface")

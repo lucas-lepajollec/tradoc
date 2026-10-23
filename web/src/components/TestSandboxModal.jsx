@@ -3,6 +3,8 @@ import { AlertCircle, ArrowRight, RefreshCw, Upload, Copy, Check, RotateCcw } fr
 import { testTranslation, extractSandboxSample } from '../api';
 import { AVAILABLE_LANGUAGES, l, languageLabel, localeTag, t } from '../i18n/translations';
 import { readableSegment } from '../utils/readableSegment';
+import { decodeModelChoice } from '../providers';
+import ModelSelect from './ModelSelect';
 
 // Universal Classic Literary Excerpt (Pride and Prejudice by Jane Austen)
 const DEFAULT_UNIVERSAL_SAMPLE = `<p class="chapter-title">CHAPTER I</p>
@@ -19,7 +21,7 @@ const estimateTokens = (text = '') => {
   return Math.max(Math.floor(text.length / 3.8), Math.floor(words * 1.3));
 };
 
-export default function TestSandboxModal({ settings, availableModels, lang = 'en', onSelectModel }) {
+export default function TestSandboxModal({ settings, modelGroups = [], lang = 'en', onSelectModel }) {
   const [sampleText, setSampleText] = useState(DEFAULT_UNIVERSAL_SAMPLE);
   const [selectedModel, setSelectedModel] = useState(settings.model || '');
   const [selectedTemperature, setSelectedTemperature] = useState(settings.temperature !== undefined ? settings.temperature : 1.5);
@@ -190,17 +192,15 @@ export default function TestSandboxModal({ settings, availableModels, lang = 'en
         <div className="flex flex-wrap items-center gap-2 border-t border-line bg-toolbar p-2.5">
           <label className="chip-select">
             {t('dashboard.model', lang)}
-            <select
-              value={selectedModel || settings.model || ''}
-              onChange={(event) => {
-                setSelectedModel(event.target.value);
-                if (onSelectModel) onSelectModel(event.target.value);
+            <ModelSelect
+              groups={modelGroups}
+              provider={settings.apiType}
+              model={selectedModel || settings.model || ''}
+              onChange={(choice) => {
+                setSelectedModel(decodeModelChoice(choice, settings.apiType).model);
+                if (onSelectModel) onSelectModel(choice);
               }}
-            >
-              {availableModels.length > 0
-                ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
-                : <option value={settings.model}>{settings.model}</option>}
-            </select>
+            />
           </label>
           <label className="chip-select gap-2.5 !pr-3.5">
             {l(lang, 'Temperature', 'Température', 'Temperatura', 'Temperatur')}

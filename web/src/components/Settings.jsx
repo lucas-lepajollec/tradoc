@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Check, ArrowLeftRight, Eye, EyeOff } from 'lucide-react';
-import { isDemoMode, testConnection, saveProviderCredentials } from '../api';
+import { isDemoMode, testConnection, saveProviderCredentials, fetchCredentialMetadata } from '../api';
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 import { sanitizeProviderConfigs } from '../utils/persistence';
+import { PROVIDERS, isLocalProvider } from '../providers';
 
 const DEFAULT_LITERARY_PROMPT = `You are a professional literary translator. Translate the supplied source text into the target language configured for this project, using fluent, natural prose suitable for publication.
 
@@ -12,18 +13,6 @@ STRICT RULES:
 3. Structural integrity: preserve the supplied HTML tags (<p>, <i>, <b>, and others) exactly.
 4. Direct answer: return only the translated text. Do not add a preface, explanation, internal reasoning, or <think> tags.`;
 
-const PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', logoUrl: '/providers/openai.png', defaultModel: 'gpt-5.6-luna', defaultUrl: 'https://api.openai.com/v1', staticModels: ['gpt-5.6-sol', 'gpt-5.6-luna', 'gpt-4o', 'o1', 'o3-mini'] },
-  { id: 'claude', name: 'Claude (Anthropic)', logoUrl: '/providers/claude.png', defaultModel: 'claude-fable-5', defaultUrl: 'https://api.anthropic.com/v1', staticModels: ['claude-fable-5', 'claude-opus-5', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'] },
-  { id: 'gemini', name: 'Gemini (Google)', logoUrl: '/providers/gemini.png', defaultModel: 'gemini-3.1-flash', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/v1', staticModels: ['gemini-3.1-flash', 'gemini-3.1-pro', 'gemini-2.5-flash', 'gemini-2.5-pro'] },
-  { id: 'deepseek', name: 'DeepSeek', logoUrl: '/providers/deepseek.png', defaultModel: 'deepseek-chat', defaultUrl: 'https://api.deepseek.com/v1', staticModels: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-flash'] },
-  { id: 'openrouter', name: 'OpenRouter', logoUrl: '/providers/openrouter.png', defaultModel: 'openai/gpt-5.6-luna', defaultUrl: 'https://openrouter.ai/api/v1', staticModels: ['openai/gpt-5.6-luna', 'anthropic/claude-fable-5', 'google/gemini-3.1-flash', 'deepseek/deepseek-v4-flash'] },
-  { id: 'minimax', name: 'Minimax', logoUrl: '/providers/minimax.png', defaultModel: 'abab7-chat', defaultUrl: 'https://api.minimax.chat/v1', staticModels: ['abab7-chat', 'abab6.5-chat'] },
-  { id: 'kimi', name: 'Kimi (Moonshot)', logoUrl: '/providers/kimi.png', defaultModel: 'kimi-k3', defaultUrl: 'https://api.moonshot.cn/v1', staticModels: ['kimi-k3', 'kimi-k2.6', 'moonshot-v1-32k'] },
-  { id: 'glm', name: 'GLM (Zhipu AI)', logoUrl: '/providers/glm.png', defaultModel: 'glm-5.2', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4', staticModels: ['glm-5.2', 'glm-4.7', 'glm-4-flash'] },
-  { id: 'lm-studio', name: 'LM Studio / Local', logoUrl: '/providers/lmstudio.webp', defaultModel: 'qwen3.5-instruct', defaultUrl: 'http://localhost:1234/v1', staticModels: ['qwen3.5-instruct', 'translategemma-12b-it'] },
-  { id: 'ollama', name: 'Ollama / Local', logoUrl: '/providers/ollama.png', defaultModel: 'qwen2.5:7b', defaultUrl: 'http://localhost:11434', staticModels: ['qwen2.5:7b', 'llama3:8b'] },
-];
 
 export default function Settings({
   initialSubTab = 'providers',
@@ -88,11 +77,16 @@ export default function Settings({
   const [newPromptName, setNewPromptName] = useState('');
   const [newPresetNameInput, setNewPresetNameInput] = useState('');
 
+  const [credentialMeta, setCredentialMeta] = useState({});
+  const loadCredentialMeta = () => fetchCredentialMetadata().then((meta) => setCredentialMeta(meta || {})).catch(() => {});
+  useEffect(() => { loadCredentialMeta(); }, []);
+  const isConnected = (providerId) => Boolean(credentialMeta[providerId]?.has_api_key || (isLocalProvider(providerId) && credentialMeta[providerId]?.endpoint));
+
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
   const activeProvider = PROVIDERS.find(p => p.id === apiType) || PROVIDERS[0];
-  const isLocal = ['lm-studio', 'ollama'].includes(apiType);
+  const isLocal = isLocalProvider(apiType);
 
   // Sync settings when external settings update (e.g. preset applied)
   useEffect(() => {
@@ -160,7 +154,7 @@ export default function Settings({
 
     // 2. Load target provider config if saved previously
     const targetConfig = updatedConfigs[prov.id];
-    const targetIsLocal = ['lm-studio', 'ollama'].includes(prov.id);
+    const targetIsLocal = isLocalProvider(prov.id);
     const targetChunkMin = 200;
     const targetChunkMax = 10000;
     const targetChunkRecommended = targetIsLocal ? 1000 : 7000;
@@ -169,7 +163,7 @@ export default function Settings({
       setEndpoint(targetConfig.endpoint || prov.defaultUrl);
       setApiKey('');
       setModel(targetConfig.model || prov.defaultModel);
-      setConcurrency(targetConfig.concurrency !== undefined ? targetConfig.concurrency : (['lm-studio', 'ollama'].includes(prov.id) ? 1 : 4));
+      setConcurrency(targetConfig.concurrency !== undefined ? targetConfig.concurrency : (targetIsLocal ? 1 : 4));
       setChunkSize(Math.max(targetChunkMin, Math.min(targetChunkMax, targetConfig.chunkSize || targetChunkRecommended)));
     } else {
       setEndpoint(prov.defaultUrl);
@@ -278,6 +272,7 @@ export default function Settings({
       enableProofreading,
       enablePromptCaching: !!settings.enablePromptCaching,
     });
+    loadCredentialMeta();
     alert(t('settings.saveAllSuccess', lang));
   };
 
@@ -330,14 +325,20 @@ export default function Settings({
         {activeSubTab === 'providers' && (
           <section aria-label={t('settings.tabProviders', lang)} className="card flex flex-col gap-[22px] p-6">
             <div className="flex flex-col gap-2.5">
-              <h2 className="section-title">{t('settings.chooseProvider', lang)}</h2>
+              <div>
+                <h2 className="section-title">{t('settings.chooseProvider', lang)}</h2>
+                <p className="m-0 mt-0.5 text-[13px] text-sec">{l(lang, 'Connect as many providers as you like: the models of every connected provider appear together in the model menus.', 'Connectez autant de fournisseurs que vous voulez : les modèles de tous les fournisseurs connectés apparaissent ensemble dans les menus de modèles.', 'Conecta tantos proveedores como quieras: los modelos de todos los proveedores conectados aparecen juntos en los menús de modelos.', 'Verbinde beliebig viele Anbieter: Die Modelle aller verbundenen Anbieter erscheinen gemeinsam in den Modellmenüs.')}</p>
+              </div>
               <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,160px),1fr))] gap-2">
                 {PROVIDERS.map((provider) => (
                   <button key={provider.id} type="button" className="tile text-[13px] font-medium" aria-pressed={apiType === provider.id} onClick={() => handleProviderSelect(provider)}>
                     <span className="grid size-7 flex-none place-items-center overflow-hidden rounded-lg bg-[#18181b]">
                       <img src={provider.logoUrl} alt="" className="size-5 object-contain" />
                     </span>
-                    <span className="min-w-0 leading-tight">{provider.name}</span>
+                    <span className="flex min-w-0 flex-col leading-tight">
+                      {provider.name}
+                      {isConnected(provider.id) && <span className="text-[11px] font-medium text-good">{l(lang, 'Connected', 'Connecté', 'Conectado', 'Verbunden')}</span>}
+                    </span>
                   </button>
                 ))}
               </div>

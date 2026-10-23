@@ -2,22 +2,12 @@ import React, { useState, useEffect } from 'react';
 import { UploadCloud, Play, Pause, Trash2, AlertCircle, ArrowRight, ArrowLeftRight, FileText } from 'lucide-react';
 import { uploadBook, startJob, pauseJob, retryJob, deleteJob, fetchJobs, fetchGlossaries, cloneJobForProofread, downloadJob, subscribeToEvents } from '../api';
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
-
-const PROVIDER_NAMES = {
-  openai: 'OpenAI',
-  claude: 'Claude (Anthropic)',
-  gemini: 'Gemini (Google)',
-  deepseek: 'DeepSeek',
-  openrouter: 'OpenRouter',
-  minimax: 'Minimax',
-  kimi: 'Kimi (Moonshot)',
-  glm: 'GLM (Zhipu AI)',
-  'lm-studio': 'LM Studio (Local)',
-  ollama: 'Ollama (Local)',
-};
+import { decodeModelChoice, providerName } from '../providers';
+import ModelSelect from './ModelSelect';
 
 
-export default function Dashboard({ onSelectJob, settings, endpointStatus, availableModels, setActiveTab, lang = 'en', onSelectModel }) {
+
+export default function Dashboard({ onSelectJob, settings, endpointStatus, availableModels, modelGroups = [], setActiveTab, lang = 'en', onSelectModel }) {
   const [jobMode, setJobMode] = useState('translation'); // 'translation' or 'proofreading'
   const [proofreadSourceType, setProofreadSourceType] = useState('existing'); // 'existing' or 'upload'
   const [selectedExistingJobId, setSelectedExistingJobId] = useState('');
@@ -163,16 +153,8 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
     e.stopPropagation();
     setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status: 'PROCESSING' } : j));
     try {
-      await startJob(jobId, {
-        endpoint: settings.endpoint,
-        apiKey: settings.apiKey,
-        apiType: settings.apiType,
-        model: settings.model,
-        concurrency: settings.concurrency,
-        temperature: settings.temperature,
-        enableProofreading: settings.enableProofreading,
-        enablePromptCaching: settings.enablePromptCaching
-      });
+      // Resume with the project's own provider, model and limits.
+      await startJob(jobId);
     } catch (err) {
       console.error(err);
     }
@@ -195,16 +177,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
     setJobs((prev) => prev.map((j) => j.id === jobId ? { ...j, status: 'PROCESSING' } : j));
     try {
       await retryJob(jobId);
-      await startJob(jobId, {
-        endpoint: settings.endpoint,
-        apiKey: settings.apiKey,
-        apiType: settings.apiType,
-        model: settings.model,
-        concurrency: settings.concurrency,
-        temperature: settings.temperature,
-        enableProofreading: settings.enableProofreading,
-        enablePromptCaching: settings.enablePromptCaching
-      });
+      await startJob(jobId);
     } catch (err) {
       console.error(err);
     }
@@ -355,17 +328,15 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               </div>
               <label className="chip-select ml-auto max-w-full max-sm:w-full max-sm:[&>select]:flex-1 max-sm:[&>select]:!max-w-none">
                 {l(lang, 'Model', 'Modèle', 'Modelo', 'Modell')}
-                <select
-                  value={selectedModel}
-                  onChange={(event) => {
-                    setSelectedModel(event.target.value);
-                    if (onSelectModel) onSelectModel(event.target.value);
+                <ModelSelect
+                  groups={modelGroups}
+                  provider={settings.apiType}
+                  model={selectedModel}
+                  onChange={(choice) => {
+                    setSelectedModel(decodeModelChoice(choice, settings.apiType).model);
+                    if (onSelectModel) onSelectModel(choice);
                   }}
-                >
-                  {availableModels.length > 0
-                    ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
-                    : <option value={settings.model}>{settings.model}</option>}
-                </select>
+                />
               </label>
             </div>
             <div className="flex flex-wrap items-center gap-2">
@@ -391,7 +362,7 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
 
         <div className="flex flex-wrap justify-center gap-2">
           <button type="button" className="btn btn-secondary text-sec" onClick={() => setActiveTab('settings')}>
-            <span className="font-normal text-sec">{PROVIDER_NAMES[settings.apiType] || settings.apiType || 'OpenAI'} · {settings.concurrency || 1} {t('dashboard.requestsUnit', lang)} · {(settings.chunkSize || 1000).toLocaleString()} {t('dashboard.tokensUnit', lang)}</span>
+            <span className="font-normal text-sec">{providerName(settings.apiType) || 'OpenAI'} · {settings.concurrency || 1} {t('dashboard.requestsUnit', lang)} · {(settings.chunkSize || 1000).toLocaleString()} {t('dashboard.tokensUnit', lang)}</span>
             {l(lang, 'Server settings', 'Réglages serveur', 'Ajustes del servidor', 'Servereinstellungen')}
           </button>
           <button type="button" className="btn btn-secondary" onClick={() => setActiveTab('sandbox')}>

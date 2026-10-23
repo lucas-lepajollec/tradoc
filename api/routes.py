@@ -214,6 +214,41 @@ async def test_connection(req: ConnectionTestRequest):
         return ConnectionTestResponse(success=False, message=str(exc), models=[])
 
 
+class ModelCatalogEntry(BaseModel):
+    provider: str
+    endpoint: Optional[str] = None
+    models: List[str] = Field(default_factory=list)
+    error: Optional[str] = None
+
+
+async def _discover_provider_models(provider: str) -> ModelCatalogEntry:
+    endpoint, _ = _provider_values(provider, None, None)
+    try:
+        client = await _new_client(provider, None, None)
+        async with client:
+            models = await asyncio.wait_for(client.fetch_models(), timeout=MODEL_DISCOVERY_TIMEOUT_SECONDS)
+        return ModelCatalogEntry(provider=provider, endpoint=endpoint, models=models)
+    except TimeoutError:
+        return ModelCatalogEntry(provider=provider, endpoint=endpoint, error="timeout")
+    except Exception as exc:  # One unreachable provider must not hide the others.
+        logger.info("Model discovery failed for %s: %s", provider, type(exc).__name__)
+        return ModelCatalogEntry(provider=provider, endpoint=endpoint, error="unreachable")
+
+
+@router.get("/settings/model-catalog")
+async def model_catalog():
+    """Models of every configured provider, discovered concurrently."""
+    providers = [
+        provider for provider, record in credential_store.metadata().items()
+        if record.get("has_api_key") or record.get("endpoint")
+    ]
+    default_provider = (settings.API_TYPE or "openai").strip().lower()
+    if default_provider not in providers:
+        providers.append(default_provider)
+    entries = await asyncio.gather(*(_discover_provider_models(provider) for provider in providers))
+    return {"providers": [entry.model_dump() for entry in entries]}
+
+
 @router.post("/settings/models")
 async def list_remote_models(req: ConnectionTestRequest):
     client = await _new_client(req.api_type, req.endpoint, req.api_key)
@@ -500,6 +535,8 @@ async def update_job_config(
     temperature: Optional[float] = Form(None),
     concurrency: Optional[int] = Form(None),
     model: Optional[str] = Form(None),
+    api_type: Optional[str] = Form(None),
+    endpoint: Optional[str] = Form(None),
 ):
     if temperature is not None and not 0 <= temperature <= 2:
         raise HTTPException(status_code=422, detail="Température invalide.")
@@ -507,7 +544,22 @@ async def update_job_config(
         raise HTTPException(status_code=422, detail="Concurrence invalide.")
     if model is not None and (not model.strip() or len(model) > 300):
         raise HTTPException(status_code=422, detail="Nom de modèle invalide.")
-    if not await db.update_job_config(job_id, temperature=temperature, concurrency=concurrency, model=model):
+    if (api_type and len(api_type) > 50) or (endpoint and len(endpoint) > 2_000):
+        raise HTTPException(status_code=422, detail="Configuration fournisseur invalide.")
+    if api_type or endpoint:
+        job = await db.get_job(job_id)
+        if not job:
+            raise HTTPException(status_code=404, detail="Projet introuvable.")
+        provider = (api_type or job.api_type or settings.API_TYPE).strip().lower()
+        if api_type and not endpoint:
+            # Switching provider: use that provider's stored endpoint, never the old one.
+            endpoint, _ = _provider_values(provider, None, None)
+        if endpoint:
+            endpoint = await validate_llm_endpoint(endpoint, provider)
+        api_type = provider if api_type else None
+    if not await db.update_job_config(
+        job_id, temperature=temperature, concurrency=concurrency, model=model, api_type=api_type, endpoint=endpoint,
+    ):
         raise HTTPException(status_code=404, detail="Projet introuvable.")
     return {"message": "Configuration mise à jour.", "job_id": job_id}
 

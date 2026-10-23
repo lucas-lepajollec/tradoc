@@ -3,6 +3,8 @@ import { Play, Pause, RefreshCw, Download, ChevronRight, ChevronLeft, ChevronDow
 import { fetchJobs, fetchJobDetail, fetchJobSegments, startJob, pauseJob, retryJob, deleteJob, updateJobConfig, downloadJob, subscribeToEvents } from '../api';
 import { l, languageLabel, localeTag, t } from '../i18n/translations';
 import { readableSegment } from '../utils/readableSegment';
+import { decodeModelChoice, providerName } from '../providers';
+import ModelSelect from './ModelSelect';
 
 const estimateTokens = (text = '') => {
   if (!text) return 0;
@@ -52,7 +54,7 @@ const latestSegmentIndex = (items = []) => {
   return 0;
 };
 
-export default function JobsInspector({ selectedJobId, onSelectJob, settings, availableModels = [], lang = 'en', onSelectModel }) {
+export default function JobsInspector({ selectedJobId, onSelectJob, settings, modelGroups = [], lang = 'en' }) {
   const initialSnapshot = useRef(readInspectorSnapshot(selectedJobId)).current;
   const initialJobs = useRef(readJobsSnapshot()).current;
   const [jobs, setJobs] = useState(initialJobs);
@@ -71,6 +73,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   const [isEditingConfig, setIsEditingConfig] = useState(false);
   const [savingConfig, setSavingConfig] = useState(false);
   const [editModel, setEditModel] = useState('');
+  const [editProvider, setEditProvider] = useState('');
   const [editConcurrency, setEditConcurrency] = useState(1);
   const [editTemperature, setEditTemperature] = useState(0.15);
   const [sessionStats, setSessionStats] = useState({
@@ -104,6 +107,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
   useEffect(() => {
     if (job) {
       setEditModel(job.model || settings?.model || '');
+      setEditProvider(job.api_type || settings?.apiType || '');
       setEditConcurrency(job.concurrency || 1);
       setEditTemperature(job.temperature !== undefined && job.temperature !== null ? job.temperature : 0.15);
     }
@@ -117,7 +121,8 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
       await updateJobConfig(job.id, {
         model: editModel,
         concurrency: editConcurrency,
-        temperature: editTemperature
+        temperature: editTemperature,
+        apiType: editProvider && editProvider !== job.api_type ? editProvider : undefined,
       });
       setIsEditingConfig(false);
       await loadJobDetails(job.id);
@@ -439,9 +444,6 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     setJob((prev) => prev ? { ...prev, status: 'PROCESSING' } : null);
     try {
       await startJob(jobId, {
-        endpoint: settings.endpoint,
-        apiKey: settings.apiKey,
-        apiType: settings.apiType,
         model: job.model || settings.model,
         concurrency: job.concurrency || settings.concurrency || 1,
         temperature: job.temperature !== undefined ? job.temperature : settings.temperature,
@@ -474,9 +476,6 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     try {
       await retryJob(jobId);
       await startJob(jobId, {
-        endpoint: settings.endpoint,
-        apiKey: settings.apiKey,
-        apiType: settings.apiType,
         model: job.model || settings.model,
         concurrency: job.concurrency || settings.concurrency || 1,
         temperature: job.temperature !== undefined ? job.temperature : settings.temperature,
@@ -743,7 +742,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px] text-sec">
                   <span>{job.file_type.toUpperCase()}</span>
                   <span>{job.job_type === 'proofreading' ? t('inspector.modeProofread', lang) : t('inspector.modeTranslation', lang)}</span>
-                  <span>{job.model}</span>
+                  <span>{providerName(job.api_type)} · {job.model}</span>
                   <span>{sourceLanguageName} → {targetLanguageName}</span>
                   {failedCount > 0 && (
                     <span className="font-semibold text-fg">
@@ -960,11 +959,17 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                 <fieldset disabled={isProcessing} className="m-0 flex flex-col gap-[18px] border-0 p-0">
                   <label className="field">
                     <span className="field-label">{t('dashboard.llmModel', lang)}</span>
-                    <select className="input" value={editModel} onChange={(event) => setEditModel(event.target.value)}>
-                      {availableModels.length > 0
-                        ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
-                        : <option value={editModel}>{editModel}</option>}
-                    </select>
+                    <ModelSelect
+                      className="input"
+                      groups={modelGroups}
+                      provider={editProvider}
+                      model={editModel}
+                      onChange={(choice) => {
+                        const picked = decodeModelChoice(choice, editProvider);
+                        setEditProvider(picked.provider);
+                        setEditModel(picked.model);
+                      }}
+                    />
                   </label>
                   <label className="field">
                     <span className="field-label">{t('dashboard.concurrency', lang)}</span>
@@ -983,6 +988,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
                     className="btn btn-link self-start"
                     onClick={() => {
                       if (settings?.model) setEditModel(settings.model);
+                      if (settings?.apiType) setEditProvider(settings.apiType);
                       if (settings?.concurrency) setEditConcurrency(settings.concurrency);
                       if (settings?.temperature !== undefined) setEditTemperature(settings.temperature);
                     }}

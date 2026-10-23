@@ -11,7 +11,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 
+- Use several providers at once: every model menu (top bar, dashboard, sandbox, project settings) lists the models of all connected providers, grouped by provider, and picking one switches to its provider with that provider's endpoint and limits. Settings marks connected providers. New `GET /api/settings/model-catalog` discovers models of every configured provider concurrently; an unreachable provider does not hide the others.
+- Project settings can move a paused project to a model of another connected provider.
 - Appearance setting (System, Light, Dark) under Settings › Interface & languages, stored per browser.
+
+### Fixed
+
+- Resume and retry from dashboard project cards keep the project's own provider, model and limits instead of the currently selected global ones; the Review screen no longer sends the global provider with the project's model.
 
 ### Changed
 

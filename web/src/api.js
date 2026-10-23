@@ -55,6 +55,8 @@ export function updateJobConfig(jobId, options = {}) {
   if (options.temperature !== undefined) body.append('temperature', options.temperature);
   if (options.concurrency !== undefined) body.append('concurrency', options.concurrency);
   if (options.model) body.append('model', options.model);
+  if (options.apiType) body.append('api_type', options.apiType);
+  if (options.endpoint) body.append('endpoint', options.endpoint);
   return request(`/jobs/${encodeURIComponent(jobId)}/update-config`, { method: 'POST', body });
 }
 
@@ -89,6 +91,7 @@ export function testTranslation(payload) {
 }
 
 export const fetchCredentialMetadata = () => request('/settings/credentials');
+export const fetchModelCatalog = () => request('/settings/model-catalog');
 export const fetchInterfaceSettings = () => request('/settings/interface');
 export function saveInterfaceLanguage(language) {
   return request('/settings/interface', {

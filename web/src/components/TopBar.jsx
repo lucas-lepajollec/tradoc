@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { ChevronRight, Menu, X } from 'lucide-react';
 import { l, t } from '../i18n/translations';
+import ModelSelect from './ModelSelect';
 
 const NAV_ITEMS = [
   { id: 'dashboard', key: 'nav.projects' },
@@ -20,7 +21,8 @@ export default function TopBar({
   activePresetId = '',
   onSelectPreset,
   currentModel = '',
-  availableModels = [],
+  modelGroups = [],
+  currentProvider,
   onSelectModel,
 }) {
   const [menuOpen, setMenuOpen] = useState(false);
@@ -47,10 +49,6 @@ export default function TopBar({
     ? l(lang, 'Service ready', 'Service prêt', 'Servicio listo', 'Dienst bereit')
     : l(lang, 'Service offline', 'Service hors ligne', 'Servicio sin conexión', 'Dienst offline');
 
-  const modelOptions = availableModels.length > 0
-    ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
-    : <option value={currentModel}>{currentModel || noModel}</option>;
-
   const profileSelect = (className) => onSelectPreset && (
     <select aria-label={profileLabel} className={className} value={activePresetId || ''} onChange={(event) => onSelectPreset(event.target.value)}>
       <option value="">{noProfile}</option>
@@ -59,9 +57,7 @@ export default function TopBar({
   );
 
   const modelSelect = (className) => onSelectModel && (
-    <select aria-label={modelLabel} className={className} value={currentModel} onChange={(event) => onSelectModel(event.target.value)}>
-      {modelOptions}
-    </select>
+    <ModelSelect aria-label={modelLabel} className={className} groups={modelGroups} provider={currentProvider} model={currentModel} onChange={onSelectModel} />
   );
 
   const brand = (
