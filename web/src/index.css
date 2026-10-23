@@ -5,68 +5,75 @@
 /* Design tokens. Light is the default; dark follows the system unless the
    appearance setting forces a theme through html[data-theme]. */
 :root {
-  --bg: #fafafa;
+  --bg: #f7f8fa;
   --card: #ffffff;
-  --toolbar: #fcfcfc;
-  --well: #f1f1f3;
-  --line: #e7e7ea;
-  --line-strong: #d4d4d8;
-  --text: #0a0a0b;
-  --sec: #5f5f68;
-  --ter: #a1a1aa;
-  --accent: #2563eb;
-  --accent-btn: #2563eb;
-  --accent-btn-hover: #1d4ed8;
-  --accent-soft: #eef3fe;
-  --accent-text: #1d4ed8;
-  --green: #15803d;
-  --green-soft: #e7f5ec;
-  --switch-off: #d4d4d8;
+  --toolbar: #fbfcfd;
+  --well: #eff2f6;
+  --line: #e2e6ed;
+  --line-strong: #cdd3dd;
+  --text: #101521;
+  --sec: #5b6474;
+  --ter: #9aa3b2;
+  --accent: #4f87e5;
+  --accent-btn: #3570d6;
+  --accent-btn-hover: #2c63c4;
+  --accent-btn-fg: #ffffff;
+  --accent-soft: #ebf2fd;
+  --accent-text: #2c63c4;
+  --green: #2f7d56;
+  --green-soft: #e8f3ec;
+  --switch-off: #cdd3dd;
   --nav-sel: #ffffff;
-  --scrim: rgba(10, 10, 11, 0.28);
+  --scrim: rgba(16, 21, 33, 0.3);
   color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --bg: #0b0b0d;
-    --card: #141417;
-    --toolbar: #121215;
-    --well: #1f1f23;
-    --line: #27272c;
-    --line-strong: #3f3f46;
-    --text: #f4f4f5;
-    --sec: #a1a1aa;
-    --ter: #52525b;
-    --accent: #3b82f6;
-    --accent-soft: rgba(59, 130, 246, 0.14);
-    --accent-text: #93c5fd;
-    --green: #4ade80;
-    --green-soft: rgba(74, 222, 128, 0.12);
-    --switch-off: #3f3f46;
-    --nav-sel: #2c2c31;
+    --bg: #0d1016;
+    --card: #151922;
+    --toolbar: #131720;
+    --well: #1d222c;
+    --line: #272d39;
+    --line-strong: #39414f;
+    --text: #edf0f5;
+    --sec: #9ba4b3;
+    --ter: #576072;
+    --accent: #79a9f8;
+    --accent-btn: #79a9f8;
+    --accent-btn-hover: #8db6fa;
+    --accent-btn-fg: #0b1530;
+    --accent-soft: rgba(121, 169, 248, 0.14);
+    --accent-text: #9cc0fa;
+    --green: #6cc49a;
+    --green-soft: rgba(108, 196, 154, 0.13);
+    --switch-off: #39414f;
+    --nav-sel: #252b37;
     --scrim: rgba(0, 0, 0, 0.55);
     color-scheme: dark;
   }
 }
 
 :root[data-theme="dark"] {
-  --bg: #0b0b0d;
-  --card: #141417;
-  --toolbar: #121215;
-  --well: #1f1f23;
-  --line: #27272c;
-  --line-strong: #3f3f46;
-  --text: #f4f4f5;
-  --sec: #a1a1aa;
-  --ter: #52525b;
-  --accent: #3b82f6;
-  --accent-soft: rgba(59, 130, 246, 0.14);
-  --accent-text: #93c5fd;
-  --green: #4ade80;
-  --green-soft: rgba(74, 222, 128, 0.12);
-  --switch-off: #3f3f46;
-  --nav-sel: #2c2c31;
+  --bg: #0d1016;
+  --card: #151922;
+  --toolbar: #131720;
+  --well: #1d222c;
+  --line: #272d39;
+  --line-strong: #39414f;
+  --text: #edf0f5;
+  --sec: #9ba4b3;
+  --ter: #576072;
+  --accent: #79a9f8;
+  --accent-btn: #79a9f8;
+  --accent-btn-hover: #8db6fa;
+  --accent-btn-fg: #0b1530;
+  --accent-soft: rgba(121, 169, 248, 0.14);
+  --accent-text: #9cc0fa;
+  --green: #6cc49a;
+  --green-soft: rgba(108, 196, 154, 0.13);
+  --switch-off: #39414f;
+  --nav-sel: #252b37;
   --scrim: rgba(0, 0, 0, 0.55);
   color-scheme: dark;
 }
@@ -157,13 +164,13 @@
   .btn:disabled { opacity: .45; }
   .btn-lg { height: 40px; padding: 0 18px; font-size: 14px; }
   .btn-sm { height: 32px; padding: 0 12px; }
-  .btn-primary { background: var(--accent-btn); color: #fff; font-weight: 600; }
+  .btn-primary { background: var(--accent-btn); color: var(--accent-btn-fg); font-weight: 600; }
   .btn-primary:not(:disabled):hover { background: var(--accent-btn-hover); }
   .btn-secondary { border-color: var(--line); }
   .btn-secondary:not(:disabled):hover { background: var(--well); }
   .btn-ghost:not(:disabled):hover { background: var(--well); }
-  .btn-solid { background: var(--text); color: var(--bg); }
-  .btn-solid:not(:disabled):hover { opacity: .88; }
+  .btn-solid { background: var(--accent-soft); color: var(--accent-text); font-weight: 600; }
+  .btn-solid:not(:disabled):hover { background: color-mix(in srgb, var(--accent) 22%, transparent); }
   .btn-link { height: auto; padding: 0; color: var(--accent-text); border-radius: 4px; }
   .btn-link:not(:disabled):hover { text-decoration: underline; }
   .icon-btn {
