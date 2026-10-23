@@ -193,6 +193,7 @@ export default function TestSandboxModal({ settings, modelGroups = [], lang = 'e
           <label className="chip-select">
             {t('dashboard.model', lang)}
             <ModelSelect
+              aria-label={t('dashboard.model', lang)}
               groups={modelGroups}
               provider={settings.apiType}
               model={selectedModel || settings.model || ''}

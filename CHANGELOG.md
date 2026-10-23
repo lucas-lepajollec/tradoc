@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- Replace every native dropdown with a themed list that always opens inside the window (it no longer spills onto a second screen with long model names), truncates long entries, keeps provider groups and keyboard navigation, and draws no outline or box when clicked.
+
 ## [0.1.7] - 2026-10-23
 
 No database or configuration migration is required. Provider keys and endpoints already stored on the server are reused as-is, and rolling back to the 0.1.6 image keeps working data intact. The interface now needs Safari 16.4+, Chrome 111+ or Firefox 128+.

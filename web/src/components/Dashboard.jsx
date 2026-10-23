@@ -4,6 +4,7 @@ import { uploadBook, startJob, pauseJob, retryJob, deleteJob, fetchJobs, fetchGl
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 import { decodeModelChoice, providerName } from '../providers';
 import ModelSelect from './ModelSelect';
+import Select from './Select';
 
 
 
@@ -258,15 +259,14 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                 <button type="button" aria-pressed={proofreadSourceType === 'upload'} onClick={() => setProofreadSourceType('upload')}>{l(lang, 'New file', 'Nouveau fichier', 'Archivo nuevo', 'Neue Datei')}</button>
               </div>
               {usesExistingProject && (
-                <select
-                  aria-label={l(lang, 'Project to proofread', 'Projet à relire', 'Proyecto que revisar', 'Zu prüfendes Projekt')}
+                <Select
+                  ariaLabel={l(lang, 'Project to proofread', 'Projet à relire', 'Proyecto que revisar', 'Zu prüfendes Projekt')}
                   className="input input-on-card !h-9 min-w-[220px] flex-1 border !border-line"
                   value={selectedExistingJobId}
-                  onChange={(event) => setSelectedExistingJobId(event.target.value)}
-                >
-                  <option value="">{l(lang, 'Select a project…', 'Sélectionner un projet…', 'Seleccionar un proyecto…', 'Projekt auswählen…')}</option>
-                  {jobs.map((job) => <option key={job.id} value={job.id}>{job.file_name} · {job.completed_chunks}/{job.total_chunks} · {statusLabel(job.status)}</option>)}
-                </select>
+                  placeholder={l(lang, 'Select a project…', 'Sélectionner un projet…', 'Seleccionar un proyecto…', 'Projekt auswählen…')}
+                  onChange={setSelectedExistingJobId}
+                  options={jobs.map((job) => ({ value: job.id, label: `${job.file_name} · ${job.completed_chunks}/${job.total_chunks} · ${statusLabel(job.status)}` }))}
+                />
               )}
             </div>
           )}
@@ -316,19 +316,28 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
                 <button type="button" aria-pressed={isProofreading} onClick={() => setJobMode('proofreading')}>{l(lang, 'Proofread', 'Relire', 'Revisar', 'Korrektur')}</button>
               </div>
               <div className="chip-select min-w-[min(100%,240px)] flex-1 !px-1">
-                <select className="min-w-0 flex-1 !max-w-none" aria-label={l(lang, 'Source language', 'Langue source', 'Idioma de origen', 'Ausgangssprache')} value={sourceLang} onChange={(event) => setSourceLang(event.target.value)}>
-                  {AVAILABLE_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
-                </select>
+                <Select
+                  className="flex-1 !max-w-none"
+                  ariaLabel={l(lang, 'Source language', 'Langue source', 'Idioma de origen', 'Ausgangssprache')}
+                  value={sourceLang}
+                  onChange={setSourceLang}
+                  options={AVAILABLE_LANGUAGES.map((language) => ({ value: language.code, label: languageLabel(language.code, lang) }))}
+                />
                 <button type="button" className="icon-btn is-plain !size-7" onClick={swapLanguages} aria-label={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}>
                   <ArrowLeftRight aria-hidden="true" className="!size-3.5" />
                 </button>
-                <select className="min-w-0 flex-1 !max-w-none" aria-label={l(lang, 'Target language', 'Langue cible', 'Idioma de destino', 'Zielsprache')} value={targetLang} onChange={(event) => setTargetLang(event.target.value)}>
-                  {AVAILABLE_LANGUAGES.filter((language) => language.code !== 'auto').map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
-                </select>
+                <Select
+                  className="flex-1 !max-w-none"
+                  ariaLabel={l(lang, 'Target language', 'Langue cible', 'Idioma de destino', 'Zielsprache')}
+                  value={targetLang}
+                  onChange={setTargetLang}
+                  options={AVAILABLE_LANGUAGES.filter((language) => language.code !== 'auto').map((language) => ({ value: language.code, label: languageLabel(language.code, lang) }))}
+                />
               </div>
-              <label className="chip-select ml-auto max-w-full max-sm:w-full max-sm:[&>select]:flex-1 max-sm:[&>select]:!max-w-none">
+              <label className="chip-select ml-auto max-w-full max-sm:w-full max-sm:[&>button]:flex-1 max-sm:[&>button]:!max-w-none">
                 {l(lang, 'Model', 'Modèle', 'Modelo', 'Modell')}
                 <ModelSelect
+                  aria-label={l(lang, 'Model', 'Modèle', 'Modelo', 'Modell')}
                   groups={modelGroups}
                   provider={settings.apiType}
                   model={selectedModel}
@@ -340,12 +349,14 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
               </label>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <label className="chip-select max-w-full max-sm:w-full max-sm:[&>select]:flex-1 max-sm:[&>select]:!max-w-none">
+              <label className="chip-select max-w-full max-sm:w-full max-sm:[&>button]:flex-1 max-sm:[&>button]:!max-w-none">
                 {l(lang, 'Glossary', 'Glossaire', 'Glosario', 'Glossar')}
-                <select value={selectedGlossary} onChange={(event) => setSelectedGlossary(event.target.value)}>
-                  <option value="">{l(lang, 'None', 'Aucun', 'Ninguno', 'Keines')}</option>
-                  {glossaries.map((name) => <option key={name} value={name}>{name}</option>)}
-                </select>
+                <Select
+                  ariaLabel={l(lang, 'Glossary', 'Glossaire', 'Glosario', 'Glossar')}
+                  value={selectedGlossary}
+                  onChange={setSelectedGlossary}
+                  options={[{ value: '', label: l(lang, 'None', 'Aucun', 'Ninguno', 'Keines') }, ...glossaries.map((name) => ({ value: name, label: name }))]}
+                />
               </label>
               <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 max-sm:w-full max-sm:[&>button]:flex-1">
                 <button type="button" className="btn btn-ghost" disabled={!canSubmit} onClick={(event) => handleUploadSubmit(event, false)}>
