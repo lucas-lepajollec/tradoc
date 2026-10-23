@@ -1,5 +1,8 @@
 import asyncio
+import hashlib
+import hmac
 import json
+import secrets
 import logging
 import sqlite3
 import threading
@@ -39,8 +42,21 @@ class JobRecord(BaseModel):
     endpoint: Optional[str] = None
     enable_proofreading: bool = False
     enable_prompt_caching: bool = False
+    client_id: Optional[str] = None
+    client_name: Optional[str] = None
+    external_ref: Optional[str] = None
     created_at: str
     completed_at: Optional[str] = None
+
+
+class ApiClient(BaseModel):
+    id: str
+    name: str
+    token_prefix: str
+    default_provider: Optional[str] = None
+    default_model: Optional[str] = None
+    created_at: str
+    last_used_at: Optional[str] = None
 
 
 class SegmentRecord(BaseModel):
@@ -119,6 +135,9 @@ class CheckpointDatabase:
                     endpoint TEXT,
                     enable_proofreading INTEGER NOT NULL DEFAULT 0,
                     enable_prompt_caching INTEGER NOT NULL DEFAULT 0,
+                    client_id TEXT,
+                    client_name TEXT,
+                    external_ref TEXT,
                     created_at TEXT NOT NULL,
                     completed_at TEXT
                 )
@@ -136,6 +155,10 @@ class CheckpointDatabase:
                 "endpoint": "TEXT",
                 "enable_proofreading": "INTEGER NOT NULL DEFAULT 0",
                 "enable_prompt_caching": "INTEGER NOT NULL DEFAULT 0",
+                # Additive columns: older images ignore them, so rollback stays possible.
+                "client_id": "TEXT",
+                "client_name": "TEXT",
+                "external_ref": "TEXT",
             }
             existing = {row[1] for row in conn.execute("PRAGMA table_info(jobs)")}
             for column, definition in migrations.items():
@@ -176,6 +199,20 @@ class CheckpointDatabase:
             conn.execute(
                 "INSERT OR IGNORE INTO app_settings (key, value) VALUES (?, ?)",
                 ("ui_language", "en"),
+            )
+            conn.execute(
+                """
+                CREATE TABLE IF NOT EXISTS api_clients (
+                    id TEXT PRIMARY KEY,
+                    name TEXT NOT NULL,
+                    token_hash TEXT NOT NULL UNIQUE,
+                    token_prefix TEXT NOT NULL,
+                    default_provider TEXT,
+                    default_model TEXT,
+                    created_at TEXT NOT NULL,
+                    last_used_at TEXT
+                )
+                """
             )
 
             # A process that stopped mid-request leaves no reliable running worker.
@@ -509,6 +546,97 @@ class CheckpointDatabase:
                 (exclude_job_id, file_name),
             ).fetchone()
             return int(row["count"])
+
+        return await self._run(operation)
+
+    async def set_job_origin(self, job_id: str, client: "ApiClient", external_ref: Optional[str]) -> None:
+        def operation(conn: sqlite3.Connection) -> None:
+            conn.execute(
+                "UPDATE jobs SET client_id = ?, client_name = ?, external_ref = ? WHERE id = ?",
+                (client.id, client.name, external_ref, job_id),
+            )
+            conn.commit()
+
+        await self._run(operation)
+
+    async def list_client_jobs(self, client_id: str) -> List[JobRecord]:
+        def operation(conn: sqlite3.Connection) -> List[JobRecord]:
+            rows = conn.execute(
+                "SELECT * FROM jobs WHERE client_id = ? ORDER BY created_at DESC", (client_id,)
+            ).fetchall()
+            return [self._job_from_row(row) for row in rows]
+
+        return await self._run(operation)
+
+    # Integration clients: other apps (for example Bunko) that use TraDoc as an
+    # engine. Only a SHA-256 hash of each token is stored.
+    @staticmethod
+    def _hash_token(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    async def create_api_client(
+        self, name: str, default_provider: Optional[str], default_model: Optional[str]
+    ) -> tuple["ApiClient", str]:
+        token = f"tdk_{secrets.token_urlsafe(32)}"
+        client = ApiClient(
+            id=secrets.token_hex(6),
+            name=name,
+            token_prefix=token[:10],
+            default_provider=default_provider,
+            default_model=default_model,
+            created_at=datetime.now().isoformat(timespec="seconds"),
+        )
+
+        def operation(conn: sqlite3.Connection) -> None:
+            conn.execute(
+                "INSERT INTO api_clients (id, name, token_hash, token_prefix, default_provider, default_model, created_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (client.id, client.name, self._hash_token(token), client.token_prefix,
+                 client.default_provider, client.default_model, client.created_at),
+            )
+            conn.commit()
+
+        await self._run(operation)
+        return client, token
+
+    async def list_api_clients(self) -> List["ApiClient"]:
+        def operation(conn: sqlite3.Connection) -> List[ApiClient]:
+            rows = conn.execute(
+                "SELECT id, name, token_prefix, default_provider, default_model, created_at, last_used_at "
+                "FROM api_clients ORDER BY created_at"
+            ).fetchall()
+            return [ApiClient(**dict(row)) for row in rows]
+
+        return await self._run(operation)
+
+    async def delete_api_client(self, client_id: str) -> bool:
+        def operation(conn: sqlite3.Connection) -> bool:
+            cursor = conn.execute("DELETE FROM api_clients WHERE id = ?", (client_id,))
+            conn.commit()
+            return cursor.rowcount == 1
+
+        return await self._run(operation)
+
+    async def authenticate_api_client(self, token: str) -> Optional["ApiClient"]:
+        if not token or not token.startswith("tdk_") or len(token) > 200:
+            return None
+        token_hash = self._hash_token(token)
+
+        def operation(conn: sqlite3.Connection) -> Optional[ApiClient]:
+            row = conn.execute(
+                "SELECT id, name, token_hash, token_prefix, default_provider, default_model, created_at, last_used_at "
+                "FROM api_clients WHERE token_hash = ?",
+                (token_hash,),
+            ).fetchone()
+            if not row or not hmac.compare_digest(row["token_hash"], token_hash):
+                return None
+            now = datetime.now().isoformat(timespec="seconds")
+            conn.execute("UPDATE api_clients SET last_used_at = ? WHERE id = ?", (now, row["id"]))
+            conn.commit()
+            data = dict(row)
+            data.pop("token_hash")
+            data["last_used_at"] = now
+            return ApiClient(**data)
 
         return await self._run(operation)
 

@@ -11,6 +11,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from api.routes import active_tasks, router as api_router
+from api.integrations import router as integrations_router
 from core.config import settings
 from core import __version__
 
@@ -46,7 +47,7 @@ if origins:
         allow_origins=origins,
         allow_credentials=False,
         allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
-        allow_headers=["Content-Type"],
+        allow_headers=["Content-Type", "Authorization"],
     )
 
 
@@ -84,7 +85,9 @@ async def security_and_rate_limit(request: Request, call_next):
         for stale_key in [key for key, values in request_windows.items() if not values or values[-1] <= now - 60]:
             request_windows.pop(stale_key, None)
     sensitive = request.url.path.endswith("/start") or request.url.path.startswith("/api/settings/test")
-    upload = request.url.path in {"/api/jobs/upload", "/api/settings/sandbox-extract"}
+    upload = request.url.path in {"/api/jobs/upload", "/api/settings/sandbox-extract"} or (
+        request.method == "POST" and request.url.path == "/api/v1/translations"
+    )
     limit = 20 if upload else 40 if sensitive else 240
     key = f"{client_ip}:{'upload' if upload else 'sensitive' if sensitive else 'general'}"
     window = request_windows[key]
@@ -127,6 +130,7 @@ async def health():
 
 
 app.include_router(api_router, prefix="/api")
+app.include_router(integrations_router, prefix="/api/v1")
 
 
 web_build_dir = Path("./web/dist").resolve()

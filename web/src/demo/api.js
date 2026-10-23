@@ -108,6 +108,7 @@ const initialGlossaries = {
 let jobs = clone(initialJobs);
 let segments = clone(initialSegments);
 let glossaries = clone(initialGlossaries);
+let demoIntegrations = [];
 
 const emit = (type, jobId) => {
   listeners.forEach((listener) => listener({ type, job_id: jobId, demo: true }));
@@ -143,6 +144,7 @@ export const resetDemo = () => {
   jobs = clone(initialJobs);
   segments = clone(initialSegments);
   glossaries = clone(initialGlossaries);
+  demoIntegrations = [];
   sourceFiles.clear();
   emit('demo_reset', null);
 };
@@ -154,6 +156,27 @@ export async function request(path, options = {}) {
   if (path === '/jobs' && method === 'GET') return clone(jobs);
   if (path === '/glossaries' && method === 'GET') return Object.keys(glossaries);
   if (path === '/settings/credentials' && method === 'GET') return {};
+  if (path === '/integrations' && method === 'GET') return clone(demoIntegrations);
+  if (path === '/integrations' && method === 'POST') {
+    const payload = JSON.parse(options.body || '{}');
+    const client = {
+      id: `demo-${Date.now()}`,
+      name: String(payload.name || 'App'),
+      token_prefix: 'tdk_demo00',
+      default_provider: payload.default_provider || null,
+      default_model: payload.default_model || null,
+      created_at: now(),
+      last_used_at: null,
+    };
+    demoIntegrations.push(client);
+    // Fictional: the demo never issues a working token.
+    return { client: clone(client), token: 'tdk_demo00-this-token-only-exists-in-the-demo' };
+  }
+  const integrationMatch = path.match(/^\/integrations\/([^/]+)$/);
+  if (integrationMatch && method === 'DELETE') {
+    demoIntegrations = demoIntegrations.filter((client) => client.id !== decodeURIComponent(integrationMatch[1]));
+    return { id: integrationMatch[1], deleted: true };
+  }
   if (path === '/settings/model-catalog') {
     return {
       providers: [

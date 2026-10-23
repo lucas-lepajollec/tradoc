@@ -139,6 +139,10 @@ Use `main.py dev --lan` only on a trusted network.
 
 Provider availability does not imply equal behavior or verified end-to-end translation quality.
 
+## Use TraDoc from other apps
+
+Other self-hosted apps can use TraDoc as their translation engine through a versioned API: create a connection under **Settings → Integrations**, give the app the API address and its `tdk_` key, and it can send a document, follow progress and download the rebuilt translation. Those projects also appear in TraDoc, tagged with the app's name. See the [Integration API reference](docs/integration-api.md).
+
 ## Security, privacy, and limitations
 
 > [!WARNING]

@@ -86,3 +86,20 @@ test('lists models of every connected provider and switches provider on pick', a
   await page.getByRole('listbox', { name: 'Model' }).getByRole('option', { name: 'demo-proofreader' }).click();
   await expect(page.getByRole('button', { name: /^OpenAI ·/ })).toBeVisible();
 });
+
+test('creates and disconnects an app integration', async ({ page }, testInfo) => {
+  await enterDemo(page);
+  if (testInfo.project.name === 'mobile') {
+    await page.getByRole('button', { name: 'Open navigation menu' }).click();
+  }
+  await page.getByRole('button', { name: /^Settings$/i }).click();
+  await page.getByRole('tab', { name: 'Integrations' }).click();
+  await expect(page.getByText('/api/v1')).toBeVisible();
+  await page.getByLabel('App name').fill('Bunko');
+  await page.getByRole('button', { name: 'Create the connection' }).click();
+  await expect(page.getByText('Key for Bunko')).toBeVisible();
+  await expect(page.getByText(/^tdk_demo00/)).toBeVisible();
+  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('button', { name: 'Disconnect' }).click();
+  await expect(page.getByText('No connected app yet.')).toBeVisible();
+});

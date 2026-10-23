@@ -722,6 +722,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, mo
                       <span className={`line-clamp-2 break-words text-[14px] ${isSelected ? 'font-semibold text-accent-text' : 'font-medium'}`}>{item.file_name}</span>
                       <span className="flex w-full items-center gap-2">
                         <span className={`status ${statusClass(item.status)}`}>{jobStatusLabel(item.status)}</span>
+                        {item.client_name && <span className="tag">{l(lang, `via ${item.client_name}`, `via ${item.client_name}`, `vía ${item.client_name}`, `über ${item.client_name}`)}</span>}
                         <span className="ml-auto text-[12px] font-medium tabular-nums text-sec">{jobPercent(item)} %</span>
                       </span>
                     </button>
@@ -743,6 +744,7 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, mo
                   <span>{job.file_type.toUpperCase()}</span>
                   <span>{job.job_type === 'proofreading' ? t('inspector.modeProofread', lang) : t('inspector.modeTranslation', lang)}</span>
                   <span>{providerName(job.api_type)} · {job.model}</span>
+                  {job.client_name && <span>{l(lang, `via ${job.client_name}`, `via ${job.client_name}`, `vía ${job.client_name}`, `über ${job.client_name}`)}</span>}
                   <span>{sourceLanguageName} → {targetLanguageName}</span>
                   {failedCount > 0 && (
                     <span className="font-semibold text-fg">

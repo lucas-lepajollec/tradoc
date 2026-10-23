@@ -92,6 +92,15 @@ export function testTranslation(payload) {
 
 export const fetchCredentialMetadata = () => request('/settings/credentials');
 export const fetchModelCatalog = () => request('/settings/model-catalog');
+export const fetchIntegrations = () => request('/integrations');
+export function createIntegration({ name, defaultProvider, defaultModel }) {
+  return request('/integrations', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name, default_provider: defaultProvider || null, default_model: defaultModel || null }),
+  });
+}
+export const deleteIntegration = (id) => request(`/integrations/${encodeURIComponent(id)}`, { method: 'DELETE' });
 export const fetchInterfaceSettings = () => request('/settings/interface');
 export function saveInterfaceLanguage(language) {
   return request('/settings/interface', {

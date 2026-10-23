@@ -153,6 +153,33 @@ async def _cancel_task(job_id: str) -> None:
             active_tasks.pop(job_id, None)
 
 
+class IntegrationRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=60)
+    default_provider: Optional[str] = Field(default=None, max_length=50)
+    default_model: Optional[str] = Field(default=None, max_length=300)
+
+
+@router.get("/integrations")
+async def list_integrations():
+    return [client.model_dump() for client in await db.list_api_clients()]
+
+
+@router.post("/integrations", status_code=201)
+async def create_integration(req: IntegrationRequest):
+    """Creates a connection for another app. The token is returned only once."""
+    provider = (req.default_provider or "").strip().lower() or None
+    model = (req.default_model or "").strip() or None
+    client, token = await db.create_api_client(req.name.strip(), provider, model)
+    return {"client": client.model_dump(), "token": token}
+
+
+@router.delete("/integrations/{client_id}")
+async def delete_integration(client_id: str):
+    if not await db.delete_api_client(client_id):
+        raise HTTPException(status_code=404, detail="Connexion introuvable.")
+    return {"id": client_id, "deleted": True}
+
+
 @router.get("/settings/credentials")
 async def credential_metadata():
     return credential_store.metadata()
