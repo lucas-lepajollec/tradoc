@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Server, Cpu, Sliders, CheckCircle2, AlertCircle, RefreshCw, Save, Trash2, Plus, Key, Link, Search, Globe, Bookmark, Check, ShieldCheck, ArrowLeftRight, Eye, EyeOff } from 'lucide-react';
+import { CheckCircle2, AlertCircle, RefreshCw, Trash2, Check, ArrowLeftRight, Eye, EyeOff } from 'lucide-react';
 import { isDemoMode, testConnection, saveProviderCredentials } from '../api';
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 import { sanitizeProviderConfigs } from '../utils/persistence';
@@ -12,79 +12,17 @@ STRICT RULES:
 3. Structural integrity: preserve the supplied HTML tags (<p>, <i>, <b>, and others) exactly.
 4. Direct answer: return only the translated text. Do not add a preface, explanation, internal reasoning, or <think> tags.`;
 
-// Premium Inline Logo Components (SVG)
-const OpenAiIcon = () => (
-  <svg className="w-5 h-5 text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-  </svg>
-);
-
-const ClaudeIcon = () => (
-  <svg className="w-5 h-5 text-orange-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 14l9-5-9-5-9 5-9 5zm0 0l5 9m-5-9l-5 9" />
-  </svg>
-);
-
-const GeminiIcon = () => (
-  <svg className="w-5 h-5 text-indigo-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L9 9l-7 3 7 3 3 7 3-7 7-3-7-3-3-7z" />
-  </svg>
-);
-
-const DeepseekIcon = () => (
-  <svg className="w-5 h-5 text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path strokeLinecap="round" strokeLinejoin="round" d="M21 12V6a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v6c0 5.25 4 9.75 9 10 5-.25 9-4.75 9-10z" />
-  </svg>
-);
-
-const OpenRouterIcon = () => (
-  <svg className="w-5 h-5 text-purple-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="3" />
-    <circle cx="12" cy="4" r="2" />
-    <circle cx="5" cy="18" r="2" />
-    <circle cx="19" cy="18" r="2" />
-    <path d="M12 6v3M6.5 16.5l2.5-2M17.5 16.5l-2.5-2" />
-  </svg>
-);
-
-const MinimaxIcon = () => (
-  <svg className="w-5 h-5 text-red-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="3" y="3" width="18" height="18" rx="2" />
-    <path d="M9 17V9l6 8V9" />
-  </svg>
-);
-
-const KimiIcon = () => (
-  <svg className="w-5 h-5 text-amber-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <circle cx="12" cy="12" r="10" />
-    <path d="M12 8v8M8 12h8" />
-  </svg>
-);
-
-const GlmIcon = () => (
-  <svg className="w-5 h-5 text-cyan-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5" />
-  </svg>
-);
-
-const LocalIcon = () => (
-  <svg className="w-5 h-5 text-zinc-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-    <rect x="2" y="4" width="20" height="16" rx="2" />
-    <path d="M6 8l4 4-4 4M12 16h6" />
-  </svg>
-);
-
 const PROVIDERS = [
-  { id: 'openai', name: 'OpenAI', logoUrl: '/providers/openai.png', icon: OpenAiIcon, defaultModel: 'gpt-5.6-luna', defaultUrl: 'https://api.openai.com/v1', staticModels: ['gpt-5.6-sol', 'gpt-5.6-luna', 'gpt-4o', 'o1', 'o3-mini'] },
-  { id: 'claude', name: 'Claude (Anthropic)', logoUrl: '/providers/claude.png', icon: ClaudeIcon, defaultModel: 'claude-fable-5', defaultUrl: 'https://api.anthropic.com/v1', staticModels: ['claude-fable-5', 'claude-opus-5', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'] },
-  { id: 'gemini', name: 'Gemini (Google)', logoUrl: '/providers/gemini.png', icon: GeminiIcon, defaultModel: 'gemini-3.1-flash', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/v1', staticModels: ['gemini-3.1-flash', 'gemini-3.1-pro', 'gemini-2.5-flash', 'gemini-2.5-pro'] },
-  { id: 'deepseek', name: 'DeepSeek', logoUrl: '/providers/deepseek.png', icon: DeepseekIcon, defaultModel: 'deepseek-chat', defaultUrl: 'https://api.deepseek.com/v1', staticModels: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-flash'] },
-  { id: 'openrouter', name: 'OpenRouter', logoUrl: '/providers/openrouter.png', icon: OpenRouterIcon, defaultModel: 'openai/gpt-5.6-luna', defaultUrl: 'https://openrouter.ai/api/v1', staticModels: ['openai/gpt-5.6-luna', 'anthropic/claude-fable-5', 'google/gemini-3.1-flash', 'deepseek/deepseek-v4-flash'] },
-  { id: 'minimax', name: 'Minimax', logoUrl: '/providers/minimax.png', icon: MinimaxIcon, defaultModel: 'abab7-chat', defaultUrl: 'https://api.minimax.chat/v1', staticModels: ['abab7-chat', 'abab6.5-chat'] },
-  { id: 'kimi', name: 'Kimi (Moonshot)', logoUrl: '/providers/kimi.png', icon: KimiIcon, defaultModel: 'kimi-k3', defaultUrl: 'https://api.moonshot.cn/v1', staticModels: ['kimi-k3', 'kimi-k2.6', 'moonshot-v1-32k'] },
-  { id: 'glm', name: 'GLM (Zhipu AI)', logoUrl: '/providers/glm.png', icon: GlmIcon, defaultModel: 'glm-5.2', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4', staticModels: ['glm-5.2', 'glm-4.7', 'glm-4-flash'] },
-  { id: 'lm-studio', name: 'LM Studio / Local', logoUrl: '/providers/lmstudio.webp', icon: LocalIcon, defaultModel: 'qwen3.5-instruct', defaultUrl: 'http://localhost:1234/v1', staticModels: ['qwen3.5-instruct', 'translategemma-12b-it'] },
-  { id: 'ollama', name: 'Ollama / Local', logoUrl: '/providers/ollama.png', icon: LocalIcon, defaultModel: 'qwen2.5:7b', defaultUrl: 'http://localhost:11434', staticModels: ['qwen2.5:7b', 'llama3:8b'] },
+  { id: 'openai', name: 'OpenAI', logoUrl: '/providers/openai.png', defaultModel: 'gpt-5.6-luna', defaultUrl: 'https://api.openai.com/v1', staticModels: ['gpt-5.6-sol', 'gpt-5.6-luna', 'gpt-4o', 'o1', 'o3-mini'] },
+  { id: 'claude', name: 'Claude (Anthropic)', logoUrl: '/providers/claude.png', defaultModel: 'claude-fable-5', defaultUrl: 'https://api.anthropic.com/v1', staticModels: ['claude-fable-5', 'claude-opus-5', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022'] },
+  { id: 'gemini', name: 'Gemini (Google)', logoUrl: '/providers/gemini.png', defaultModel: 'gemini-3.1-flash', defaultUrl: 'https://generativelanguage.googleapis.com/v1beta/openai/v1', staticModels: ['gemini-3.1-flash', 'gemini-3.1-pro', 'gemini-2.5-flash', 'gemini-2.5-pro'] },
+  { id: 'deepseek', name: 'DeepSeek', logoUrl: '/providers/deepseek.png', defaultModel: 'deepseek-chat', defaultUrl: 'https://api.deepseek.com/v1', staticModels: ['deepseek-chat', 'deepseek-reasoner', 'deepseek-v4-flash'] },
+  { id: 'openrouter', name: 'OpenRouter', logoUrl: '/providers/openrouter.png', defaultModel: 'openai/gpt-5.6-luna', defaultUrl: 'https://openrouter.ai/api/v1', staticModels: ['openai/gpt-5.6-luna', 'anthropic/claude-fable-5', 'google/gemini-3.1-flash', 'deepseek/deepseek-v4-flash'] },
+  { id: 'minimax', name: 'Minimax', logoUrl: '/providers/minimax.png', defaultModel: 'abab7-chat', defaultUrl: 'https://api.minimax.chat/v1', staticModels: ['abab7-chat', 'abab6.5-chat'] },
+  { id: 'kimi', name: 'Kimi (Moonshot)', logoUrl: '/providers/kimi.png', defaultModel: 'kimi-k3', defaultUrl: 'https://api.moonshot.cn/v1', staticModels: ['kimi-k3', 'kimi-k2.6', 'moonshot-v1-32k'] },
+  { id: 'glm', name: 'GLM (Zhipu AI)', logoUrl: '/providers/glm.png', defaultModel: 'glm-5.2', defaultUrl: 'https://open.bigmodel.cn/api/paas/v4', staticModels: ['glm-5.2', 'glm-4.7', 'glm-4-flash'] },
+  { id: 'lm-studio', name: 'LM Studio / Local', logoUrl: '/providers/lmstudio.webp', defaultModel: 'qwen3.5-instruct', defaultUrl: 'http://localhost:1234/v1', staticModels: ['qwen3.5-instruct', 'translategemma-12b-it'] },
+  { id: 'ollama', name: 'Ollama / Local', logoUrl: '/providers/ollama.png', defaultModel: 'qwen2.5:7b', defaultUrl: 'http://localhost:11434', staticModels: ['qwen2.5:7b', 'llama3:8b'] },
 ];
 
 export default function Settings({
@@ -95,6 +33,8 @@ export default function Settings({
   setAvailableModels,
   lang = 'en',
   setLang,
+  theme = 'system',
+  setTheme,
   presets = [],
   activePresetId = '',
   onApplyPreset,
@@ -347,562 +287,303 @@ export default function Settings({
   );
 
   const subTabs = [
-    { id: 'providers', label: t('settings.tabProviders', lang), icon: Server },
-    { id: 'translation', label: t('settings.tabTranslation', lang), icon: Sliders },
-    { id: 'global', label: t('settings.tabGlobal', lang), icon: Globe },
-    { id: 'presets', label: t('settings.tabPresets', lang), icon: Bookmark },
+    { id: 'providers', label: t('settings.tabProviders', lang) },
+    { id: 'translation', label: t('settings.tabTranslation', lang) },
+    { id: 'global', label: t('settings.tabGlobal', lang) },
+    { id: 'presets', label: t('settings.tabPresets', lang) },
   ];
+  const interfaceLanguages = [
+    ['en', t('settings.langEnglish', lang).replace(/\s*\(.*\)$/, '')],
+    ['fr', t('settings.langFrench', lang)],
+    ['es', t('settings.langSpanish', lang)],
+    ['de', t('settings.langGerman', lang)],
+  ];
+  const appearanceOptions = [
+    ['system', l(lang, 'System', 'Système', 'Sistema', 'System')],
+    ['light', l(lang, 'Light', 'Clair', 'Claro', 'Hell')],
+    ['dark', l(lang, 'Dark', 'Sombre', 'Oscuro', 'Dunkel')],
+  ];
+  const swapDefaultLanguages = () => {
+    if (sourceLang === 'auto') return;
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+  };
+  const keyDisabled = isDemoMode || (isLocal && apiType !== 'lm-studio');
 
   return (
-    <div className="settings-page space-y-7">
-      
-      {/* Header */}
-      <header className="page-intro">
-        <p className="page-kicker">{l(lang, 'Preferences', 'Préférences', 'Preferencias', 'Einstellungen')}</p>
-        <h1>{t('settings.title', lang)}</h1>
-        <p>{t('settings.subtitle', lang)}</p>
-      </header>
-
-      {/* Main Settings Layout with Internal Sidebar Navigation */}
-      <div className="settings-layout">
-        
-        {/* Internal Sub-Navigation Sidebar */}
-        <div className="settings-tabs flex gap-1 overflow-x-auto p-1.5">
-          {subTabs.map((tab) => {
-            const Icon = tab.icon;
-            const isActive = activeSubTab === tab.id;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                onClick={() => setActiveSubTab(tab.id)}
-                className={`settings-tab flex-1 min-w-max flex items-center justify-center space-x-2 px-4 py-2.5 rounded-lg text-xs font-medium transition-colors duration-100 outline-hidden focus:outline-hidden focus:ring-0 ${
-                  isActive
-                    ? 'bg-white/[0.08] text-white font-semibold border border-white/[0.12]'
-                    : 'text-[#888] hover:text-white hover:bg-white/[0.04] border border-transparent'
-                }`}
-              >
-                <Icon className={`w-4 h-4 ${isActive ? 'text-[#60a5fa]' : 'text-zinc-500'}`} />
-                <span className="truncate">{tab.label}</span>
-              </button>
-            );
-          })}
+    <div className="page page-narrow">
+      <div className="page-head">
+        <div>
+          <h1>{t('nav.settings', lang)}</h1>
+          <p>{t('settings.subtitle', lang)}</p>
         </div>
+        <button type="submit" form="settings-form" className="btn btn-primary">{t('settings.saveAllSettings', lang)}</button>
+      </div>
 
-        {/* Settings Tab Content Area */}
-        <div className="settings-content card-chill p-6 sm:p-8">
-          <form onSubmit={handleSaveAll}>
+      <div className="seg seg-outline seg-scroll self-start" role="tablist" aria-label={l(lang, 'Settings sections', 'Sections des réglages', 'Secciones de ajustes', 'Einstellungsbereiche')}>
+        {subTabs.map((tab) => (
+          <button key={tab.id} type="button" role="tab" aria-selected={activeSubTab === tab.id} onClick={() => setActiveSubTab(tab.id)}>{tab.label}</button>
+        ))}
+      </div>
 
-            {/* TAB 1: PROVIDERS & MODELS */}
-            <div className={activeSubTab === 'providers' ? 'space-y-6' : 'hidden'}>
-              <div className="border-b border-white/[0.08] pb-3">
-                <h2 className="text-sm font-semibold text-white flex items-center space-x-2">
-                  <Server className="w-4 h-4 text-[#60a5fa]" />
-                  <span>{t('settings.tabProviders', lang)}</span>
-                </h2>
-                <p className="text-xs text-[#888] mt-0.5">{t('settings.chooseProvider', lang)}</p>
-              </div>
-
-              {/* Grid of Providers */}
-              <div className="provider-grid">
-                {PROVIDERS.map((prov) => {
-                  const isSelected = apiType === prov.id;
-                  const Icon = prov.icon;
-                  return (
-                    <button
-                      key={prov.id}
-                      type="button"
-                      onClick={() => handleProviderSelect(prov)}
-                      className={`provider-card rounded-xl border transition-colors duration-100 outline-hidden focus:outline-hidden focus:ring-0 ${
-                        isSelected
-                          ? 'bg-white/[0.08] border-white/[0.18] text-white font-semibold'
-                          : 'bg-black/30 border-white/[0.08] text-[#888] hover:text-[#ededed] hover:bg-white/[0.02]'
-                      }`}
-                    >
-                      <div className={`w-8 h-8 rounded-xl flex items-center justify-center p-1.5 overflow-hidden ${isSelected ? 'bg-white/[0.12]' : 'bg-white/5'}`}>
-                        {prov.logoUrl ? (
-                          <img src={prov.logoUrl} alt={prov.name} className="w-5 h-5 object-contain rounded-xs" />
-                        ) : (
-                          <Icon />
-                        )}
-                      </div>
-                      <span className="provider-name text-[11px] font-semibold tracking-tight w-full">{prov.name}</span>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Connection Status Banner */}
-              {testResult && (
-                <div className={`p-4 rounded-xl border text-xs flex items-start space-x-3 text-zinc-200 ${
-                  testResult.success ? 'bg-emerald-500/10 border-emerald-500/20 border-l-4 border-l-emerald-500' : 'bg-rose-500/10 border-rose-500/20 border-l-4 border-l-rose-500'
-                }`}>
-                  {testResult.success ? <CheckCircle2 className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" /> : <AlertCircle className="w-4 h-4 text-rose-500 mt-0.5 shrink-0" />}
-                  <div>
-                    <p className="font-semibold text-white">{testResult.message}</p>
-                    {testResult.models?.length > 0 && (
-                      <p className="text-[10px] font-mono mt-1 text-[#00d4aa]">
-                        Available models: {testResult.models.slice(0, 8).join(', ')} {testResult.models.length > 8 ? '...' : ''}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* Form Parameters */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Model Name Selector */}
-                <div className="space-y-1.5">
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider flex items-center justify-between">
-                    <span className="flex items-center space-x-1.5">
-                      <Cpu className="w-3.5 h-3.5 text-[#444]" />
-                      <span>{t('settings.activeModel', lang)}</span>
+      <form id="settings-form" onSubmit={handleSaveAll}>
+        {activeSubTab === 'providers' && (
+          <section aria-label={t('settings.tabProviders', lang)} className="card flex flex-col gap-[22px] p-6">
+            <div className="flex flex-col gap-2.5">
+              <h2 className="section-title">{t('settings.chooseProvider', lang)}</h2>
+              <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,160px),1fr))] gap-2">
+                {PROVIDERS.map((provider) => (
+                  <button key={provider.id} type="button" className="tile text-[13px] font-medium" aria-pressed={apiType === provider.id} onClick={() => handleProviderSelect(provider)}>
+                    <span className="grid size-7 flex-none place-items-center overflow-hidden rounded-lg bg-[#18181b]">
+                      <img src={provider.logoUrl} alt="" className="size-5 object-contain" />
                     </span>
-                    {fetchingModels && (
-                      <span className="text-[10px] text-[#60a5fa] font-semibold animate-pulse">{t('settings.detectingModels', lang)}</span>
-                    )}
-                  </label>
-
-                  <div className="space-y-2">
-                    {availableModelsList.length > 5 && (
-                      <div className="relative">
-                        <Search className="w-3.5 h-3.5 text-zinc-500 absolute left-3 top-2.5" />
-                        <input
-                          type="text"
-                          value={modelSearch}
-                          onChange={(e) => setModelSearch(e.target.value)}
-                          placeholder={t('settings.searchModelPlaceholder', lang)}
-                          className="w-full input-chill pl-9 pr-3 py-1.5 text-[10px] font-mono border-white/[0.08] bg-[#030303]"
-                        />
-                      </div>
-                    )}
-                    
-                    <select
-                      value={model}
-                      onChange={(e) => setModel(e.target.value)}
-                      className="w-full input-chill px-3 py-2 text-xs font-mono"
-                    >
-                      {!filteredModels.includes(model) && model && (
-                        <option value={model}>{model} (Custom)</option>
-                      )}
-                      {filteredModels.map((m) => (
-                        <option key={m} value={m}>{m}</option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                {/* API Key */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2 flex items-center space-x-1.5">
-                    <Key className="w-3.5 h-3.5 text-[#444]" />
-                    <span>{t('settings.apiKey', lang)}</span>
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showApiKey ? 'text' : 'password'}
-                      value={apiKey}
-                      onChange={(e) => setApiKey(e.target.value)}
-                      placeholder={isDemoMode ? l(lang, 'Disabled in demo', 'Désactivée dans la démo', 'Desactivada en la demo', 'In der Demo deaktiviert') : (isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang))}
-                      disabled={isDemoMode || (isLocal && apiType !== 'lm-studio')}
-                      className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-40 pr-9"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowApiKey(!showApiKey)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-300 transition-colors"
-                      title={showApiKey
-                        ? l(lang, 'Hide API key', 'Masquer la clé API', 'Ocultar la clave API', 'API-Schlüssel ausblenden')
-                        : l(lang, 'Show API key', 'Afficher la clé API', 'Mostrar la clave API', 'API-Schlüssel anzeigen')}
-                    >
-                      {showApiKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  </div>
-                  {!isLocal && <p className="mt-1.5 text-[10px] text-[#666]">{l(lang, 'Leave blank to reuse the key already stored on the server.', 'Laissez vide pour réutiliser la clé déjà stockée côté serveur.', 'Déjalo vacío para reutilizar la clave guardada en el servidor.', 'Leer lassen, um den bereits auf dem Server gespeicherten Schlüssel zu verwenden.')}</p>}
-                </div>
-
-                {/* Endpoint URL */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2 flex items-center space-x-1.5">
-                    <Link className="w-3.5 h-3.5 text-[#444]" />
-                    <span>{t('settings.customEndpoint', lang)}</span>
-                  </label>
-                  <input
-                    type="text"
-                    value={endpoint}
-                    onChange={(e) => setEndpoint(e.target.value)}
-                    disabled={isDemoMode || !isLocal}
-                    className="w-full input-chill px-3 py-2 text-xs font-mono disabled:opacity-50"
-                  />
-                </div>
-              </div>
-
-              <div className="local-model-detection-note">
-                <RefreshCw />
-                <div>
-                  <strong>{l(lang, 'Automatic model detection', 'Détection automatique des modèles', 'Detección automática de modelos', 'Automatische Modellerkennung')}</strong>
-                  <span>{isLocal
-                    ? l(lang, 'Enter your local server endpoint and TraDoc will automatically detect the available models.', 'Renseignez l’endpoint de votre serveur local : TraDoc détectera automatiquement les modèles disponibles.', 'Introduce el endpoint del servidor local y TraDoc detectará los modelos disponibles.', 'Gib den Endpunkt deines lokalen Servers ein; TraDoc erkennt die verfügbaren Modelle automatisch.')
-                    : l(lang, 'Enter your API key and TraDoc will automatically detect the available cloud models.', 'Renseignez votre clé API : TraDoc détectera automatiquement les modèles cloud disponibles.', 'Introduce tu clave API y TraDoc detectará los modelos disponibles en la nube.', 'Gib deinen API-Schlüssel ein; TraDoc erkennt die verfügbaren Cloud-Modelle automatisch.')}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex justify-end">
-                <button
-                  type="button"
-                  onClick={handleTestConnection}
-                  disabled={testing}
-                  className="btn-chill px-4 py-2 text-xs flex items-center space-x-2"
-                >
-                  {testing ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Cpu className="w-3.5 h-3.5" />}
-                  <span>{testing ? t('settings.testingConnection', lang) : t('settings.testConnection', lang)}</span>
-                </button>
+                    <span className="min-w-0 leading-tight">{provider.name}</span>
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* TAB 2: TRANSLATION ENGINE */}
-            <div className={activeSubTab === 'translation' ? 'space-y-6' : 'hidden'}>
-              <div className="border-b border-white/[0.08] pb-3">
-                <h2 className="text-sm font-semibold text-white flex items-center space-x-2">
-                  <Sliders className="w-4 h-4 text-[#60a5fa]" />
-                  <span>{t('settings.tabTranslation', lang)}</span>
-                </h2>
-                <p className="text-xs text-[#888] mt-0.5">{l(
-                  lang,
-                  'Configure default languages, segment sizes, LLM temperature, concurrency, and editorial passes.',
-                  'Configurez les langues par défaut, la taille des segments, la température du LLM, la concurrence et les passes éditoriales.',
-                  'Configura los idiomas predeterminados, el tamaño de los segmentos, la temperatura del LLM, la concurrencia y las pasadas editoriales.',
-                  'Konfiguriere Standardsprachen, Segmentgrößen, LLM-Temperatur, Parallelität und redaktionelle Durchgänge.',
-                )}</p>
-              </div>
-
-              {/* Default Languages Configuration Box */}
-              <div className="p-4 rounded-xl bg-black/40 border border-white/[0.08] space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold text-white uppercase tracking-wider flex items-center space-x-2">
-                    <Globe className="w-4 h-4 text-[#60a5fa]" />
-                    <span>{l(lang, 'Default translation languages', 'Langues de traduction par défaut', 'Idiomas de traducción predeterminados', 'Standardsprachen der Übersetzung')}</span>
-                  </span>
-                  <span className="text-[11px] font-mono text-[#60a5fa] font-bold">
-                    {sourceLang.toUpperCase()} ➔ {targetLang.toUpperCase()}
-                  </span>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-3 items-center">
-                  <div>
-                    <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1">
-                      {l(lang, 'Default source language', 'Langue source par défaut', 'Idioma de origen predeterminado', 'Standard-Ausgangssprache')}
-                    </label>
-                    <select
-                      value={sourceLang}
-                      onChange={(e) => setSourceLang(e.target.value)}
-                      className="w-full input-chill px-3 py-2 text-xs text-zinc-200 cursor-pointer"
-                    >
-                      {AVAILABLE_LANGUAGES.map((l) => (
-                        <option key={l.code} value={l.code}>
-                          {l.flag} {languageLabel(l.code, lang)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="flex items-center justify-center sm:pt-4">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (sourceLang !== 'auto') {
-                          const temp = sourceLang;
-                          setSourceLang(targetLang);
-                          setTargetLang(temp);
-                        }
-                      }}
-                      className="p-2 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-400 hover:text-white transition-all"
-                      title={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}
-                    >
-                      <ArrowLeftRight className="w-4 h-4" />
-                    </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1">
-                      {l(lang, 'Default target language', 'Langue cible par défaut', 'Idioma de destino predeterminado', 'Standard-Zielsprache')}
-                    </label>
-                    <select
-                      value={targetLang}
-                      onChange={(e) => setTargetLang(e.target.value)}
-                      className="w-full input-chill px-3 py-2 text-xs text-zinc-200 cursor-pointer"
-                    >
-                      {AVAILABLE_LANGUAGES.filter(l => l.code !== 'auto').map((l) => (
-                        <option key={l.code} value={l.code}>
-                          {l.flag} {languageLabel(l.code, lang)}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
+            {testResult && (
+              <div role="status" className="notice">
+                {testResult.success ? <CheckCircle2 className="text-good" aria-hidden="true" /> : <AlertCircle aria-hidden="true" />}
+                <div className="min-w-0">
+                  <p className="m-0 font-medium">{testResult.message}</p>
+                  {testResult.models?.length > 0 && (
+                    <p className="m-0 mt-1 break-words text-[12px] text-sec">
+                      {l(lang, 'Available models', 'Modèles disponibles', 'Modelos disponibles', 'Verfügbare Modelle')}: {testResult.models.slice(0, 8).join(', ')}{testResult.models.length > 8 ? '…' : ''}
+                    </p>
+                  )}
                 </div>
               </div>
+            )}
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Chunk Size */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">
-                    {t('settings.chunkSizeLabel', lang, { count: chunkSize })}
-                  </label>
-                  <input
-                    type="range"
-                    min={200}
-                    max={10000}
-                    step={100}
-                    value={chunkSize}
-                    onChange={(e) => setChunkSize(parseInt(e.target.value, 10))}
-                    className="w-full accent-[#2563eb] mt-2"
-                  />
-                  <div className="segment-size-advice">
-                    <span><i />{l(lang, 'Local: 500–2,500', 'Local : 500–2 500', 'Local: 500–2.500', 'Lokal: 500–2.500')} <b>{l(lang, '1,000 recommended', '1 000 recommandé', '1.000 recomendado', '1.000 empfohlen')}</b></span>
-                    <span><i />{l(lang, 'Cloud: 2,500–10,000', 'Cloud : 2 500–10 000', 'Nube: 2.500–10.000', 'Cloud: 2.500–10.000')} <b>{l(lang, '7,000 recommended', '7 000 recommandé', '7.000 recomendado', '7.000 empfohlen')}</b></span>
-                  </div>
-                </div>
-
-                {/* Temperature */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">
-                    {t('settings.temperatureLabel', lang, { val: temperature.toFixed(2) })}
-                  </label>
-                  <input
-                    type="range"
-                    min={0}
-                    max={1.5}
-                    step={0.05}
-                    value={temperature}
-                    onChange={(e) => setTemperature(parseFloat(e.target.value))}
-                    className="w-full accent-[#2563eb] mt-2"
-                  />
-                  <span className="text-[10px] text-[#666] font-mono mt-1 block">{t('settings.temperatureAdvice', lang)}</span>
-                </div>
-
-                {/* Concurrency */}
-                <div>
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-2">
-                    {t('settings.concurrencyLabel', lang, { val: concurrency })}
-                  </label>
-                  <input
-                    type="range"
-                    min={1}
-                    max={16}
-                    value={concurrency}
-                    onChange={(e) => setConcurrency(parseInt(e.target.value))}
-                    className="w-full accent-[#2563eb] mt-2"
-                  />
-                  <span className="text-[10px] text-[#666] font-mono mt-1 block">{t('settings.concurrencyAdvice', lang)}</span>
-                </div>
-              </div>
-
-              {/* Proofreading Toggle */}
-              <button type="button" role="switch" aria-checked={enableProofreading} className={`proofreading-toggle-compact ${enableProofreading ? 'is-active' : ''}`} onClick={() => setEnableProofreading(!enableProofreading)}>
-                <span className="proofreading-toggle-copy">
-                  <strong>{l(lang, 'Editorial proofreading', 'Relecture éditoriale', 'Revisión editorial', 'Redaktionelle Überarbeitung')}</strong>
-                  <small>{l(lang, 'Automatic second pass (2 calls per segment)', 'Deuxième passe automatique (2 appels par segment)', 'Segunda pasada automática (2 llamadas por segmento)', 'Automatischer zweiter Durchgang (2 Aufrufe je Segment)')}</small>
+            <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,260px),1fr))] gap-3.5">
+              <div className="field">
+                <span className="field-label">
+                  <label htmlFor="settings-model">{t('settings.activeModel', lang)}</label>
+                  {fetchingModels && <span className="text-accent-text">{t('settings.detectingModels', lang)}</span>}
                 </span>
-                <span className="proofreading-toggle-status">{enableProofreading ? l(lang, 'Enabled', 'Activée', 'Activada', 'Aktiviert') : l(lang, 'Disabled', 'Désactivée', 'Desactivada', 'Deaktiviert')}</span>
-                <span className="proofreading-switch"><i /></span>
-              </button>
-
-              {/* System Prompt Presets */}
-              <div className="space-y-3 pt-2">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider">
-                    {t('settings.systemPromptTitle', lang)}
-                  </label>
-                  
-                  <div className="flex items-center space-x-2">
-                    <select
-                      value={selectedPromptKey}
-                      onChange={(e) => handlePromptPresetChange(e.target.value)}
-                      className="input-chill px-3 py-1 text-xs text-zinc-200"
-                    >
-                      <option value="literary">{l(lang, 'Literary default prompt', 'Prompt littéraire par défaut', 'Prompt literario predeterminado', 'Standardprompt für literarische Texte')}</option>
-                      {Object.keys(customPromptPresets).map((k) => (
-                        <option key={k} value={k}>{k}</option>
-                      ))}
-                    </select>
-                    {selectedPromptKey !== 'literary' && (
-                      <button
-                        type="button"
-                        onClick={() => handleDeletePromptPreset(selectedPromptKey)}
-                        className="p-1 text-[#ff6369] hover:bg-rose-500/10 rounded transition-colors"
-                        title={t('settings.deletePresetBtn', lang)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-
-                <textarea
-                  rows={8}
-                  value={systemPrompt}
-                  onChange={(e) => setSystemPrompt(e.target.value)}
-                  className="w-full input-chill p-4 text-xs font-mono leading-relaxed bg-[#030303]"
-                />
-
-                <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5 p-3 bg-white/[0.02] rounded-xl border border-white/[0.08]">
+                {availableModelsList.length > 5 && (
                   <input
-                    type="text"
-                    value={newPromptName}
-                    onChange={(e) => setNewPromptName(e.target.value)}
-                    placeholder={t('settings.customPresetName', lang)}
-                    className="input-chill px-3 py-1.5 text-xs flex-1 font-mono w-full"
+                    type="search"
+                    className="input"
+                    value={modelSearch}
+                    onChange={(event) => setModelSearch(event.target.value)}
+                    placeholder={t('settings.searchModelPlaceholder', lang)}
+                    aria-label={t('settings.searchModelPlaceholder', lang)}
+                  />
+                )}
+                <select id="settings-model" className="input" value={model} onChange={(event) => setModel(event.target.value)}>
+                  {!filteredModels.includes(model) && model && <option value={model}>{model} (Custom)</option>}
+                  {filteredModels.map((item) => <option key={item} value={item}>{item}</option>)}
+                </select>
+              </div>
+              <label className="field">
+                <span className="field-label">{t('settings.customEndpoint', lang)}</span>
+                <input className="input" type="text" value={endpoint} onChange={(event) => setEndpoint(event.target.value)} disabled={isDemoMode || !isLocal} />
+              </label>
+              <div className="field col-span-full">
+                <label className="field-label" htmlFor="settings-api-key">{t('settings.apiKey', lang)}</label>
+                <div className="flex gap-2">
+                  <input
+                    id="settings-api-key"
+                    className="input min-w-0 flex-1"
+                    type={showApiKey ? 'text' : 'password'}
+                    value={apiKey}
+                    onChange={(event) => setApiKey(event.target.value)}
+                    placeholder={isDemoMode ? l(lang, 'Disabled in demo', 'Désactivée dans la démo', 'Desactivada en la demo', 'In der Demo deaktiviert') : (isLocal ? t('settings.notRequired', lang) : t('settings.apiKeyPlaceholder', lang))}
+                    disabled={keyDisabled}
+                    autoComplete="off"
                   />
                   <button
                     type="button"
-                    onClick={handleSavePromptPreset}
-                    disabled={!newPromptName.trim()}
-                    className="btn-chill px-4 py-2 sm:py-1.5 text-xs flex items-center justify-center space-x-2 disabled:opacity-40 w-full sm:w-auto"
+                    className="btn btn-secondary !h-10 !rounded-xl"
+                    onClick={() => setShowApiKey(!showApiKey)}
+                    aria-pressed={showApiKey}
                   >
-                    <Plus className="w-3.5 h-3.5" />
-                    <span>{t('settings.createPresetBtn', lang)}</span>
+                    {showApiKey ? <EyeOff aria-hidden="true" /> : <Eye aria-hidden="true" />}
+                    {showApiKey
+                      ? l(lang, 'Hide API key', 'Masquer la clé API', 'Ocultar la clave API', 'API-Schlüssel ausblenden')
+                      : l(lang, 'Show API key', 'Afficher la clé API', 'Mostrar la clave API', 'API-Schlüssel anzeigen')}
                   </button>
                 </div>
+                {!isLocal && <span className="hint">{l(lang, 'Leave blank to reuse the key already stored on the server.', 'Laissez vide pour réutiliser la clé déjà stockée côté serveur.', 'Déjalo vacío para reutilizar la clave guardada en el servidor.', 'Leer lassen, um den bereits auf dem Server gespeicherten Schlüssel zu verwenden.')}</span>}
               </div>
             </div>
 
-            {/* TAB 3: GLOBAL SETTINGS & LANGUAGE */}
-            <div className={activeSubTab === 'global' ? 'settings-global-panel' : 'hidden'}>
-              <div className="settings-section-heading">
-                <span className="settings-section-heading-icon"><Globe /></span>
-                <div>
-                  <h2>{t('settings.tabGlobal', lang)}</h2>
-                  <p>{t('settings.languageDesc', lang)}</p>
-                </div>
-              </div>
-
-              <section className="global-settings-section">
-                <div className="global-section-copy">
-                  <div>
-                    <span className="section-eyebrow">{l(lang, 'Interface', 'Interface', 'Interfaz', 'Oberfläche')}</span>
-                    <h3>{t('settings.languageTitle', lang)}</h3>
-                    <p>{t('settings.languageDesc', lang)}</p>
-                  </div>
-                </div>
-                <div className="language-choice-grid">
-                  <button type="button" onClick={() => setLang('en')} className={`language-choice ${lang === 'en' ? 'is-selected' : ''}`}>
-                    <span className="language-code">EN</span>
-                    <span className="language-copy"><strong>{t('settings.langEnglish', lang)}</strong><small>English interface</small></span>
-                    <span className="language-radio" aria-hidden="true"><i /></span>
-                  </button>
-                  <button type="button" onClick={() => setLang('fr')} className={`language-choice ${lang === 'fr' ? 'is-selected' : ''}`}>
-                    <span className="language-code">FR</span>
-                    <span className="language-copy"><strong>{t('settings.langFrench', lang)}</strong><small>Interface en français</small></span>
-                    <span className="language-radio" aria-hidden="true"><i /></span>
-                  </button>
-                  <button type="button" onClick={() => setLang('es')} className={`language-choice ${lang === 'es' ? 'is-selected' : ''}`}>
-                    <span className="language-code">ES</span>
-                    <span className="language-copy"><strong>{t('settings.langSpanish', lang)}</strong><small>Interfaz en español</small></span>
-                    <span className="language-radio" aria-hidden="true"><i /></span>
-                  </button>
-                  <button type="button" onClick={() => setLang('de')} className={`language-choice ${lang === 'de' ? 'is-selected' : ''}`}>
-                    <span className="language-code">DE</span>
-                    <span className="language-copy"><strong>{t('settings.langGerman', lang)}</strong><small>Deutsche Benutzeroberfläche</small></span>
-                    <span className="language-radio" aria-hidden="true"><i /></span>
-                  </button>
-                </div>
-              </section>
-
-            </div>
-
-            {/* TAB 4: CONFIG PRESETS MANAGER */}
-            <div className={activeSubTab === 'presets' ? 'settings-presets-panel' : 'hidden'}>
-              <div className="settings-section-heading">
-                <span className="settings-section-heading-icon"><Bookmark /></span>
-                <div>
-                  <h2>{t('settings.presetsManagerTitle', lang)}</h2>
-                  <p>{t('settings.presetsManagerDesc', lang)}</p>
-                </div>
-              </div>
-
-              <section className="preset-create-card">
-                <span className="preset-create-icon"><Plus /></span>
-                <div className="preset-create-copy">
-                  <strong>{l(lang, 'Save the current configuration', 'Enregistrer la configuration actuelle', 'Guardar la configuración actual', 'Aktuelle Konfiguration speichern')}</strong>
-                  <p>{l(lang, 'Create a shortcut with the active provider, model and settings.', 'Créez un raccourci avec le fournisseur, le modèle et les réglages actifs.', 'Crea un acceso rápido con el proveedor, el modelo y los ajustes activos.', 'Erstelle ein Profil mit dem aktiven Anbieter, Modell und den aktuellen Einstellungen.')}</p>
-                </div>
-                <div className="preset-create-controls">
-                  <input type="text" value={newPresetNameInput} onChange={(e) => setNewPresetNameInput(e.target.value)} placeholder={t('settings.presetNamePlaceholder', lang)} className="input-chill" />
-                  <button type="button" onClick={handleSaveConfigPreset} disabled={!newPresetNameInput.trim()} className="btn-chill">
-                    <Plus /><span>{t('settings.savePresetBtn', lang)}</span>
-                  </button>
-                </div>
-              </section>
-
-              <section className="preset-library">
-                <div className="preset-library-heading">
-                  <div><span className="section-eyebrow">{l(lang, 'Library', 'Bibliothèque', 'Biblioteca', 'Bibliothek')}</span><h3>{t('settings.savedPresetsList', lang)}</h3></div>
-                  <span className="preset-count">{presets.length}</span>
-                </div>
-
-                <div className="preset-card-grid">
-                  {presets.length === 0 && (
-                    <div className="preset-empty-state">
-                      <Bookmark />
-                      <strong>{l(lang, 'No saved profiles', 'Aucun profil enregistré', 'No hay perfiles guardados', 'Keine Profile gespeichert')}</strong>
-                      <p>{l(lang, 'Name the current configuration to find it here.', 'Donnez un nom à la configuration actuelle pour la retrouver ici.', 'Ponle un nombre a la configuración actual para encontrarla aquí.', 'Gib der aktuellen Konfiguration einen Namen, damit sie hier erscheint.')}</p>
-                    </div>
-                  )}
-                  {presets.map((preset) => {
-                    const isActive = activePresetId === preset.id;
-                    return (
-                      <article key={preset.id} className={`settings-preset-card ${isActive ? 'is-active' : ''}`}>
-                        <header>
-                          <div><small>{l(lang, 'Configuration', 'Configuration', 'Configuración', 'Konfiguration')}</small><strong title={preset.name}>{preset.name}</strong></div>
-                          <span className={`preset-state ${isActive ? 'is-active' : ''}`}><i />{isActive ? t('settings.activeBadge', lang) : l(lang, 'Available', 'Disponible', 'Disponible', 'Verfügbar')}</span>
-                        </header>
-                        <dl>
-                          <div><dt>{l(lang, 'Provider', 'Fournisseur', 'Proveedor', 'Anbieter')}</dt><dd>{preset.apiType || '—'}</dd></div>
-                          <div><dt>{l(lang, 'Model', 'Modèle', 'Modelo', 'Modell')}</dt><dd title={preset.model}>{preset.model || '—'}</dd></div>
-                          <div><dt>{l(lang, 'Concurrency', 'Concurrence', 'Concurrencia', 'Parallelität')}</dt><dd>{preset.concurrency ?? '—'}</dd></div>
-                          <div><dt>{l(lang, 'Segment', 'Segment', 'Segmento', 'Segment')}</dt><dd>{preset.chunkSize || 1000} tokens</dd></div>
-                        </dl>
-                        <footer>
-                          {!isActive ? (
-                            <button type="button" onClick={() => onApplyPreset && onApplyPreset(preset.id)} className="preset-activate-button"><Check /><span>{t('settings.activatePresetBtn', lang)}</span></button>
-                          ) : <span className="preset-active-copy"><Check />{l(lang, 'Profile in use', 'Profil utilisé', 'Perfil en uso', 'Profil in Verwendung')}</span>}
-                          <button
-                            type="button"
-                            onClick={() => {
-                              if (window.confirm(t('settings.confirmDeletePreset', lang, { name: preset.name }))) {
-                                if (onDeletePreset) onDeletePreset(preset.id);
-                              }
-                            }}
-                            className="preset-delete-button"
-                            title={t('settings.deletePresetBtn', lang)}
-                          >
-                            <Trash2 />
-                          </button>
-                        </footer>
-                      </article>
-                    );
-                  })}
-                </div>
-              </section>
-            </div>
-
-            {/* Bottom Save All Bar */}
-            <div className="flex justify-end pt-4 border-t border-white/[0.08] mt-6">
-              <button
-                type="submit"
-                className="btn-orange px-6 py-2.5 text-xs flex items-center space-x-2 shadow-none"
-              >
-                <Save className="w-4 h-4 fill-white" />
-                <span>{t('settings.saveAllSettings', lang)}</span>
+            <div className="well flex flex-wrap items-center justify-between gap-3 px-4 py-3.5">
+              <span className="setting-copy">
+                <strong>{l(lang, 'Automatic model detection', 'Détection automatique des modèles', 'Detección automática de modelos', 'Automatische Modellerkennung')}</strong>
+                <span>{isLocal
+                  ? l(lang, 'Enter your local server endpoint and TraDoc will automatically detect the available models.', 'Renseignez l’endpoint de votre serveur local : TraDoc détectera automatiquement les modèles disponibles.', 'Introduce el endpoint del servidor local y TraDoc detectará los modelos disponibles.', 'Gib den Endpunkt deines lokalen Servers ein; TraDoc erkennt die verfügbaren Modelle automatisch.')
+                  : l(lang, 'Enter your API key and TraDoc will automatically detect the available cloud models.', 'Renseignez votre clé API : TraDoc détectera automatiquement les modèles cloud disponibles.', 'Introduce tu clave API y TraDoc detectará los modelos disponibles en la nube.', 'Gib deinen API-Schlüssel ein; TraDoc erkennt die verfügbaren Cloud-Modelle automatisch.')}</span>
+              </span>
+              <button type="button" className="btn btn-secondary bg-card" onClick={handleTestConnection} disabled={testing}>
+                {testing && <RefreshCw className="animate-spin" aria-hidden="true" />}
+                {testing ? t('settings.testingConnection', lang) : t('settings.testConnection', lang)}
               </button>
             </div>
+          </section>
+        )}
 
-          </form>
-        </div>
+        {activeSubTab === 'translation' && (
+          <section aria-label={t('settings.tabTranslation', lang)} className="card px-6 py-2">
+            <label className="setting-row">
+              <span className="setting-copy">
+                <strong>{t('settings.chunkSizeLabel', lang, { count: chunkSize.toLocaleString() })}</strong>
+                <span>{l(lang, 'Local: 500–2,500', 'Local : 500–2 500', 'Local: 500–2.500', 'Lokal: 500–2.500')} ({l(lang, '1,000 recommended', '1 000 recommandé', '1.000 recomendado', '1.000 empfohlen')}) · {l(lang, 'Cloud: 2,500–10,000', 'Cloud : 2 500–10 000', 'Nube: 2.500–10.000', 'Cloud: 2.500–10.000')} ({l(lang, '7,000 recommended', '7 000 recommandé', '7.000 recomendado', '7.000 empfohlen')})</span>
+              </span>
+              <input type="range" min={200} max={10000} step={100} value={chunkSize} onChange={(event) => setChunkSize(parseInt(event.target.value, 10))} className="flex-[1_1_200px]" />
+            </label>
+            <label className="setting-row">
+              <span className="setting-copy">
+                <strong>{t('settings.temperatureLabel', lang, { val: temperature.toFixed(2) })}</strong>
+                <span>{t('settings.temperatureAdvice', lang)}</span>
+              </span>
+              <input type="range" min={0} max={1.5} step={0.05} value={temperature} onChange={(event) => setTemperature(parseFloat(event.target.value))} className="flex-[1_1_200px]" />
+            </label>
+            <label className="setting-row">
+              <span className="setting-copy">
+                <strong>{t('settings.concurrencyLabel', lang, { val: concurrency })}</strong>
+                <span>{t('settings.concurrencyAdvice', lang)}</span>
+              </span>
+              <input type="range" min={1} max={16} value={concurrency} onChange={(event) => setConcurrency(parseInt(event.target.value, 10))} className="flex-[1_1_200px]" />
+            </label>
+            <div className="setting-row">
+              <span className="setting-copy">
+                <strong id="settings-proofreading">{l(lang, 'Editorial proofreading', 'Relecture éditoriale', 'Revisión editorial', 'Redaktionelle Überarbeitung')}</strong>
+                <span>{l(lang, 'Automatic second pass (2 calls per segment)', 'Deuxième passe automatique (2 appels par segment)', 'Segunda pasada automática (2 llamadas por segmento)', 'Automatischer zweiter Durchgang (2 Aufrufe je Segment)')}</span>
+              </span>
+              <button type="button" role="switch" aria-checked={enableProofreading} aria-labelledby="settings-proofreading" className="switch" onClick={() => setEnableProofreading(!enableProofreading)} />
+            </div>
+            <div className="flex flex-col gap-2.5 py-4">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <span className="font-medium">{t('settings.systemPromptTitle', lang)}</span>
+                <div className="flex items-center gap-1.5">
+                  <select aria-label={t('settings.systemPromptTitle', lang)} className="chip-select !pr-2 font-medium text-fg" value={selectedPromptKey} onChange={(event) => handlePromptPresetChange(event.target.value)}>
+                    <option value="literary">{l(lang, 'Literary default prompt', 'Prompt littéraire par défaut', 'Prompt literario predeterminado', 'Standardprompt für literarische Texte')}</option>
+                    {Object.keys(customPromptPresets).map((key) => <option key={key} value={key}>{key}</option>)}
+                  </select>
+                  {selectedPromptKey !== 'literary' && (
+                    <button type="button" className="icon-btn is-plain" onClick={() => handleDeletePromptPreset(selectedPromptKey)} aria-label={t('settings.deletePresetBtn', lang)}>
+                      <Trash2 aria-hidden="true" />
+                    </button>
+                  )}
+                </div>
+              </div>
+              <textarea className="input text-[13px]" rows={8} value={systemPrompt} onChange={(event) => setSystemPrompt(event.target.value)} aria-label={t('settings.systemPromptTitle', lang)} />
+              <div className="flex flex-wrap gap-2">
+                <input className="input min-w-0 flex-[1_1_200px] !h-9 !rounded-full" type="text" value={newPromptName} onChange={(event) => setNewPromptName(event.target.value)} placeholder={t('settings.customPresetName', lang)} aria-label={t('settings.customPresetName', lang)} />
+                <button type="button" className="btn btn-secondary" onClick={handleSavePromptPreset} disabled={!newPromptName.trim()}>{t('settings.createPresetBtn', lang)}</button>
+              </div>
+            </div>
+          </section>
+        )}
 
-      </div>
+        {activeSubTab === 'global' && (
+          <section aria-label={t('settings.tabGlobal', lang)} className="card px-6 py-2">
+            <div className="setting-row">
+              <span className="setting-copy"><strong>{t('settings.languageTitle', lang)}</strong><span>{t('settings.languageDesc', lang)}</span></span>
+              <div className="seg" role="group" aria-label={t('settings.languageTitle', lang)}>
+                {interfaceLanguages.map(([code, label]) => (
+                  <button key={code} type="button" aria-pressed={lang === code} onClick={() => setLang(code)}>{label}</button>
+                ))}
+              </div>
+            </div>
+            {setTheme && (
+              <div className="setting-row">
+                <span className="setting-copy">
+                  <strong>{l(lang, 'Appearance', 'Apparence', 'Apariencia', 'Darstellung')}</strong>
+                  <span>{l(lang, 'Follow the system, or force light or dark.', 'Suivre le système, ou forcer le thème clair ou sombre.', 'Seguir el sistema o forzar el tema claro u oscuro.', 'Dem System folgen oder hell bzw. dunkel erzwingen.')}</span>
+                </span>
+                <div className="seg" role="group" aria-label={l(lang, 'Appearance', 'Apparence', 'Apariencia', 'Darstellung')}>
+                  {appearanceOptions.map(([value, label]) => (
+                    <button key={value} type="button" aria-pressed={theme === value} onClick={() => setTheme(value)}>{label}</button>
+                  ))}
+                </div>
+              </div>
+            )}
+            <div className="setting-row">
+              <span className="setting-copy">
+                <strong>{l(lang, 'Default translation languages', 'Langues de traduction par défaut', 'Idiomas de traducción predeterminados', 'Standardsprachen der Übersetzung')}</strong>
+                <span>{l(lang, 'Pre-selected for every new document.', 'Présélectionnées pour chaque nouveau document.', 'Preseleccionados para cada documento nuevo.', 'Für jedes neue Dokument vorausgewählt.')}</span>
+              </span>
+              <div className="chip-select !px-1">
+                <select aria-label={l(lang, 'Default source language', 'Langue source par défaut', 'Idioma de origen predeterminado', 'Standard-Ausgangssprache')} value={sourceLang} onChange={(event) => setSourceLang(event.target.value)}>
+                  {AVAILABLE_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
+                </select>
+                <button type="button" className="icon-btn is-plain !size-7" onClick={swapDefaultLanguages} aria-label={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}>
+                  <ArrowLeftRight className="!size-3.5" aria-hidden="true" />
+                </button>
+                <select aria-label={l(lang, 'Default target language', 'Langue cible par défaut', 'Idioma de destino predeterminado', 'Standard-Zielsprache')} value={targetLang} onChange={(event) => setTargetLang(event.target.value)}>
+                  {AVAILABLE_LANGUAGES.filter((language) => language.code !== 'auto').map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
+                </select>
+              </div>
+            </div>
+          </section>
+        )}
 
+        {activeSubTab === 'presets' && (
+          <section aria-label={t('settings.tabPresets', lang)} className="card flex flex-col gap-[18px] p-6">
+            <div className="flex flex-col gap-2.5">
+              <div>
+                <h2 className="section-title">{l(lang, 'Save the current configuration', 'Enregistrer la configuration actuelle', 'Guardar la configuración actual', 'Aktuelle Konfiguration speichern')}</h2>
+                <p className="m-0 mt-0.5 text-[13px] text-sec">{l(lang, 'Create a shortcut with the active provider, model and settings.', 'Créez un raccourci avec le fournisseur, le modèle et les réglages actifs.', 'Crea un acceso rápido con el proveedor, el modelo y los ajustes activos.', 'Erstelle ein Profil mit dem aktiven Anbieter, Modell und den aktuellen Einstellungen.')}</p>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <input className="input min-w-0 flex-[1_1_220px] !rounded-full !px-4" type="text" value={newPresetNameInput} onChange={(event) => setNewPresetNameInput(event.target.value)} placeholder={t('settings.presetNamePlaceholder', lang)} aria-label={t('settings.presetNamePlaceholder', lang)} />
+                <button type="button" className="btn btn-solid btn-lg" onClick={handleSaveConfigPreset} disabled={!newPresetNameInput.trim()}>{t('settings.savePresetBtn', lang)}</button>
+              </div>
+            </div>
+
+            {presets.length === 0 ? (
+              <div className="well flex flex-col items-center gap-1 px-4 py-8 text-center">
+                <strong className="font-medium">{l(lang, 'No saved profiles', 'Aucun profil enregistré', 'No hay perfiles guardados', 'Keine Profile gespeichert')}</strong>
+                <span className="text-[13px] text-sec">{l(lang, 'Name the current configuration to find it here.', 'Donnez un nom à la configuration actuelle pour la retrouver ici.', 'Ponle un nombre a la configuración actual para encontrarla aquí.', 'Gib der aktuellen Konfiguration einen Namen, damit sie hier erscheint.')}</span>
+              </div>
+            ) : (
+              <ul className="m-0 grid list-none grid-cols-[repeat(auto-fill,minmax(min(100%,260px),1fr))] gap-3 p-0">
+                {presets.map((preset) => {
+                  const isActive = activePresetId === preset.id;
+                  return (
+                    <li key={preset.id} className={`flex flex-col gap-3 rounded-2xl border p-4 ${isActive ? 'border-[var(--accent-btn)] bg-[var(--accent-soft)]' : 'border-line'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <strong className="min-w-0 truncate font-semibold" title={preset.name}>{preset.name}</strong>
+                        {isActive && <span className="status is-running">{l(lang, 'Profile in use', 'Profil utilisé', 'Perfil en uso', 'Profil in Verwendung')}</span>}
+                      </div>
+                      <dl className="m-0 grid grid-cols-2 gap-x-3 gap-y-1 text-[13px]">
+                        <dt className="text-sec">{l(lang, 'Provider', 'Fournisseur', 'Proveedor', 'Anbieter')}</dt><dd className="m-0 truncate">{preset.apiType || '—'}</dd>
+                        <dt className="text-sec">{l(lang, 'Model', 'Modèle', 'Modelo', 'Modell')}</dt><dd className="m-0 truncate" title={preset.model}>{preset.model || '—'}</dd>
+                        <dt className="text-sec">{l(lang, 'Concurrency', 'Concurrence', 'Concurrencia', 'Parallelität')}</dt><dd className="m-0">{preset.concurrency ?? '—'}</dd>
+                        <dt className="text-sec">{l(lang, 'Segment', 'Segment', 'Segmento', 'Segment')}</dt><dd className="m-0">{preset.chunkSize || 1000} tokens</dd>
+                      </dl>
+                      <div className="flex items-center gap-1.5">
+                        {!isActive && (
+                          <button type="button" className="btn btn-secondary btn-sm" onClick={() => onApplyPreset && onApplyPreset(preset.id)}>
+                            <Check aria-hidden="true" />{t('settings.activatePresetBtn', lang)}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="icon-btn is-plain ml-auto"
+                          onClick={() => {
+                            if (window.confirm(t('settings.confirmDeletePreset', lang, { name: preset.name }))) {
+                              if (onDeletePreset) onDeletePreset(preset.id);
+                            }
+                          }}
+                          aria-label={`${t('settings.deletePresetBtn', lang)} — ${preset.name}`}
+                        >
+                          <Trash2 aria-hidden="true" />
+                        </button>
+                      </div>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
+          </section>
+        )}
+      </form>
     </div>
   );
 }

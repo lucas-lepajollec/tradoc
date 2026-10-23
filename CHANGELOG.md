@@ -9,8 +9,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Migrate the frontend to Tailwind CSS 4 through its Vite plugin, preserving existing theme tokens, small shadows/radii and focus behavior; remove the vulnerable Tailwind 3 build chain.
 - Keep the source-map-js security patch and grouped maintenance policy. Modern browser support requires Safari 16.4+, Chrome 111+ or Firefox 128+.
 
+### Added
+
+- Appearance setting (System, Light, Dark) under Settings › Interface & languages, stored per browser.
+
 ### Changed
 
+- Redesign the whole interface: a centered top navigation (a menu button on phones) replaces the sidebar, the dashboard puts document import first, and every screen uses one self-hosted typeface (Inter), borderless surfaces without drop shadows, pill controls and switches. Light is the default and dark follows the system. Every existing action is kept.
+- Rename navigation entries: Inspector & Tracking becomes Review, Test becomes Sandbox, and the settings tabs become Providers & models, Translation, Interface & languages and Profiles. Status labels are no longer uppercase.
+- Stop loading Google Fonts from the page; the interface no longer contacts a third-party font host and pinch-zoom is allowed again on phones.
 - Refresh README product screenshots from the isolated English public demo, with the intro dialog closed and additional views of the inspector, glossary, settings, and sandbox.
 
 ## [0.1.6] - 2026-09-08

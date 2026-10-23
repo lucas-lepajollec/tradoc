@@ -35,26 +35,26 @@ test.beforeEach(async ({ page }) => {
 test('dashboard exposes every supported import format', async ({ page }) => {
   await expect(page).toHaveTitle(/TraDoc/i);
   await expect(page.getByRole('heading', { name: 'Your documents, faithfully translated.' })).toBeVisible();
-  await expect(page.getByText('EPUB / PDF / DOCX / MD / TXT')).toBeVisible();
+  await expect(page.getByText('EPUB, PDF, DOCX, MD, TXT')).toBeVisible();
 });
 
 
-test('main workspaces are reachable from the sidebar', async ({ page }) => {
-  await page.getByRole('button', { name: /Inspector & Tracking/i }).click();
+test('main workspaces are reachable from the top navigation', async ({ page }) => {
+  await page.getByRole('button', { name: /^Review$/i }).click();
   await expect(page.getByRole('heading', { name: 'Inspect and review' })).toBeVisible();
-  await page.getByRole('button', { name: /^Test$/i }).click();
-  await expect(page.getByText('Instant test')).toBeVisible();
-  await page.getByRole('button', { name: /^Glossary$/i }).click();
+  await page.getByRole('button', { name: /^Sandbox$/i }).click();
+  await expect(page.getByRole('heading', { name: 'Sandbox' })).toBeVisible();
+  await page.getByRole('button', { name: /^Glossaries$/i }).click();
   await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
   await page.getByRole('button', { name: /^Settings$/i }).click();
-  await expect(page.getByText('Preferences', { exact: true })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Settings' })).toBeVisible();
 });
 
 
 test('mobile navigation opens and changes workspace', async ({ page }) => {
   await page.setViewportSize({ width: 375, height: 667 });
   await page.getByRole('button', { name: 'Open navigation menu' }).click();
-  await page.getByRole('button', { name: /^Glossary$/i }).click();
+  await page.getByRole('button', { name: /^Glossaries$/i }).click();
   await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
 });
 
@@ -84,7 +84,7 @@ test('accepts a locale passed by the public landing page', async ({ page }) => {
 
 test('persists the real app language through server settings', async ({ page }) => {
   await page.getByRole('button', { name: /^Settings$/i }).click();
-  await page.getByRole('button', { name: /^Global & Language$/i }).click();
+  await page.getByRole('tab', { name: /^Interface & languages$/i }).click();
 
   const saveRequest = page.waitForRequest((request) => (
     new URL(request.url()).pathname === '/api/settings/interface'

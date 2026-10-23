@@ -35,7 +35,7 @@ test('keeps the demo banner and navigation usable', async ({ page }, testInfo) =
   if (testInfo.project.name === 'mobile') {
     await page.getByRole('button', { name: 'Open navigation menu' }).click();
   }
-  await page.getByRole('button', { name: /^Glossary$/i }).click();
+  await page.getByRole('button', { name: /^Glossaries$/i }).click();
   await expect(page.getByRole('heading', { name: 'Translation glossaries' })).toBeVisible();
   await expect(page.getByText('regency_fiction').first()).toBeVisible();
 });
@@ -45,10 +45,27 @@ test('returns a complete French translation in the sandbox', async ({ page }, te
   if (testInfo.project.name === 'mobile') {
     await page.getByRole('button', { name: 'Open navigation menu' }).click();
   }
-  await page.getByRole('button', { name: /^Test$/i }).click();
+  await page.getByRole('button', { name: /^Sandbox$/i }).click();
   await page.getByRole('button', { name: 'Run test' }).click();
   await expect(page.getByText(/Il est une vérité universellement reconnue/)).toBeVisible();
   await expect(page.getByText(/Si peu que l’on connaisse les sentiments/)).toBeVisible();
   await expect(page.getByText(/Mon cher monsieur Bennet/)).toBeVisible();
   await expect(page.locator('.sandbox-document-output')).not.toContainText('However little known');
+});
+
+test('switches projects from the review list', async ({ page }, testInfo) => {
+  await enterDemo(page);
+  await page.getByText('Northanger Abbey — Sample.md').first().click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Northanger Abbey — Sample.md' })).toBeVisible();
+  const list = page.getByRole('list', { name: 'Book Projects' });
+  if (testInfo.project.name === 'mobile') {
+    await page.getByRole('button', { name: /Show all projects/ }).click();
+  }
+  await list.getByRole('button', { name: /A Voyage to the Moon/ }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'A Voyage to the Moon — Sample.txt' })).toBeVisible();
+  if (testInfo.project.name === 'mobile') {
+    await page.getByRole('button', { name: /Show all projects/ }).click();
+  }
+  await list.getByRole('button', { name: /Northanger Abbey/ }).click();
+  await expect(page.getByRole('heading', { level: 2, name: 'Northanger Abbey — Sample.md' })).toBeVisible();
 });

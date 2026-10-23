@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Menu } from 'lucide-react';
 import DemoExperience from './components/DemoExperience';
-import Sidebar from './components/Sidebar';
+import TopBar from './components/TopBar';
 import Dashboard from './components/Dashboard';
 import JobsInspector from './components/JobsInspector';
 import Settings from './components/Settings';
@@ -44,7 +43,6 @@ export default function App() {
     if (jobId) localStorage.setItem('tradoc_selected_job_id', jobId);
     else localStorage.removeItem('tradoc_selected_job_id');
   }, []);
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // App Language State (Default English)
   const [lang, setLang] = useState(() => {
@@ -89,6 +87,32 @@ export default function App() {
       })
       .catch(() => {});
   }, []);
+
+  // Appearance is a per-browser preference: follow the system or force a theme.
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem('tradoc_theme');
+      return ['light', 'dark'].includes(saved) ? saved : 'system';
+    } catch {
+      return 'system';
+    }
+  });
+
+  useEffect(() => {
+    if (theme === 'system') delete document.documentElement.dataset.theme;
+    else document.documentElement.dataset.theme = theme;
+  }, [theme]);
+
+  const handleSetTheme = (nextTheme) => {
+    const value = ['light', 'dark'].includes(nextTheme) ? nextTheme : 'system';
+    setTheme(value);
+    try {
+      if (value === 'system') localStorage.removeItem('tradoc_theme');
+      else localStorage.setItem('tradoc_theme', value);
+    } catch {
+      // The preference still applies for this session.
+    }
+  };
 
   // Presets Management State
   const [presets, setPresets] = useState(() => {
@@ -255,19 +279,11 @@ export default function App() {
   };
 
   return (
-    <div className="app-shell min-h-screen flex text-[#e8e6df] font-sans relative overflow-x-hidden selection:bg-blue-500/20 selection:text-white">
-      
-      {/* Ambient Subtle Background Halo Orbs */}
-      <div className="halo-bg-1" />
-      <div className="halo-bg-2" />
-
-      {/* Fixed Sidebar Navigation */}
-      <Sidebar
+    <div className="min-h-screen bg-bg text-fg">
+      <TopBar
         activeTab={activeTab}
         setActiveTab={handleSetActiveTab}
         endpointStatus={endpointStatus}
-        isOpen={mobileMenuOpen}
-        onClose={() => setMobileMenuOpen(false)}
         lang={lang}
         presets={presets}
         activePresetId={activePresetId}
@@ -277,34 +293,8 @@ export default function App() {
         onSelectModel={handleSelectModel}
       />
 
-      {/* Main Right Content Area */}
-      <div className="flex-1 min-w-0 min-h-screen flex flex-col z-10 lg:pl-[272px]">
-        
-        {/* Mobile Header Bar (Sans démarcation) */}
-        <div className="mobile-header lg:hidden flex items-center justify-between px-5 py-4 sticky top-0 z-30">
-          <div className="flex items-center space-x-2.5">
-            <img src="/logo.svg" alt="TraDoc Logo" className="w-7 h-7" />
-            <span className="font-semibold text-sm text-white tracking-tight">
-              {activeTab === 'dashboard' && t('nav.projects', lang)}
-              {activeTab === 'jobs' && t('nav.inspector', lang)}
-              {activeTab === 'wizard' && t('nav.vram', lang)}
-              {activeTab === 'sandbox' && t('nav.sandbox', lang)}
-              {activeTab === 'glossary' && t('nav.glossaries', lang)}
-              {activeTab === 'settings' && t('nav.settings', lang)}
-            </span>
-          </div>
-
-          <button
-            onClick={() => setMobileMenuOpen(true)}
-            className="p-2 bg-white/[0.04] hover:bg-white/[0.08] text-white rounded-xl border border-white/[0.08] transition-colors"
-            aria-label={l(lang, 'Open navigation menu', 'Ouvrir le menu de navigation', 'Abrir el menú de navegación', 'Navigationsmenü öffnen')}
-          >
-            <Menu className="w-5 h-5" />
-          </button>
-        </div>
-
         {/* Main Body */}
-        <main className="workspace w-full max-w-[1380px] mx-auto px-4 sm:px-7 lg:px-9 pt-5 sm:pt-8 lg:pt-12 pb-14 lg:pb-20">
+        <main>
           {activeTab === 'dashboard' && (
           <div>
             <Dashboard
@@ -355,6 +345,8 @@ export default function App() {
               setAvailableModels={setAvailableModels}
               lang={lang}
               setLang={handleSetLang}
+              theme={theme}
+              setTheme={handleSetTheme}
               presets={presets}
               activePresetId={activePresetId}
               onApplyPreset={handleApplyPreset}
@@ -370,8 +362,6 @@ export default function App() {
           </div>
           )}
         </main>
-
-      </div>
 
       {isDemoMode && <DemoExperience lang={lang} />}
     </div>

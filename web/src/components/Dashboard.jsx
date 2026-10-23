@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { UploadCloud, BookOpen, Play, Pause, RefreshCw, Download, Trash2, ChevronRight, AlertCircle, Cpu, ArrowRight, TestTube, Layers, Globe, ArrowLeftRight } from 'lucide-react';
+import { UploadCloud, Play, Pause, Trash2, AlertCircle, ArrowRight, ArrowLeftRight, FileText } from 'lucide-react';
 import { uploadBook, startJob, pauseJob, retryJob, deleteJob, fetchJobs, fetchGlossaries, cloneJobForProofread, downloadJob, subscribeToEvents } from '../api';
 import { t, l, languageLabel, AVAILABLE_LANGUAGES } from '../i18n/translations';
 
@@ -16,18 +16,6 @@ const PROVIDER_NAMES = {
   ollama: 'Ollama (Local)',
 };
 
-const PROVIDER_LOGOS = {
-  openai: '/providers/openai.png',
-  claude: '/providers/claude.png',
-  gemini: '/providers/gemini.png',
-  deepseek: '/providers/deepseek.png',
-  openrouter: '/providers/openrouter.png',
-  minimax: '/providers/minimax.png',
-  kimi: '/providers/kimi.png',
-  glm: '/providers/glm.png',
-  'lm-studio': '/providers/lmstudio.webp',
-  ollama: '/providers/ollama.png',
-};
 
 export default function Dashboard({ onSelectJob, settings, endpointStatus, availableModels, setActiveTab, lang = 'en', onSelectModel }) {
   const [jobMode, setJobMode] = useState('translation'); // 'translation' or 'proofreading'
@@ -239,450 +227,253 @@ export default function Dashboard({ onSelectJob, settings, endpointStatus, avail
     }
   };
 
+
   const activeJobCount = jobs.filter((item) => item.status === 'PROCESSING').length;
+  const isProofreading = jobMode === 'proofreading';
+  const usesExistingProject = isProofreading && proofreadSourceType === 'existing';
+  const canSubmit = !uploading && (usesExistingProject ? Boolean(selectedExistingJobId) : Boolean(file));
+  const statusLabel = (status) => (
+    status === 'PAUSED' ? t('dashboard.paused', lang)
+      : status === 'COMPLETED' ? t('dashboard.completed', lang)
+        : status === 'PROCESSING' ? t('dashboard.processing', lang)
+          : status === 'FAILED' ? t('dashboard.failed', lang) : status
+  );
+  const statusClass = (status) => (
+    status === 'COMPLETED' ? 'is-done' : status === 'PROCESSING' ? 'is-running' : status === 'FAILED' ? 'is-failed' : ''
+  );
+  const swapLanguages = () => {
+    if (sourceLang === 'auto') return;
+    setSourceLang(targetLang);
+    setTargetLang(sourceLang);
+  };
+  const openJob = (jobId) => {
+    onSelectJob(jobId);
+    setActiveTab('jobs');
+  };
 
   return (
-    <div className="dashboard-page space-y-8">
+    <div className="page !max-w-[1040px] !gap-14 !pt-14">
+      <section aria-labelledby="dashboard-title" className="flex flex-col items-center gap-7">
+        <div className="flex flex-col items-center gap-2.5 text-center">
+          <h1 id="dashboard-title" className="hero-title">{l(lang, 'Your documents, faithfully translated.', 'Vos documents, fidèlement traduits.', 'Tus documentos, traducidos con fidelidad.', 'Deine Dokumente, originalgetreu übersetzt.')}</h1>
+          <p className="m-0 max-w-[560px] text-[16px] text-sec">{l(lang, 'Import a document, choose your languages, and follow every step through export.', 'Importez un document, choisissez vos langues et suivez chaque étape jusqu’à l’export.', 'Importa un documento, elige los idiomas y sigue cada etapa hasta la exportación.', 'Importiere ein Dokument, wähle die Sprachen und begleite jeden Schritt bis zum Export.')}</p>
+        </div>
 
-      <header className="page-intro flex flex-col sm:flex-row sm:items-end justify-between gap-4">
-        <div>
-          <p className="page-kicker">{l(lang, 'Translation workspace', 'Espace de traduction', 'Espacio de traducción', 'Übersetzungsbereich')}</p>
-          <h1>{l(lang, 'Your documents, faithfully translated.', 'Vos documents, fidèlement traduits.', 'Tus documentos, traducidos con fidelidad.', 'Deine Dokumente, originalgetreu übersetzt.')}</h1>
-          <p>{l(lang, 'Import a document, choose your languages, and follow every step through export.', 'Importez un document, choisissez vos langues et suivez chaque étape jusqu’à l’export.', 'Importa un documento, elige los idiomas y sigue cada etapa hasta la exportación.', 'Importiere ein Dokument, wähle die Sprachen und begleite jeden Schritt bis zum Export.')}</p>
-        </div>
-        <div className="page-status-stack">
-          <div className="connection-pill active-jobs-pill" title={l(lang, `${activeJobCount} ${activeJobCount === 1 ? 'project' : 'projects'} currently running`, `${activeJobCount} ${activeJobCount > 1 ? 'projets actuellement en cours' : 'projet actuellement en cours'}`, `${activeJobCount} ${activeJobCount === 1 ? 'proyecto en curso' : 'proyectos en curso'}`, `${activeJobCount} laufende${activeJobCount === 1 ? 's Projekt' : ' Projekte'}`)}>
-            <span />
-            {activeJobCount} {l(lang, activeJobCount === 1 ? 'active project' : 'active projects', activeJobCount > 1 ? 'projets actifs' : 'projet actif', activeJobCount === 1 ? 'proyecto activo' : 'proyectos activos', activeJobCount === 1 ? 'aktives Projekt' : 'aktive Projekte')}
-          </div>
-          <div className={`connection-pill ${endpointStatus ? 'is-online' : 'is-offline'}`}>
-            <span />
-            {endpointStatus ? l(lang, 'Service ready', 'Service prêt', 'Servicio listo', 'Dienst bereit') : l(lang, 'Service offline', 'Service hors ligne', 'Servicio sin conexión', 'Dienst offline')}
-          </div>
-        </div>
-      </header>
-      
-      {/* Connection Warning Banner */}
-      {!endpointStatus && (
-        <div className="card-chill p-4 border border-rose-500/30 border-l-4 border-l-rose-500 bg-rose-500/5 text-zinc-200 text-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-          <div className="flex items-start sm:items-center space-x-3 min-w-0 flex-1">
-            <AlertCircle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5 sm:mt-0" />
-            <span className="leading-relaxed">
-              <strong className="text-white">{t('nav.unreachableBanner', lang)}</strong> {t('nav.checkServerUrl', lang)} <code className="bg-black/50 px-2 py-0.5 rounded text-zinc-300 font-mono inline-block break-all max-w-full">{settings.endpoint}</code>.
+        {!endpointStatus && (
+          <div className="notice w-full max-w-[780px] flex-wrap items-center">
+            <AlertCircle aria-hidden="true" />
+            <span className="min-w-0 flex-1">
+              <strong className="font-semibold">{t('nav.unreachableBanner', lang)}</strong> {t('nav.checkServerUrl', lang)} <code className="break-all">{settings.endpoint}</code>
             </span>
+            <button type="button" className="btn btn-secondary btn-sm" onClick={() => setActiveTab('settings')}>{t('nav.configureIp', lang)}</button>
           </div>
-          <button
-            onClick={() => setActiveTab('settings')}
-            className="btn-chill px-3 py-1.5 text-[11px] font-bold text-zinc-200 hover:text-white shrink-0 self-end sm:self-auto"
-          >
-            {t('nav.configureIp', lang)}
-          </button>
-        </div>
-      )}
+        )}
 
-      {/* Main Bento Grid */}
-      <div className="translation-workspace space-y-5">
-        
-        {/* Upload Card (2 cols) */}
-        <div className="translation-card card-chill p-6 sm:p-8 space-y-6 w-full">
-          
-          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2.5">
-            <div>
-              <h2 className="font-semibold text-base text-white tracking-tight flex items-center space-x-2">
-                <UploadCloud className="w-5 h-5 text-white shrink-0" />
-                <span>{t('dashboard.importTitle', lang)}</span>
-              </h2>
-              <p className="text-xs text-[#888] mt-0.5">{t('dashboard.importSubtitle', lang)}</p>
-            </div>
-            <span className="text-[10px] font-bold font-mono uppercase tracking-wider text-[#888] bg-white/[0.04] px-2.5 py-1 rounded-md border border-white/[0.08] self-start sm:self-auto">
-              EPUB / PDF / DOCX / MD / TXT
-            </span>
+        {error && (
+          <div role="alert" className="notice w-full max-w-[780px]">
+            <AlertCircle aria-hidden="true" />
+            <span>{error}</span>
           </div>
+        )}
 
-          {error && (
-            <div className="p-4 rounded-lg bg-rose-500/10 border border-rose-500/20 border-l-4 border-l-rose-500 text-zinc-200 text-xs flex items-center space-x-2">
-              <AlertCircle className="w-4 h-4 text-rose-500 shrink-0" />
-              <span>{error}</span>
+        <form onSubmit={(event) => handleUploadSubmit(event, true)} className="card card-lg w-full max-w-[780px] overflow-hidden">
+          {isProofreading && (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-2 border-b border-line px-[18px] py-3.5">
+              <span className="text-[13px] text-sec">{l(lang, 'Document to proofread', 'Document à relire', 'Documento que revisar', 'Dokument zum Korrekturlesen')}</span>
+              <div className="seg" role="group" aria-label={l(lang, 'Document to proofread', 'Document à relire', 'Documento que revisar', 'Dokument zum Korrekturlesen')}>
+                <button type="button" aria-pressed={proofreadSourceType === 'existing'} onClick={() => setProofreadSourceType('existing')}>{l(lang, 'Existing project', 'Projet existant', 'Proyecto existente', 'Vorhandenes Projekt')}</button>
+                <button type="button" aria-pressed={proofreadSourceType === 'upload'} onClick={() => setProofreadSourceType('upload')}>{l(lang, 'New file', 'Nouveau fichier', 'Archivo nuevo', 'Neue Datei')}</button>
+              </div>
+              {usesExistingProject && (
+                <select
+                  aria-label={l(lang, 'Project to proofread', 'Projet à relire', 'Proyecto que revisar', 'Zu prüfendes Projekt')}
+                  className="input input-on-card !h-9 min-w-[220px] flex-1 border !border-line"
+                  value={selectedExistingJobId}
+                  onChange={(event) => setSelectedExistingJobId(event.target.value)}
+                >
+                  <option value="">{l(lang, 'Select a project…', 'Sélectionner un projet…', 'Seleccionar un proyecto…', 'Projekt auswählen…')}</option>
+                  {jobs.map((job) => <option key={job.id} value={job.id}>{job.file_name} · {job.completed_chunks}/{job.total_chunks} · {statusLabel(job.status)}</option>)}
+                </select>
+              )}
             </div>
           )}
 
-          {/* Mode Switcher Tabs */}
-          <div className="mode-switcher p-1 rounded-xl bg-black/40 border border-white/[0.08] grid grid-cols-2 gap-1 text-xs">
-            <button
-              type="button"
-              onClick={() => setJobMode('translation')}
-              className={`py-2 px-2 sm:px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-1.5 text-[11px] sm:text-xs border ${
-                jobMode === 'translation'
-                  ? 'bg-white/10 text-white border-white/15 shadow-xs backdrop-blur-md'
-                  : 'bg-transparent text-[#888] border-transparent hover:text-white hover:bg-white/[0.02]'
-              }`}
+          {!usesExistingProject && (
+            <label
+              htmlFor="file-upload"
+              onDragOver={(event) => event.preventDefault()}
+              onDrop={handleFileDrop}
+              className={`flex min-h-[220px] cursor-pointer flex-col items-center justify-center gap-2.5 p-8 text-center transition-colors ${file ? 'bg-[var(--accent-soft)]' : 'hover:bg-toolbar'}`}
             >
-              <BookOpen className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{t('dashboard.translationMode', lang)}</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => setJobMode('proofreading')}
-              className={`py-2 px-2 sm:px-4 rounded-lg font-medium transition-colors duration-100 flex items-center justify-center space-x-1.5 text-[11px] sm:text-xs border ${
-                jobMode === 'proofreading'
-                  ? 'bg-white/10 text-white border-white/15 shadow-xs backdrop-blur-md'
-                  : 'bg-transparent text-[#888] border-transparent hover:text-white hover:bg-white/[0.02]'
-              }`}
-            >
-              <Layers className="w-3.5 h-3.5 shrink-0" />
-              <span className="truncate">{t('dashboard.proofreadMode', lang)}</span>
-            </button>
-          </div>
-
-          {/* Language Selector Bar (Source & Target Languages) */}
-          <div className="language-route p-4 rounded-xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] font-semibold text-[#888] uppercase tracking-wider flex items-center space-x-1.5">
-                <Globe className="w-3.5 h-3.5 text-[#60a5fa]" />
-                <span>{l(lang, 'Project languages', 'Langues du projet', 'Idiomas del proyecto', 'Projektsprachen')}</span>
+              <input
+                type="file"
+                id="file-upload"
+                accept=".epub,.pdf,.docx,.md,.txt"
+                className="sr-only"
+                onChange={(event) => {
+                  if (event.target.files?.[0]) {
+                    setFile(event.target.files[0]);
+                    setError(null);
+                  }
+                }}
+              />
+              <span className="grid size-12 place-items-center rounded-2xl bg-well text-accent-text">
+                {file ? <FileText className="size-[22px]" aria-hidden="true" /> : <UploadCloud className="size-[22px]" aria-hidden="true" />}
               </span>
-              <span className="text-[11px] font-mono text-[#60a5fa] font-bold">
-                {sourceLang.toUpperCase()} ➔ {targetLang.toUpperCase()}
-              </span>
-            </div>
+              {file ? (
+                <>
+                  <span className="max-w-full break-all text-[16px] font-medium">{file.name}</span>
+                  <span className="text-[13px] text-sec">{(file.size / (1024 * 1024)).toFixed(2)} MB · <span className="font-medium text-accent-text">{l(lang, 'Choose another file', 'Choisir un autre fichier', 'Elegir otro archivo', 'Andere Datei wählen')}</span></span>
+                </>
+              ) : (
+                <>
+                  <span className="text-[16px] font-medium">{l(lang, 'Drop a document here', 'Déposez un document ici', 'Suelta un documento aquí', 'Dokument hier ablegen')}</span>
+                  <span className="text-[13px] text-sec">
+                    {l(lang, 'or', 'ou', 'o', 'oder')} <span className="font-medium text-accent-text">{l(lang, 'choose a file', 'choisissez un fichier', 'elige un archivo', 'wähle eine Datei')}</span> · EPUB, PDF, DOCX, MD, TXT
+                  </span>
+                </>
+              )}
+            </label>
+          )}
 
-            <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] gap-2.5 items-center">
-              {/* Source Language */}
-              <div>
-                <label className="block text-[9px] text-[#666] uppercase font-bold mb-1">
-                  {l(lang, 'Source language (original)', 'Langue source (original)', 'Idioma de origen (original)', 'Ausgangssprache (Original)')}
-                </label>
-                <select
-                  value={sourceLang}
-                  onChange={(e) => setSourceLang(e.target.value)}
-                  className="w-full input-chill px-3 py-1.5 text-xs text-zinc-200 cursor-pointer"
-                >
-                  {AVAILABLE_LANGUAGES.map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.flag} {languageLabel(l.code, lang)}
-                    </option>
-                  ))}
-                </select>
+          <div className="flex flex-col gap-2 border-t border-line bg-toolbar p-2.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <div className="seg" role="group" aria-label={l(lang, 'Mode', 'Mode', 'Modo', 'Modus')}>
+                <button type="button" aria-pressed={!isProofreading} onClick={() => setJobMode('translation')}>{l(lang, 'Translate', 'Traduire', 'Traducir', 'Übersetzen')}</button>
+                <button type="button" aria-pressed={isProofreading} onClick={() => setJobMode('proofreading')}>{l(lang, 'Proofread', 'Relire', 'Revisar', 'Korrektur')}</button>
               </div>
-
-              {/* Swap Button */}
-              <div className="flex items-center justify-center sm:pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    if (sourceLang !== 'auto') {
-                      const temp = sourceLang;
-                      setSourceLang(targetLang);
-                      setTargetLang(temp);
-                    }
-                  }}
-                  className="p-1.5 rounded-lg bg-white/[0.04] hover:bg-white/[0.08] border border-white/[0.08] text-zinc-400 hover:text-white transition-all"
-                  title={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}
-                >
-                  <ArrowLeftRight className="w-3.5 h-3.5" />
+              <div className="chip-select min-w-[min(100%,240px)] flex-1 !px-1">
+                <select className="min-w-0 flex-1 !max-w-none" aria-label={l(lang, 'Source language', 'Langue source', 'Idioma de origen', 'Ausgangssprache')} value={sourceLang} onChange={(event) => setSourceLang(event.target.value)}>
+                  {AVAILABLE_LANGUAGES.map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
+                </select>
+                <button type="button" className="icon-btn is-plain !size-7" onClick={swapLanguages} aria-label={l(lang, 'Swap languages', 'Inverser les langues', 'Intercambiar idiomas', 'Sprachen tauschen')}>
+                  <ArrowLeftRight aria-hidden="true" className="!size-3.5" />
                 </button>
-              </div>
-
-              {/* Target Language */}
-              <div>
-                <label className="block text-[9px] text-[#666] uppercase font-bold mb-1">
-                  {l(lang, 'Target language (translation)', 'Langue cible (traduction)', 'Idioma de destino (traducción)', 'Zielsprache (Übersetzung)')}
-                </label>
-                <select
-                  value={targetLang}
-                  onChange={(e) => setTargetLang(e.target.value)}
-                  className="w-full input-chill px-3 py-1.5 text-xs text-zinc-200 cursor-pointer"
-                >
-                  {AVAILABLE_LANGUAGES.filter(l => l.code !== 'auto').map((l) => (
-                    <option key={l.code} value={l.code}>
-                      {l.flag} {languageLabel(l.code, lang)}
-                    </option>
-                  ))}
+                <select className="min-w-0 flex-1 !max-w-none" aria-label={l(lang, 'Target language', 'Langue cible', 'Idioma de destino', 'Zielsprache')} value={targetLang} onChange={(event) => setTargetLang(event.target.value)}>
+                  {AVAILABLE_LANGUAGES.filter((language) => language.code !== 'auto').map((language) => <option key={language.code} value={language.code}>{languageLabel(language.code, lang)}</option>)}
                 </select>
               </div>
-            </div>
-          </div>
-
-          {/* Proofreading Mode Sub-options (Select existing job vs upload new file) */}
-          {jobMode === 'proofreading' && (
-            <div className="proofreading-source-compact">
-              <span className="proofreading-source-label">{l(lang, 'Document to proofread', 'Document à relire', 'Documento que revisar', 'Dokument zum Korrekturlesen')}</span>
-              <div className="proofreading-source-toggle">
-                <button type="button" onClick={() => setProofreadSourceType('existing')} className={proofreadSourceType === 'existing' ? 'is-selected' : ''}><BookOpen />{l(lang, 'Existing project', 'Projet existant', 'Proyecto existente', 'Vorhandenes Projekt')}</button>
-                <button type="button" onClick={() => setProofreadSourceType('upload')} className={proofreadSourceType === 'upload' ? 'is-selected' : ''}><UploadCloud />{l(lang, 'New file', 'Nouveau fichier', 'Archivo nuevo', 'Neue Datei')}</button>
-              </div>
-              {proofreadSourceType === 'existing' && <select value={selectedExistingJobId} onChange={(e) => setSelectedExistingJobId(e.target.value)}><option value="">{l(lang, 'Select a project…', 'Sélectionner un projet…', 'Seleccionar un proyecto…', 'Projekt auswählen…')}</option>{jobs.map((j) => <option key={j.id} value={j.id}>{j.file_name} · {j.completed_chunks}/{j.total_chunks} · {j.status}</option>)}</select>}
-              {proofreadSourceType === 'upload' && <span className="proofreading-upload-hint">{l(lang, 'Drop the file in the area below', 'Déposez le fichier dans la zone ci-dessous', 'Suelta el archivo en la zona inferior', 'Lege die Datei im Bereich unten ab')}</span>}
-            </div>
-          )}
-
-          <form onSubmit={handleUploadSubmit} className="space-y-6">
-            
-            {/* If proofreading from existing DB book */}
-            {jobMode === 'proofreading' && proofreadSourceType === 'existing' ? null : (
-              /* Dropzone */
-              <div
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={handleFileDrop}
-                onClick={() => document.getElementById('file-upload')?.click()}
-                className={`document-dropzone border border-dashed rounded-2xl p-10 text-center transition-all cursor-pointer relative overflow-hidden group ${
-                  file
-                    ? 'border-[#2563eb]/50 bg-[#2563eb]/5'
-                    : 'border-white/10 hover:bg-white/[0.02] bg-[#030303]/30'
-                }`}
-              >
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-white/[0.02] to-transparent opacity-0 transition-opacity group-hover:opacity-100" />
-                <input
-                  type="file"
-                  accept=".epub,.pdf,.docx,.md,.txt"
-                  className="hidden"
-                  id="file-upload"
-                  onChange={(e) => e.target.files?.[0] && setFile(e.target.files[0])}
-                />
-                <label htmlFor="file-upload" className="cursor-pointer block space-y-4 relative z-10">
-                  <div className="flex gap-4 mb-4 justify-center">
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600/10 text-blue-400 border border-white/5 shadow-inner">
-                      <BookOpen className="h-5 w-5" />
-                    </div>
-                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-purple-600/10 text-purple-400 border border-white/5 shadow-inner">
-                      <Layers className="h-5 w-5" />
-                    </div>
-                  </div>
-                  {file ? (
-                    <div>
-                      <p className="font-semibold text-white text-xs">{file.name}</p>
-                      <p className="text-[10px] text-[#888] mt-1 font-mono">{(file.size / (1024 * 1024)).toFixed(2)} MB</p>
-                    </div>
-                  ) : (
-                    <div>
-                      <p className="font-medium text-zinc-300 text-xs">
-                        {t('dashboard.dropHere', lang)}
-                      </p>
-                      <p className="text-[10px] text-[#666] mt-1">{t('dashboard.allowedFormats', lang)}</p>
-                    </div>
-                  )}
-                </label>
-              </div>
-            )}
-
-            {/* Options */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">{t('dashboard.llmModel', lang)}</label>
+              <label className="chip-select ml-auto max-w-full max-sm:w-full max-sm:[&>select]:flex-1 max-sm:[&>select]:!max-w-none">
+                {l(lang, 'Model', 'Modèle', 'Modelo', 'Modell')}
                 <select
                   value={selectedModel}
-                  onChange={(e) => {
-                    const newM = e.target.value;
-                    setSelectedModel(newM);
-                    if (onSelectModel) onSelectModel(newM);
+                  onChange={(event) => {
+                    setSelectedModel(event.target.value);
+                    if (onSelectModel) onSelectModel(event.target.value);
                   }}
-                  className="w-full input-chill px-3 py-2 text-xs text-zinc-200"
                 >
-                  {availableModels.length > 0 ? (
-                    availableModels.map((m) => <option key={m} value={m}>{m}</option>)
-                  ) : (
-                    <option value={settings.model}>{settings.model}</option>
-                  )}
+                  {availableModels.length > 0
+                    ? availableModels.map((model) => <option key={model} value={model}>{model}</option>)
+                    : <option value={settings.model}>{settings.model}</option>}
                 </select>
-              </div>
-
-              <div>
-                <label className="block text-[10px] font-semibold text-[#888] uppercase tracking-wider mb-1.5">{t('dashboard.literaryGlossary', lang)}</label>
-                <select
-                  value={selectedGlossary}
-                  onChange={(e) => setSelectedGlossary(e.target.value)}
-                  className="w-full input-chill px-3 py-2 text-xs text-zinc-200"
-                >
-                  <option value="">{t('dashboard.noGlossary', lang)}</option>
-                  {glossaries.map((g) => <option key={g} value={g}>{g}</option>)}
+              </label>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="chip-select max-w-full max-sm:w-full max-sm:[&>select]:flex-1 max-sm:[&>select]:!max-w-none">
+                {l(lang, 'Glossary', 'Glossaire', 'Glosario', 'Glossar')}
+                <select value={selectedGlossary} onChange={(event) => setSelectedGlossary(event.target.value)}>
+                  <option value="">{l(lang, 'None', 'Aucun', 'Ninguno', 'Keines')}</option>
+                  {glossaries.map((name) => <option key={name} value={name}>{name}</option>)}
                 </select>
+              </label>
+              <div className="ml-auto flex flex-wrap items-center justify-end gap-1.5 max-sm:w-full max-sm:[&>button]:flex-1">
+                <button type="button" className="btn btn-ghost" disabled={!canSubmit} onClick={(event) => handleUploadSubmit(event, false)}>
+                  {l(lang, 'Prepare only', 'Préparer seulement', 'Solo preparar', 'Nur vorbereiten')}
+                </button>
+                <button type="submit" className="btn btn-primary" disabled={!canSubmit}>
+                  {uploading ? t('dashboard.analyzing', lang) : isProofreading ? t('dashboard.startProofreading', lang) : t('dashboard.startTranslation', lang)}
+                  {!uploading && <ArrowRight aria-hidden="true" />}
+                </button>
               </div>
             </div>
+          </div>
+        </form>
 
-            {/* Submit Action Buttons */}
-            <div className="translation-actions grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
-              <button
-                type="button"
-                onClick={(e) => handleUploadSubmit(e, true)}
-                disabled={uploading || (jobMode === 'proofreading' && proofreadSourceType === 'existing' ? !selectedExistingJobId : !file)}
-                className={`py-2.5 text-xs font-semibold flex items-center justify-center space-x-2 disabled:opacity-40 rounded-lg transition-all ${
-                  jobMode === 'proofreading'
-                    ? 'bg-emerald-600 hover:bg-emerald-500 text-white'
-                    : 'btn-orange shadow-none'
-                }`}
-              >
-                {uploading ? (
-                  <span>{t('dashboard.analyzing', lang)}</span>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    <span>{jobMode === 'proofreading' ? t('dashboard.startProofreading', lang) : t('dashboard.startTranslation', lang)}</span>
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={(e) => handleUploadSubmit(e, false)}
-                disabled={uploading || (jobMode === 'proofreading' && proofreadSourceType === 'existing' ? !selectedExistingJobId : !file)}
-                className="py-2.5 bg-white/[0.04] hover:bg-white/[0.08] text-[#ededed] border border-white/[0.08] text-xs font-semibold rounded-lg transition-all flex items-center justify-center space-x-2 disabled:opacity-40"
-              >
-                {uploading ? (
-                  <span>{t('dashboard.analyzing', lang)}</span>
-                ) : (
-                  <>
-                    <Layers className="w-3.5 h-3.5" />
-                    <span>{t('dashboard.prepareInspect', lang)}</span>
-                  </>
-                )}
-              </button>
-            </div>
-
-          </form>
-        </div>
-
-        {/* Status Card (1 col) */}
-        <div className="dashboard-utilities">
-          <button type="button" className="utility-panel server-utility" onClick={() => setActiveTab('settings')}>
-            <span className="utility-icon"><Cpu /></span>
-            <span className="utility-copy"><small>{t('dashboard.serverParams', lang)}</small><strong>{PROVIDER_NAMES[settings.apiType] || settings.apiType || 'OpenAI'} <i>·</i> {settings.model}</strong><span>{settings.concurrency || 1} {t('dashboard.requestsUnit', lang)} · {settings.chunkSize || 1000} {t('dashboard.tokensUnit', lang)}</span></span>
-            {PROVIDER_LOGOS[settings.apiType] && <img src={PROVIDER_LOGOS[settings.apiType]} alt="" className="utility-provider-logo" />}
-            <span className="utility-arrow"><ArrowRight /></span>
+        <div className="flex flex-wrap justify-center gap-2">
+          <button type="button" className="btn btn-secondary text-sec" onClick={() => setActiveTab('settings')}>
+            <span className="font-normal text-sec">{PROVIDER_NAMES[settings.apiType] || settings.apiType || 'OpenAI'} · {settings.concurrency || 1} {t('dashboard.requestsUnit', lang)} · {(settings.chunkSize || 1000).toLocaleString()} {t('dashboard.tokensUnit', lang)}</span>
+            {l(lang, 'Server settings', 'Réglages serveur', 'Ajustes del servidor', 'Servereinstellungen')}
           </button>
-
-          <button type="button" className="utility-panel sandbox-utility" onClick={() => setActiveTab('sandbox')}>
-            <span className="utility-icon"><TestTube /></span>
-            <span className="utility-copy"><small>{t('dashboard.liveTester', lang)}</small><strong>{l(lang, 'Test a sentence before starting a document', 'Testez une phrase avant de lancer un document', 'Prueba una frase antes de iniciar un documento', 'Teste einen Satz, bevor du ein Dokument startest')}</strong><span>{t('dashboard.liveTesterDesc', lang)}</span></span>
-            <span className="utility-action-label">{t('dashboard.openSandbox', lang)}</span>
-            <span className="utility-arrow"><ArrowRight /></span>
+          <button type="button" className="btn btn-secondary" onClick={() => setActiveTab('sandbox')}>
+            <span className="font-normal text-sec">{l(lang, 'Test a sentence first', 'Testez d’abord une phrase', 'Prueba antes una frase', 'Zuerst einen Satz testen')}</span>
+            {t('nav.sandbox', lang)}
           </button>
         </div>
+      </section>
 
-      </div>
-
-      {/* Projects List with Direct Controls & Download Buttons */}
-      <div className="projects-section space-y-4">
-        <h2 className="font-semibold text-sm text-white tracking-tight flex items-center space-x-2">
-          <Layers className="w-4 h-4 text-white" />
-          <span>{t('dashboard.recentProjects', lang)} ({jobs.length})</span>
-        </h2>
+      <section aria-labelledby="projects-title" className="flex flex-col gap-3.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="projects-title" className="m-0 text-[18px] font-semibold tracking-[-0.02em]">{t('dashboard.recentProjects', lang)}</h2>
+          <span className="text-[13px] text-sec">
+            {jobs.length} · {activeJobCount} {l(lang, 'running', 'en cours', 'en curso', 'laufend')}
+          </span>
+        </div>
 
         {jobs.length === 0 ? (
-          <div className="card-chill p-12 text-center text-[#666] text-xs">
-            {t('dashboard.noProjectsYet', lang)}
-          </div>
+          <div className="card px-6 py-12 text-center text-[13px] text-sec">{t('dashboard.noProjectsYet', lang)}</div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {jobs.map((j) => {
-              const percent = j.total_chunks > 0 ? Math.round((j.completed_chunks / j.total_chunks) * 100) : 0;
-              const truncatedName = j.file_name.length > 32 ? j.file_name.slice(0, 32) + '...' : j.file_name;
-              const canExport = j.status === 'COMPLETED' || j.completed_chunks > 0;
-              const isPartialExport = j.status !== 'COMPLETED';
-              
+          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,300px),1fr))] gap-3">
+            {jobs.map((job) => {
+              const percent = job.total_chunks > 0 ? Math.round((job.completed_chunks / job.total_chunks) * 100) : 0;
+              const canExport = job.status === 'COMPLETED' || job.completed_chunks > 0;
+              const isPartialExport = job.status !== 'COMPLETED';
               return (
-                <div
-                  key={j.id}
-                  onClick={() => { onSelectJob(j.id); setActiveTab('jobs'); }}
-                  className="card-chill card-chill-hover p-5 cursor-pointer space-y-4 relative group"
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-mono text-[#888] bg-white/[0.04] px-2 py-0.5 rounded border border-white/[0.08]">
-                      {j.file_type.toUpperCase()}
-                    </span>
-
-                    <div className="flex items-center space-x-2">
-                      <span className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${
-                        j.status === 'COMPLETED' ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' :
-                        j.status === 'PROCESSING' ? 'bg-[#2563eb]/10 text-[#60a5fa] border border-[#2563eb]/20 animate-pulse' :
-                        'bg-white/[0.04] text-[#888] border border-white/[0.08]'
-                      }`}>
-                        {j.status === 'PAUSED' ? t('dashboard.paused', lang) :
-                         j.status === 'COMPLETED' ? t('dashboard.completed', lang) :
-                         j.status === 'PROCESSING' ? t('dashboard.processing', lang) :
-                         j.status === 'FAILED' ? t('dashboard.failed', lang) : j.status}
-                      </span>
-                      
-                      <button
-                        onClick={(e) => handleDeleteJob(e, j.id, j.file_name)}
-                        className="text-[#444] hover:text-rose-400 p-1 transition-colors"
-                        title={t('dashboard.deleteProject', lang)}
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
+                <article key={job.id} className="card flex flex-col gap-3.5 p-[18px]">
+                  <div className="flex items-center gap-2">
+                    <span className="tag">{job.file_type.toUpperCase()}</span>
+                    <span className={`status ${statusClass(job.status)}`}>{statusLabel(job.status)}</span>
+                    <button
+                      type="button"
+                      className="icon-btn is-plain ml-auto !size-8"
+                      onClick={(event) => handleDeleteJob(event, job.id, job.file_name)}
+                      aria-label={`${t('dashboard.deleteProject', lang)} — ${job.file_name}`}
+                    >
+                      <Trash2 aria-hidden="true" />
+                    </button>
+                  </div>
+                  <div className="flex min-w-0 flex-col gap-0.5">
+                    <h3 className="m-0 min-w-0 text-[16px] font-semibold tracking-[-0.015em]">
+                      <button type="button" onClick={() => openJob(job.id)} className="block max-w-full truncate border-0 bg-transparent p-0 text-left hover:underline" title={job.file_name}>
+                        {job.file_name}
                       </button>
-                    </div>
+                    </h3>
+                    <span className="truncate text-[13px] text-sec">{job.source_lang?.toUpperCase()} → {job.target_lang?.toUpperCase()} · {job.model}</span>
                   </div>
-
-                  <div>
-                    <h3 className="font-semibold text-white text-xs truncate" title={j.file_name}>{truncatedName}</h3>
-                    <p className="text-[10px] text-[#666] mt-0.5 font-mono truncate">{t('dashboard.model', lang)}: {j.model}</p>
-                  </div>
-
-                  {/* Progress bar */}
-                  <div className="space-y-1.5">
-                    <div className="flex justify-between text-[10px] font-medium">
-                      <span className="text-[#888]">{l(lang, 'Progress', 'Progression', 'Progreso', 'Fortschritt')}</span>
-                      <span className="text-[#60a5fa] font-semibold">{percent}% ({j.completed_chunks}/{j.total_chunks})</span>
+                  <div className="flex items-center gap-2.5">
+                    <div className={`progress flex-1 ${job.status === 'COMPLETED' ? 'is-done' : ''}`} role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={percent} aria-label={l(lang, 'Progress', 'Progression', 'Progreso', 'Fortschritt')}>
+                      <span style={{ width: `${percent}%` }} />
                     </div>
-                    <div className="w-full h-1.5 bg-black rounded-full overflow-hidden border border-white/[0.08]">
-                      <div
-                        className="h-full bg-gradient-to-r from-[#2563eb] to-[#60a5fa] rounded-full transition-all duration-300"
-                        style={{ width: `${percent}%` }}
-                      />
-                    </div>
+                    <span className="text-[12px] tabular-nums text-sec">{job.completed_chunks} / {job.total_chunks}</span>
                   </div>
-
-                  {/* Direct Controls & Download bar directly on the Card */}
-                  <div className="pt-2 border-t border-white/[0.08] flex items-center justify-between text-xs">
-                    <div className="flex items-center space-x-2">
-                      {j.status === 'PROCESSING' ? (
-                        <button
-                          onClick={(e) => handlePauseJob(e, j.id)}
-                          className="px-2.5 py-1 bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.08] rounded-md text-[10px] font-medium flex items-center space-x-1"
-                        >
-                          <Pause className="w-3 h-3 text-[#ff6369]" />
-                          <span>{t('dashboard.pause', lang)}</span>
-                        </button>
-                      ) : (
-                        <button
-                          onClick={(e) => handleStartResumeJob(e, j.id)}
-                          className="px-2.5 py-1 bg-blue-600/20 hover:bg-blue-600/30 text-blue-300 border border-blue-500/30 rounded-md text-[10px] font-medium flex items-center space-x-1 transition-all"
-                        >
-                          <Play className="w-3 h-3 fill-blue-300 text-blue-300" />
-                          <span>{j.completed_chunks > 0 ? t('dashboard.resume', lang) : l(lang, 'Start', 'Lancer', 'Iniciar', 'Starten')}</span>
-                        </button>
-                      )}
-
-                      <button
-                        type="button"
-                        onClick={(e) => handleDownload(e, j.id)}
-                        disabled={!canExport}
-                        className={`px-2.5 py-1 rounded-md text-[10px] font-medium flex items-center space-x-1 transition-all ${
-                          canExport
-                            ? 'bg-white/[0.04] hover:bg-white/[0.08] text-white border border-white/[0.08]'
-                            : 'opacity-20 cursor-not-allowed'
-                        }`}
-                        title={isPartialExport
-                          ? l(lang, 'Download partial preview', 'Télécharger un aperçu partiel', 'Descargar vista previa parcial', 'Teilvorschau herunterladen')
-                          : l(lang, 'Download final translation', 'Télécharger la traduction finale', 'Descargar traducción final', 'Endgültige Übersetzung herunterladen')}
-                      >
-                        <Download className="w-3 h-3" />
-                        <span>{isPartialExport ? l(lang, 'Preview', 'Aperçu', 'Vista previa', 'Vorschau') : l(lang, 'Export', 'Exporter', 'Exportar', 'Exportieren')}</span>
+                  <div className="flex items-center gap-1.5">
+                    {job.status === 'PROCESSING' ? (
+                      <button type="button" className="btn btn-solid btn-sm" onClick={(event) => handlePauseJob(event, job.id)}>
+                        <Pause aria-hidden="true" />{t('dashboard.pause', lang)}
                       </button>
-                    </div>
-
-                    <span className="text-[#666] group-hover:text-white flex items-center space-x-1 text-[10px] font-medium transition-colors">
-                      <span>{t('dashboard.inspect', lang)}</span>
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </span>
+                    ) : (
+                      <button type="button" className="btn btn-solid btn-sm" onClick={(event) => handleStartResumeJob(event, job.id)}>
+                        <Play aria-hidden="true" />{job.completed_chunks > 0 ? t('dashboard.resume', lang) : l(lang, 'Start', 'Lancer', 'Iniciar', 'Starten')}
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      className="btn btn-secondary btn-sm"
+                      disabled={!canExport}
+                      onClick={(event) => handleDownload(event, job.id)}
+                      title={isPartialExport
+                        ? l(lang, 'Download partial preview', 'Télécharger un aperçu partiel', 'Descargar vista previa parcial', 'Teilvorschau herunterladen')
+                        : l(lang, 'Download final translation', 'Télécharger la traduction finale', 'Descargar traducción final', 'Endgültige Übersetzung herunterladen')}
+                    >
+                      {isPartialExport ? l(lang, 'Preview', 'Aperçu', 'Vista previa', 'Vorschau') : l(lang, 'Export', 'Exporter', 'Exportar', 'Exportieren')}
+                    </button>
+                    <button type="button" className="btn btn-link ml-auto shrink-0 px-1" onClick={() => openJob(job.id)}>{t('dashboard.inspect', lang)}</button>
                   </div>
-
-                </div>
+                </article>
               );
             })}
           </div>
         )}
-      </div>
-
+      </section>
     </div>
   );
 }
