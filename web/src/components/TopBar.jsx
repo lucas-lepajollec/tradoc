@@ -91,8 +91,10 @@ export default function TopBar({
           <div className="runtime-chip">
             <span className={`dot mx-2 ${endpointStatus ? 'is-online' : ''}`} title={statusLabel} />
             <span className="sr-only">{statusLabel}</span>
-            {profileSelect('bare-select text-sec font-normal')}
-            <span className="sep" aria-hidden="true" />
+            <span className="runtime-profile inline-flex items-center gap-0.5">
+              {profileSelect('bare-select text-sec font-normal')}
+              <span className="sep" aria-hidden="true" />
+            </span>
             {modelSelect('bare-select')}
           </div>
         </div>

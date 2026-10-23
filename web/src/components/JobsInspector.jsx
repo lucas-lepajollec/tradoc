@@ -650,29 +650,43 @@ export default function JobsInspector({ selectedJobId, onSelectJob, settings, av
     <div className="page">
       <h1 className="sr-only">{l(lang, 'Inspect and review', 'Inspection et révision', 'Inspección y revisión', 'Prüfen und überarbeiten')}</h1>
 
-      <div className="flex flex-wrap items-center gap-2">
-        <nav aria-label={t('inspector.projectsList', lang)} className="flex min-w-0 flex-1 gap-2 overflow-x-auto pb-1">
+      <section aria-labelledby="project-list-title" className="flex flex-col gap-2.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h2 id="project-list-title" className="section-title">
+            {l(lang, 'Projects', 'Projets', 'Proyectos', 'Projekte')} <span className="font-normal text-sec">{jobs.length}</span>
+          </h2>
+          <span className="text-[13px] text-sec" title={l(lang, 'Projects currently running', 'Projets actuellement en cours', 'Proyectos actualmente en curso', 'Derzeit laufende Projekte')}>
+            {activeJobCount} {l(lang, 'running', 'en cours', 'en curso', 'laufend')}
+          </span>
+        </div>
+        <ul className="project-rail m-0 flex list-none gap-2.5 overflow-x-auto p-0 pb-1">
           {jobs.map((item) => {
             const isSelected = job?.id === item.id;
+            const percent = item.total_chunks > 0 ? Math.round((item.completed_chunks / item.total_chunks) * 100) : 0;
             return (
-              <button
-                key={item.id}
-                type="button"
-                aria-current={isSelected ? 'true' : undefined}
-                onClick={() => selectJobOptimistic(item)}
-                title={item.file_name}
-                className={`inline-flex h-9 max-w-[280px] flex-none items-center gap-2 rounded-full border px-3.5 text-[13px] font-medium ${isSelected ? 'border-fg bg-card' : 'border-line bg-transparent hover:bg-well'}`}
-              >
-                <span className="truncate">{item.file_name}</span>
-                <span className="font-normal tabular-nums text-sec">{item.completed_chunks}/{item.total_chunks}</span>
-              </button>
+              <li key={item.id} className="flex-[0_0_min(78vw,280px)] snap-start sm:flex-[1_0_240px] sm:max-w-[320px]">
+                <button
+                  type="button"
+                  aria-current={isSelected ? 'true' : undefined}
+                  onClick={() => selectJobOptimistic(item)}
+                  title={item.file_name}
+                  className={`flex h-full w-full flex-col gap-2.5 rounded-2xl border p-3.5 text-left transition-colors ${isSelected ? 'border-[var(--accent-btn)] bg-[var(--accent-soft)]' : 'border-line bg-card hover:bg-well'}`}
+                >
+                  <span className="flex w-full items-center gap-2">
+                    <span className="tag">{item.file_type?.toUpperCase()}</span>
+                    <span className={`status ${statusClass(item.status)}`}>{jobStatusLabel(item.status)}</span>
+                  </span>
+                  <span className="w-full truncate text-[14px] font-semibold">{item.file_name}</span>
+                  <span className="flex w-full items-center gap-2">
+                    <span className={`progress flex-1 !h-1 ${item.status === 'COMPLETED' ? 'is-done' : ''}`}><span style={{ width: `${percent}%` }} /></span>
+                    <span className="text-[12px] tabular-nums text-sec">{item.completed_chunks}/{item.total_chunks}</span>
+                  </span>
+                </button>
+              </li>
             );
           })}
-        </nav>
-        <span className="text-[13px] text-sec" title={l(lang, 'Projects currently running', 'Projets actuellement en cours', 'Proyectos actualmente en curso', 'Derzeit laufende Projekte')}>
-          {activeJobCount} {l(lang, 'running', 'en cours', 'en curso', 'laufend')}
-        </span>
-      </div>
+        </ul>
+      </section>
 
       {job ? (
         <>
