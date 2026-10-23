@@ -314,7 +314,7 @@ export default function Settings({
     <div className="page page-narrow">
       <div className="page-head">
         <div>
-          <h1>{l(lang, 'Settings', 'Réglages', 'Ajustes', 'Einstellungen')}</h1>
+          <h1>{t('nav.settings', lang)}</h1>
           <p>{t('settings.subtitle', lang)}</p>
         </div>
         <button type="submit" form="settings-form" className="btn btn-primary">{t('settings.saveAllSettings', lang)}</button>
